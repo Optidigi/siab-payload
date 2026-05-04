@@ -1,0 +1,50 @@
+{
+  "$comment": "Project-scoped Claude Code settings for the Payload v3 multi-tenant CMS instance",
+
+  "enabledMcpjsonServers": [
+    "context7",
+    "shadcn",
+    "postgres",
+    "github",
+    "docker"
+  ],
+
+  "disabledMcpjsonServers": [],
+
+  "$noise_to_disable_globally": [
+    "shopify-dev-mcp",
+    "pencil",
+    "Claude_in_Chrome",
+    "mcp-registry",
+    "scheduled-tasks"
+  ],
+
+  "$skills_to_keep": [
+    "context7",
+    "superpowers:brainstorming",
+    "superpowers:systematic-debugging",
+    "superpowers:frontend-design",
+    "sequential-thinking"
+  ],
+
+  "$skills_irrelevant_here": [
+    "anthropic-skills:pptx",
+    "anthropic-skills:docx",
+    "anthropic-skills:xlsx",
+    "anthropic-skills:pdf",
+    "anthropic-skills:setup-cowork"
+  ],
+
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(npx:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)",
+      "Bash(node:*)",
+      "Bash(psql:*)"
+    ]
+  }
+}

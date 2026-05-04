@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+.next/
+dist/
+out/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# brainstorming visual companion artifacts (session-scoped)
+.superpowers/
+
+# Claude Code local-only settings (per machine, not shared)
+.claude/settings.local.json
+
+# payload generated
+src/payload-types.ts
+src/app/(payload)/admin/importMap.js
+
+# test artifacts
+coverage/
+playwright-report/
+test-results/

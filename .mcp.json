@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "shadcn": {
+      "command": "npx",
+      "args": ["-y", "shadcn@latest", "mcp"]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-postgres",
+        "postgresql://payload:payload@localhost:5432/payload"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    },
+    "docker": {
+      "command": "npx",
+      "args": ["-y", "mcp-server-docker"]
+    }
+  }
+}
