@@ -120,60 +120,21 @@ will start but will fail health checks until Step 5 has run on a fresh DB
 
 ## Step 5 — Apply database migrations
 
-Schema is managed via committed migration files under `src/migrations/`.
-Run the migrations against the running Postgres before the app container
-serves traffic. On a fresh DB this creates the schema; on an existing DB
-it is a no-op for already-applied migrations.
+Migrations apply automatically on container start. The image's entrypoint
+(`scripts/docker-entrypoint.sh`) runs `node scripts/migrate-on-boot.mjs`
+before handing off to `node server.js`; `migrate-on-boot.mjs` calls
+`payload.db.migrate()` against the running Postgres, which is a no-op when
+no new migration files are present and applies them in order otherwise.
 
-**Gotcha:** Payload's CLI is not included in the Next.js standalone build
-shipped in the production image, so `docker compose run --rm siab-payload
-pnpm payload migrate` cannot execute against the prod image directly.
-Instead, run `pnpm payload migrate` from a source checkout (locally or in
-an ephemeral node container on the VPS), pointed at the production DB.
+What this means in practice:
 
-```bash
-# 1. Read .env values, stripping any stray quotes.
-read_env() {
-  grep "^$1=" /srv/saas/infra/stacks/siab-payload/.env \
-    | cut -d= -f2- \
-    | sed -e "s/^['\"]//;s/['\"]\$//"
-}
-POSTGRES_PASSWORD=$(read_env POSTGRES_PASSWORD)
-PAYLOAD_SECRET_VAL=$(read_env PAYLOAD_SECRET)
-
-# 2. Clone (or update) the repo source somewhere ephemeral.
-cd /tmp
-git clone --depth=1 https://<USER>:<TOKEN>@github.com/Optidigi/siab-payload.git siab-source-tmp
-cd siab-source-tmp
-
-# 3. Run migrations from a node container on the compose internal network.
-#    Compose names the network <project>_internal — the project name defaults
-#    to the directory name (`siab-payload`), so the network is
-#    `siab-payload_internal`.
-docker run --rm \
-  -v /tmp/siab-source-tmp:/app \
-  -w /app \
-  --network siab-payload_internal \
-  -e DATABASE_URI="postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload" \
-  -e PAYLOAD_SECRET="${PAYLOAD_SECRET_VAL}" \
-  -e DATA_DIR=/data-out \
-  -e NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl \
-  node:22-alpine sh -c "
-    corepack enable pnpm
-    pnpm install --frozen-lockfile --silent
-    pnpm payload generate:types
-    pnpm payload migrate
-  "
-
-# 4. Verify tables exist.
-docker exec siab-payload-postgres psql -U payload -d payload -c "\dt" | head
-
-# 5. Clean up (the node container leaves root-owned files behind).
-sudo rm -rf /tmp/siab-source-tmp
-
-# 6. Restart the app container so it reconnects to the now-populated schema.
-docker compose -f /srv/saas/infra/stacks/siab-payload/docker-compose.yml restart siab-payload
-```
+- **Fresh DB:** the first `docker compose up -d` creates the schema. Watch
+  `docker logs siab-payload` to see `[migrate-on-boot] N migration(s) applied`.
+- **Existing DB:** subsequent boots log `[migrate-on-boot] no pending
+  migrations` (sub-second) and proceed to `node server.js`.
+- **Migration failure:** the script exits non-zero, the container restarts
+  per `restart: unless-stopped`, and the loop is visible in
+  `docker compose ps`. Inspect `docker logs siab-payload` for the SQL error.
 
 Future schema changes flow:
 
@@ -181,8 +142,8 @@ Future schema changes flow:
 2. `pnpm payload migrate:create <name>` (locally, against any throwaway
    Postgres — the CLI just diffs config vs the DB to emit SQL).
 3. Commit the new file in `src/migrations/`.
-4. Deploy the new image.
-5. Re-run the migrate command above against the production DB.
+4. Deploy the new image. `docker compose up -d` applies it on container
+   start; no manual migrate step.
 
 ## Step 6 — NPM proxy host
 
@@ -265,12 +226,14 @@ PAYLOAD_API_TOKEN=<key>
 
 ### Issue: `relation "users" does not exist` at boot
 
-**Cause:** Postgres database is empty — schema migrations have not been run.
-The production image does not run migrations on boot (Payload's CLI is not
-bundled in the Next.js standalone build).
+**Cause:** Migrations failed to apply at container start. The entrypoint
+runs `migrate-on-boot.mjs` before `node server.js`, but if Postgres wasn't
+healthy yet (or migrate hit a SQL error) the schema isn't there.
 
-**Fix:** Run `pnpm payload migrate` from a source checkout against the
-production DB as in Step 5, then restart the app container.
+**Fix:** Inspect `docker logs siab-payload` for the `[migrate-on-boot]`
+lines. If the issue was transient (Postgres slow to come up), `docker
+compose restart siab-payload` re-runs migrate. If the SQL itself is the
+problem, fix the offending migration file, rebuild and redeploy.
 
 ### Issue: `/api/health` returns `dataDir: unwritable`
 
@@ -366,11 +329,6 @@ read_env() {
 
 ## Future improvements (out of scope for this runbook)
 
-- **Migrations on boot.** The production image strips Payload's CLI as part
-  of Next's standalone output, so we can't run `payload migrate` from the
-  app container directly. Either ship a separate "tools" image stage that
-  retains node_modules + the CLI and runs as an init container, or invoke
-  the migration step from the deploy pipeline against a sidecar.
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
   `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
@@ -378,6 +336,3 @@ read_env() {
   cross-origin (it doesn't yet — currently same-VPS service-to-service),
   add the orchestrator's hostname to `cors` and `csrf` arrays in
   `payload.config.ts`.
-- **`outputFileTracingRoot`.** Set this in `next.config.mjs` to silence the
-  multiple-lockfile warning during local dev when this repo is checked out
-  alongside sibling repos that also have lockfiles.

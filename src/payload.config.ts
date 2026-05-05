@@ -37,9 +37,13 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI },
     // Schema is managed via committed migration files in `src/migrations/`.
     // Generate via `pnpm payload migrate:create <name>`, apply via
-    // `pnpm payload migrate`. `push` is left at its default (false in prod)
-    // because the runtime push doesn't fire in NODE_ENV=production builds
-    // anyway — see docs/runbooks/deploy.md Step 5.
+    // `pnpm payload migrate`. In production, `scripts/migrate-on-boot.mjs`
+    // runs migrations from a pre-bundled JS copy (`dist-runtime/migrations/`)
+    // before `node server.js` starts; it sets PAYLOAD_MIGRATION_DIR so the
+    // adapter looks there instead of the source-tree default.
+    ...(process.env.PAYLOAD_MIGRATION_DIR
+      ? { migrationDir: process.env.PAYLOAD_MIGRATION_DIR }
+      : {})
   }),
   editor: lexicalEditor(),
   email: resendAdapter({
@@ -70,10 +74,20 @@ export default buildConfig({
       // super-admins" invariant. The plugin uses the same field shape
       // (name: "tenants", row: { tenant: relationship }) regardless.
       tenantsArrayField: { includeDefaultField: false },
-      // Leave the built-in afterTenantDelete cleanup hook disabled pending
-      // the Wave 2 FK-cascade work. Per-tenant content cleanup currently
-      // relies on Postgres FK cascade; the user `tenant` FK is
-      // `ON DELETE SET NULL`. Re-enable in Wave 2 alongside FK cascade fix.
+      // The plugin's afterTenantDelete hook is incompatible with our
+      // "exactly-one tenant for non-super-admin" validator: it runs inside the
+      // same transaction as the tenant DELETE, and Postgres FK cascades are
+      // deferred to COMMIT time, so the hook sees the pre-cascade state and
+      // tries to UPDATE each affected user with `tenants: []` to remove the
+      // entry — but our validator rejects an empty array for non-super-admins,
+      // and the whole transaction rolls back.
+      //
+      // Workaround: disable the plugin's hook and rely on the FK CASCADE we
+      // added in `20260505_202447_cascade_tenant_delete` to clear the
+      // `users_tenants` rows at COMMIT time. The validator never sees the
+      // intermediate empty state because the cascade is a DB-level operation
+      // that bypasses Payload hooks. Disk side is handled by `removeTenantDir`
+      // afterDelete in `src/hooks/tenantLifecycle.ts`.
       cleanupAfterTenantDelete: false,
       userHasAccessToAllTenants: (user) => user?.role === "super-admin"
     })

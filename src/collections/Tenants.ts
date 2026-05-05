@@ -1,6 +1,12 @@
 import type { CollectionConfig } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
-import { archiveTenantDir, createTenantDir } from "@/hooks/tenantLifecycle"
+import {
+  archiveTenantDir,
+  clearTenantCookieIfStale,
+  createTenantDir,
+  removeTenantDir,
+  restoreTenantDir
+} from "@/hooks/tenantLifecycle"
 
 export const Tenants: CollectionConfig = {
   slug: "tenants",
@@ -28,6 +34,7 @@ export const Tenants: CollectionConfig = {
     { name: "notes", type: "textarea" }
   ],
   hooks: {
-    afterChange: [createTenantDir, archiveTenantDir]
+    afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir],
+    afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }
 }
