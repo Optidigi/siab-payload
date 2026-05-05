@@ -54,32 +54,51 @@ export function CreateUserForm() {
 
   const onSubmit = async (v: FormValues) => {
     setPending(true)
-    const body: any = {
+    // Step 1: create the user. Payload silently ignores `apiKey` on create
+    // (verified during prod orchestrator-user setup), so we set it via PATCH
+    // immediately afterward when needed.
+    const createBody: any = {
       email: v.email, name: v.name, password: v.password, role: v.role
     }
     if (v.role !== "super-admin" && v.tenantId) {
-      body.tenant = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
+      createBody.tenant = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
     }
     if (v.enableAPIKey) {
-      body.enableAPIKey = true
-      // Pre-generate a UUID so we can show it once after create
-      body.apiKey = crypto.randomUUID()
+      createBody.enableAPIKey = true
     }
-    const res = await fetch("/api/users", {
+    const createRes = await fetch("/api/users", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body)
+      body: JSON.stringify(createBody)
     })
-    setPending(false)
-    if (!res.ok) {
-      const txt = await res.text()
+    if (!createRes.ok) {
+      setPending(false)
+      const txt = await createRes.text()
       toast.error("Create failed: " + txt.slice(0, 100))
       return
     }
-    await res.json()
-    if (v.enableAPIKey && body.apiKey) {
-      setCreatedKey({ apiKey: body.apiKey, email: v.email })
+    const createJson = await createRes.json()
+    const newId = createJson?.doc?.id ?? createJson?.id
+
+    if (v.enableAPIKey && newId != null) {
+      // Step 2: PATCH the new user with a generated API key.
+      const apiKey = crypto.randomUUID()
+      const patchRes = await fetch(`/api/users/${newId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ apiKey })
+      })
+      setPending(false)
+      if (!patchRes.ok) {
+        const txt = await patchRes.text()
+        toast.error("User created, but API key set failed: " + txt.slice(0, 80))
+        // Still show what we tried so the operator can retry the PATCH manually
+        setCreatedKey({ apiKey: "(failed to set — open the user record and regenerate)", email: v.email })
+        return
+      }
+      setCreatedKey({ apiKey, email: v.email })
     } else {
+      setPending(false)
       toast.success("User created")
       setOpen(false)
       form.reset()
