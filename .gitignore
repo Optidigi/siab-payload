@@ -41,3 +41,6 @@ src/app/(payload)/admin/importMap.js
 coverage/
 playwright-report/
 test-results/
+
+# typescript incremental build cache
+*.tsbuildinfo
