@@ -118,14 +118,18 @@ The Postgres container should become healthy within ~10s. The app container
 will start but will fail health checks until Step 5 has run on a fresh DB
 (see Gotcha 1).
 
-## Step 5 — First-boot schema push (FRESH DB ONLY)
+## Step 5 — Apply database migrations
 
-Skip this step on an existing VPS where the schema was previously pushed.
+Schema is managed via committed migration files under `src/migrations/`.
+Run the migrations against the running Postgres before the app container
+serves traffic. On a fresh DB this creates the schema; on an existing DB
+it is a no-op for already-applied migrations.
 
-**Gotcha:** Payload's `postgresAdapter` `push` option does not fire at runtime
-inside `NODE_ENV=production` containers, even when set to `true`. On a fresh
-production database, the schema must be pushed once via an ephemeral container
-running in development mode against the real Postgres.
+**Gotcha:** Payload's CLI is not included in the Next.js standalone build
+shipped in the production image, so `docker compose run --rm siab-payload
+pnpm payload migrate` cannot execute against the prod image directly.
+Instead, run `pnpm payload migrate` from a source checkout (locally or in
+an ephemeral node container on the VPS), pointed at the production DB.
 
 ```bash
 # 1. Read .env values, stripping any stray quotes.
@@ -137,12 +141,12 @@ read_env() {
 POSTGRES_PASSWORD=$(read_env POSTGRES_PASSWORD)
 PAYLOAD_SECRET_VAL=$(read_env PAYLOAD_SECRET)
 
-# 2. Clone the repo source somewhere ephemeral.
+# 2. Clone (or update) the repo source somewhere ephemeral.
 cd /tmp
 git clone --depth=1 https://<USER>:<TOKEN>@github.com/Optidigi/siab-payload.git siab-source-tmp
 cd siab-source-tmp
 
-# 3. Run a node container in dev mode, attached to the compose internal network.
+# 3. Run migrations from a node container on the compose internal network.
 #    Compose names the network <project>_internal — the project name defaults
 #    to the directory name (`siab-payload`), so the network is
 #    `siab-payload_internal`.
@@ -154,20 +158,11 @@ docker run --rm \
   -e PAYLOAD_SECRET="${PAYLOAD_SECRET_VAL}" \
   -e DATA_DIR=/data-out \
   -e NEXT_PUBLIC_SUPER_ADMIN_DOMAIN=siteinabox.nl \
-  -e NODE_ENV=development \
   node:22-alpine sh -c "
     corepack enable pnpm
     pnpm install --frozen-lockfile --silent
     pnpm payload generate:types
-    # Boot Payload — getPayload() in dev mode triggers the push via drizzle's adapter init.
-    pnpm exec tsx -e \"
-      import { getPayload } from 'payload'
-      import config from './src/payload.config'
-      const p = await getPayload({ config })
-      await p.count({ collection: 'tenants', overrideAccess: true })
-      console.log('schema synced')
-      process.exit(0)
-    \"
+    pnpm payload migrate
   "
 
 # 4. Verify tables exist.
@@ -180,12 +175,14 @@ sudo rm -rf /tmp/siab-source-tmp
 docker compose -f /srv/saas/infra/stacks/siab-payload/docker-compose.yml restart siab-payload
 ```
 
-Once proper migrations are committed (see "Future improvements"), this whole
-step collapses to:
+Future schema changes flow:
 
-```bash
-docker compose run --rm siab-payload pnpm payload migrate
-```
+1. Edit collection config in `src/`.
+2. `pnpm payload migrate:create <name>` (locally, against any throwaway
+   Postgres — the CLI just diffs config vs the DB to emit SQL).
+3. Commit the new file in `src/migrations/`.
+4. Deploy the new image.
+5. Re-run the migrate command above against the production DB.
 
 ## Step 6 — NPM proxy host
 
@@ -268,12 +265,12 @@ PAYLOAD_API_TOKEN=<key>
 
 ### Issue: `relation "users" does not exist` at boot
 
-**Cause:** Postgres database is empty — the schema has never been pushed.
-Payload's `push` mode does not run inside production-mode containers, so
-`docker compose up` against a virgin DB will leave it empty forever.
+**Cause:** Postgres database is empty — schema migrations have not been run.
+The production image does not run migrations on boot (Payload's CLI is not
+bundled in the Next.js standalone build).
 
-**Fix:** Run the ephemeral dev-mode push from Step 5, then restart the app
-container.
+**Fix:** Run `pnpm payload migrate` from a source checkout against the
+production DB as in Step 5, then restart the app container.
 
 ### Issue: `/api/health` returns `dataDir: unwritable`
 
@@ -369,10 +366,11 @@ read_env() {
 
 ## Future improvements (out of scope for this runbook)
 
-- **Proper migrations.** Generate migration files via
-  `pnpm payload migrate:create`, commit them, and run `pnpm payload migrate`
-  from the production container on boot. Replaces the entire ephemeral
-  dev-container dance in Step 5.
+- **Migrations on boot.** The production image strips Payload's CLI as part
+  of Next's standalone output, so we can't run `payload migrate` from the
+  app container directly. Either ship a separate "tools" image stage that
+  retains node_modules + the CLI and runs as an init container, or invoke
+  the migration step from the deploy pipeline against a sidecar.
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
   `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.

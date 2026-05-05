@@ -35,11 +35,11 @@ export default buildConfig({
   secret: PAYLOAD_SECRET,
   db: postgresAdapter({
     pool: { connectionString: DATABASE_URI },
-    // Auto-push schema changes (matches dev behavior, but explicit so it
-    // also runs in NODE_ENV=production). We rebuild from source on every
-    // schema-affecting code change, so the push is always intentional and
-    // bounded; no live ad-hoc DDL. Drizzle warns destructive changes.
-    push: true
+    // Schema is managed via committed migration files in `src/migrations/`.
+    // Generate via `pnpm payload migrate:create <name>`, apply via
+    // `pnpm payload migrate`. `push` is left at its default (false in prod)
+    // because the runtime push doesn't fire in NODE_ENV=production builds
+    // anyway — see docs/runbooks/deploy.md Step 5.
   }),
   editor: lexicalEditor(),
   email: resendAdapter({
@@ -65,6 +65,15 @@ export default buildConfig({
       },
       tenantField: { name: "tenant" },
       tenantsArrayField: { includeDefaultField: false },
+      // Disable the built-in afterTenantDelete cleanup hook. The plugin
+      // assumes users have a `tenants` array field (many-to-many), but our
+      // Users collection uses a single `tenant` relationship — so the hook's
+      // `find({ where: { 'tenants.tenant': ... } })` query throws
+      // `QueryError: The following path cannot be queried: tenants` and logs
+      // a noisy (but harmless) error. Per-tenant content cleanup is handled
+      // by Postgres FK cascade; the user `tenant` FK is `ON DELETE SET NULL`,
+      // which is the desired behavior here.
+      cleanupAfterTenantDelete: false,
       userHasAccessToAllTenants: (user) => user?.role === "super-admin"
     })
   ]
