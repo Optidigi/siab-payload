@@ -34,7 +34,12 @@ if (!DATABASE_URI) {
 export default buildConfig({
   secret: PAYLOAD_SECRET,
   db: postgresAdapter({
-    pool: { connectionString: DATABASE_URI }
+    pool: { connectionString: DATABASE_URI },
+    // Auto-push schema changes (matches dev behavior, but explicit so it
+    // also runs in NODE_ENV=production). We rebuild from source on every
+    // schema-affecting code change, so the push is always intentional and
+    // bounded; no live ad-hoc DDL. Drizzle warns destructive changes.
+    push: true
   }),
   editor: lexicalEditor(),
   email: resendAdapter({
