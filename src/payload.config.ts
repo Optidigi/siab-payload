@@ -7,10 +7,24 @@ import { fileURLToPath } from "url"
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
+// Fail fast on missing required env. An empty PAYLOAD_SECRET produces forgeable
+// JWTs/cookies; an empty DATABASE_URI surfaces later as an opaque pg error.
+const PAYLOAD_SECRET = process.env.PAYLOAD_SECRET
+if (!PAYLOAD_SECRET) {
+  throw new Error("PAYLOAD_SECRET is required (set in .env or environment)")
+}
+const DATABASE_URI = process.env.DATABASE_URI
+if (!DATABASE_URI) {
+  throw new Error("DATABASE_URI is required (set in .env or environment)")
+}
+
+// TODO(phase-1.3): add `cors` + `csrf` allowlists when the orchestrator API
+// becomes a non-same-origin caller, or confirm same-origin and document.
+
 export default buildConfig({
-  secret: process.env.PAYLOAD_SECRET || "",
+  secret: PAYLOAD_SECRET,
   db: postgresAdapter({
-    pool: { connectionString: process.env.DATABASE_URI || "" }
+    pool: { connectionString: DATABASE_URI }
   }),
   editor: lexicalEditor(),
   collections: [],

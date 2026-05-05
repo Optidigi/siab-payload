@@ -1,4 +1,5 @@
-/* THIS FILE WAS GENERATED AUTOMATICALLY BY PAYLOAD. */
+/* Payload v3 root layout — hand-authored, follows the @payloadcms/next layout contract.
+ * Updates here are intentional and version-controlled (NOT auto-generated). */
 import config from "@/payload.config"
 import "@payloadcms/next/css"
 import { handleServerFunctions, RootLayout } from "@payloadcms/next/layouts"
