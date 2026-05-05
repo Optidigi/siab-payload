@@ -15,7 +15,7 @@ export type GateResult = { user: User; ctx: SiabContext }
  *   no user                                                  -> /login
  *   super-admin host, user.role !== super-admin              -> /login?error=wrong-host
  *   tenant host, user.role === super-admin                   -> /login?error=super-admin-on-tenant-host
- *   tenant host, user.tenant !== ctx.tenant.id               -> /login?error=cross-tenant
+ *   tenant host, user.tenants[0].tenant !== ctx.tenant.id    -> /login?error=cross-tenant
  *   otherwise                                                -> { user, ctx }
  *
  * Cross-tenant cookie reuse is impossible by browser rules (host-scoped

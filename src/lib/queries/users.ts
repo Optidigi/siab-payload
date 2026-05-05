@@ -7,7 +7,7 @@ export async function listUsersForTenant(tenantId: number | string) {
   const res = await payload.find({
     collection: "users",
     overrideAccess: true,
-    where: { tenant: { equals: tenantId } },
+    where: { "tenants.tenant": { equals: tenantId } } as any,
     limit: 200
   })
   return res.docs
