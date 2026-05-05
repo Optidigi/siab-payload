@@ -74,11 +74,11 @@ export default buildConfig({
       // super-admins" invariant. The plugin uses the same field shape
       // (name: "tenants", row: { tenant: relationship }) regardless.
       tenantsArrayField: { includeDefaultField: false },
-      // Leave the built-in afterTenantDelete cleanup hook disabled pending
-      // the Wave 2 FK-cascade work. Per-tenant content cleanup currently
-      // relies on Postgres FK cascade; the user `tenant` FK is
-      // `ON DELETE SET NULL`. Re-enable in Wave 2 alongside FK cascade fix.
-      cleanupAfterTenantDelete: false,
+      // Plugin's afterTenantDelete hook clears `users.tenants[]` rows
+      // pointing at the deleted tenant. The DB side (pages/media/site_settings/forms)
+      // is handled by FK CASCADE (see `20260505_202447_cascade_tenant_delete`),
+      // and the disk side by `removeTenantDir` afterDelete in
+      // `src/hooks/tenantLifecycle.ts`.
       userHasAccessToAllTenants: (user) => user?.role === "super-admin"
     })
   ]
