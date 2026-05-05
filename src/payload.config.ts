@@ -4,6 +4,8 @@ import path from "path"
 import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
 
+import { Tenants } from "@/collections/Tenants"
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
@@ -27,7 +29,7 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI }
   }),
   editor: lexicalEditor(),
-  collections: [],
+  collections: [Tenants],
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
