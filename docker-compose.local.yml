@@ -18,8 +18,16 @@ services:
     volumes:
       - siab-payload-postgres-dev:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U payload"]
+      test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
       interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   siab-payload-postgres-dev:

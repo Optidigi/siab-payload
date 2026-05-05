@@ -37,6 +37,11 @@ pkill -f "ssh -L 5432"
 # or on Windows (Git Bash):  taskkill //F //PID <pid>   (find with `ps -ef | grep "ssh -L"`)
 ```
 
+### Troubleshooting
+
+- **`bind: Address already in use` when opening the tunnel** — an old tunnel is still bound to local port 5432. Run the closing command above, then reopen.
+- **`pnpm dev` connects but reads stale data** — multiple repos / sessions share the same dev DB (it's one Postgres on the VPS). Intentional, but worth knowing if a colleague's seed data shows up unexpectedly.
+
 ### Why no local Postgres?
 
 We don't run Docker on the developer machine. The dev DB lives on the VPS at `~/siab-payload-dev/` (separate from the production stack — different container name, different port, different volume). The compose file is `docker-compose.local.yml` in this repo, deployed to the VPS as `~/siab-payload-dev/docker-compose.yml`.
