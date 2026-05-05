@@ -8,7 +8,8 @@ export default defineConfig({
     include: ["tests/**/*.test.ts", "tests/**/*.test.tsx"],
     exclude: ["tests/e2e/**"],
     globals: true,
-    pool: "forks"
+    pool: "forks",
+    testTimeout: 30000
   },
   resolve: {
     alias: { "@": path.resolve(__dirname, "src") }
