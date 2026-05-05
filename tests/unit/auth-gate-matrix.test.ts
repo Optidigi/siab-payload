@@ -12,11 +12,11 @@ const ctxSuper: SiabContext = { mode: "super-admin", tenant: null }
 const ctxT1: SiabContext = { mode: "tenant", tenant: t1 }
 const ctxT2: SiabContext = { mode: "tenant", tenant: t2 }
 
-const userSA = { id: 1, role: "super-admin", tenant: null } as User
-const userOwner1 = { id: 2, role: "owner", tenant: t1 } as unknown as User
-const userEditor1 = { id: 3, role: "editor", tenant: t1 } as unknown as User
-const userViewer1 = { id: 4, role: "viewer", tenant: t1 } as unknown as User
-const userOwner2 = { id: 5, role: "owner", tenant: t2 } as unknown as User
+const userSA = { id: 1, role: "super-admin", tenants: [] } as unknown as User
+const userOwner1 = { id: 2, role: "owner", tenants: [{ tenant: t1 }] } as unknown as User
+const userEditor1 = { id: 3, role: "editor", tenants: [{ tenant: t1 }] } as unknown as User
+const userViewer1 = { id: 4, role: "viewer", tenants: [{ tenant: t1 }] } as unknown as User
+const userOwner2 = { id: 5, role: "owner", tenants: [{ tenant: t2 }] } as unknown as User
 
 type Case = { host: SiabContext; who: User | null; expect: GateDecision }
 
@@ -45,7 +45,7 @@ const cases: Case[] = [
 
 describe("evaluateGate — host × role × tenant matrix", () => {
   it.each(cases)(
-    "host=$host.mode tenant=$host.tenant.id who=$who.role:$who.tenant.id → $expect",
+    "host=$host.mode tenant=$host.tenant.id who=$who.role → $expect",
     ({ host, who, expect: outcome }) => {
       const decision = evaluateGate(who, host)
       expect(decision).toEqual(outcome)
