@@ -74,11 +74,21 @@ export default buildConfig({
       // super-admins" invariant. The plugin uses the same field shape
       // (name: "tenants", row: { tenant: relationship }) regardless.
       tenantsArrayField: { includeDefaultField: false },
-      // Plugin's afterTenantDelete hook clears `users.tenants[]` rows
-      // pointing at the deleted tenant. The DB side (pages/media/site_settings/forms)
-      // is handled by FK CASCADE (see `20260505_202447_cascade_tenant_delete`),
-      // and the disk side by `removeTenantDir` afterDelete in
-      // `src/hooks/tenantLifecycle.ts`.
+      // The plugin's afterTenantDelete hook is incompatible with our
+      // "exactly-one tenant for non-super-admin" validator: it runs inside the
+      // same transaction as the tenant DELETE, and Postgres FK cascades are
+      // deferred to COMMIT time, so the hook sees the pre-cascade state and
+      // tries to UPDATE each affected user with `tenants: []` to remove the
+      // entry — but our validator rejects an empty array for non-super-admins,
+      // and the whole transaction rolls back.
+      //
+      // Workaround: disable the plugin's hook and rely on the FK CASCADE we
+      // added in `20260505_202447_cascade_tenant_delete` to clear the
+      // `users_tenants` rows at COMMIT time. The validator never sees the
+      // intermediate empty state because the cascade is a DB-level operation
+      // that bypasses Payload hooks. Disk side is handled by `removeTenantDir`
+      // afterDelete in `src/hooks/tenantLifecycle.ts`.
+      cleanupAfterTenantDelete: false,
       userHasAccessToAllTenants: (user) => user?.role === "super-admin"
     })
   ]
