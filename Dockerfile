@@ -18,7 +18,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # placeholders so `next build` (which evaluates the config) can complete.
 ENV PAYLOAD_SECRET=build-time-placeholder
 ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
-RUN corepack enable pnpm && pnpm build
+# Payload's importMap.js is gitignored (it's a generated file). Materialize it
+# before `next build` so the (payload)/layout.tsx import resolves. The
+# placeholder DB URI is fine — generate:importmap walks the config locally,
+# no DB query needed.
+RUN corepack enable pnpm && pnpm payload generate:importmap && pnpm build
 
 # 3. Runtime
 FROM node:22-alpine AS runner
