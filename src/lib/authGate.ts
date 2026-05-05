@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { getSiabContext, type SiabContext } from "@/lib/context"
+import { evaluateGate } from "@/lib/gateDecision"
 import type { User } from "@/payload-types"
 
 export type GateResult = { user: User; ctx: SiabContext }
@@ -40,25 +41,14 @@ export const requireAuth = async (): Promise<GateResult> => {
   const result = await payload.auth({ headers: reqHeaders })
   const user = result.user as User | null
 
-  if (!user) redirect("/login")
-
-  if (ctx.mode === "super-admin" && user.role !== "super-admin") {
-    redirect("/login?error=wrong-host")
-  }
-  if (ctx.mode === "tenant" && user.role === "super-admin") {
-    redirect("/login?error=super-admin-on-tenant-host")
-  }
-  if (ctx.mode === "tenant") {
-    const userTenantId =
-      user.tenant && typeof user.tenant === "object"
-        ? (user.tenant as { id: number | string }).id
-        : user.tenant
-    if (userTenantId !== ctx.tenant.id) {
-      redirect("/login?error=cross-tenant")
-    }
+  const decision = evaluateGate(user, ctx)
+  if (!decision.allow) {
+    if (decision.reason === "no-user") redirect("/login")
+    redirect(`/login?error=${decision.reason}`)
   }
 
-  return { user, ctx }
+  // evaluateGate returned allow:true above, so user is non-null here.
+  return { user: user as User, ctx }
 }
 
 /**
