@@ -1,16 +1,36 @@
 #!/usr/bin/env node
 /**
- * Compile `src/payload.config.ts` and `src/migrations/*.ts` into a small
- * runtime-only bundle at `dist-runtime/`, used by `scripts/migrate-on-boot.mjs`
- * inside the Next.js standalone container (which has no `pnpm`, no
- * `payload` CLI, and no TS toolchain).
+ * Build the runtime migration bundle at `dist-runtime/migrate-on-boot.bundled.mjs`.
  *
- * Externalised: `payload`, `@payloadcms/*`, `pg`, `drizzle-orm`, `react`/`react-dom`
- * (transitively pulled by the email adapter type imports), and Node builtins.
- * Those resolve from the standalone bundle's `node_modules/` at runtime.
+ * Why this exists: the production Docker image is built from Next.js's
+ * `.next/standalone` output. Next's tracer inlines Payload's runtime code
+ * into `server.js` and does NOT preserve `node_modules/payload`,
+ * `@payloadcms/*`, `pg`, or `drizzle-orm` as importable packages — verified
+ * empirically: only `graphql`, `next`, `react`, and `typescript` survive in
+ * the runner image's `node_modules/`. Therefore any auxiliary script (like
+ * the boot-time migration runner) that needs `import "payload"` must be
+ * pre-bundled with payload + adapters inlined.
+ *
+ * The bundle is produced by esbuild from `scripts/migrate-on-boot-entry.ts`,
+ * which statically imports the Payload config AND every migration's up/down
+ * via `src/migrations/index.ts`. Calling `payload.db.migrate({ migrations })`
+ * with the explicit array sidesteps Drizzle's `readMigrationFiles` directory
+ * scan — esbuild can't bundle `readdirSync()` + dynamic `import()` of
+ * runtime-discovered files, but it CAN inline a static import graph.
+ *
+ * Externalised:
+ * - `pg-native`: optional libpq native bindings; `pg` falls back to its
+ *   pure-JS socket implementation when absent. Bundling would force-resolve
+ *   the native binary, breaking on alpine.
+ * - `cloudflare:sockets`: referenced by `pg-cloudflare` (a transitive of
+ *   `pg`'s edge-runtime variant). Not used on node; esbuild treats it as
+ *   an unresolvable bare specifier without this hint.
+ * - Node builtins: esbuild handles automatically with `platform: "node"`.
+ *
+ * Output: a single `.mjs` (~4MB at last measure) the Dockerfile copies into
+ * `/app/dist-runtime/` and `docker-entrypoint.sh` runs before `node server.js`.
  */
 import { build } from "esbuild"
-import { readdirSync } from "node:fs"
 import { mkdir, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -19,93 +39,57 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const repoRoot = path.resolve(__dirname, "..")
 const outDir = path.join(repoRoot, "dist-runtime")
-const migrationsOut = path.join(outDir, "migrations")
 
-await mkdir(migrationsOut, { recursive: true })
+await mkdir(outDir, { recursive: true })
 
-const externalPackages = [
-  "payload",
-  "@payloadcms/*",
-  "pg",
-  "pg-native",
-  "drizzle-orm",
-  "drizzle-orm/*",
-  "graphql",
-  "react",
-  "react-dom",
-  "next",
-  "next/*",
-  "@/payload-types"
-]
-
-// 1. Bundle the config. Mark `@/payload-types` as external because it's a
-//    type-only import; at runtime it resolves to a no-op.
 await build({
-  entryPoints: [path.join(repoRoot, "src/payload.config.ts")],
-  outfile: path.join(outDir, "payload.config.mjs"),
+  entryPoints: [path.join(repoRoot, "scripts/migrate-on-boot-entry.ts")],
+  outfile: path.join(outDir, "migrate-on-boot.bundled.mjs"),
   bundle: true,
   format: "esm",
   platform: "node",
   target: "node22",
-  external: externalPackages,
-  // Resolve the `@/...` alias the same way tsconfig + Next do.
+  // Resolve `@/...` like tsconfig + Next do so the entry can import
+  // `@/payload.config` and `@/migrations`.
   alias: {
     "@": path.join(repoRoot, "src")
   },
-  // Strip type-only imports.
   loader: { ".ts": "ts" },
+  external: [
+    "pg-native",
+    "cloudflare:sockets"
+  ],
+  // payload + a few transitives use top-level await; node22 supports it
+  // natively and esbuild needs format=esm + a TLA-capable target.
+  supported: { "top-level-await": true },
+  // Bundling CJS deps (`ws`, `pg` internals, etc.) into an ESM output makes
+  // esbuild emit `__require()` shims for builtins like `events`. In pure
+  // ESM those shims fail with "Dynamic require of X is not supported"
+  // because there's no `require` in scope. Inject a `createRequire`-based
+  // shim at the top of the bundle so all CJS-style requires resolve.
+  banner: {
+    js: [
+      "import { createRequire as __createSiabRequire } from 'node:module';",
+      "import { fileURLToPath as __siabFileURLToPath } from 'node:url';",
+      "const require = __createSiabRequire(import.meta.url);",
+      "const __filename = __siabFileURLToPath(import.meta.url);",
+      "const __dirname = __filename.slice(0, __filename.lastIndexOf('/'));"
+    ].join("\n")
+  },
+  // Silence noisy "this dynamic import will not be analyzed" warnings —
+  // they come from payload's adapter-loading code paths we don't exercise
+  // at migration time (admin UI, jobs runtime, richtext editor server
+  // pieces). Any genuinely-needed dynamic import resolves at runtime against
+  // the inlined module graph.
+  logOverride: {
+    "unsupported-dynamic-import": "silent"
+  },
   logLevel: "info"
 })
 
-// 2. Bundle each migration file independently so Payload's `readMigrationFiles`
-//    (which reads the directory and dynamically imports each `.js`) sees one
-//    file per migration, matching the source layout.
-const migrationsDir = path.join(repoRoot, "src/migrations")
-const migrationFiles = readdirSync(migrationsDir)
-  .filter((f) => f.endsWith(".ts") && f !== "index.ts")
-
-for (const file of migrationFiles) {
-  const base = file.replace(/\.ts$/, "")
-  // Use `.js`, not `.mjs`: Payload's `readMigrationFiles` filter only
-  // accepts `.ts` and `.js`. We force ESM-in-`.js` by writing a sibling
-  // `package.json` with `{"type": "module"}` below.
-  await build({
-    entryPoints: [path.join(migrationsDir, file)],
-    outfile: path.join(migrationsOut, `${base}.js`),
-    bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node22",
-    external: externalPackages,
-    loader: { ".ts": "ts" },
-    logLevel: "warning"
-  })
-}
-
-// Also copy the JSON snapshots Payload writes alongside .ts migrations —
-// they're referenced by `payload migrate:create` only, not the migrate
-// runtime, but ship them for completeness so future ops can compare state.
-const jsonSnapshots = readdirSync(migrationsDir).filter((f) => f.endsWith(".json"))
-for (const f of jsonSnapshots) {
-  const { readFile } = await import("node:fs/promises")
-  await writeFile(
-    path.join(migrationsOut, f),
-    await readFile(path.join(migrationsDir, f))
-  )
-}
-
-// Mark the migrations directory as ESM so the `.js` extension parses as
-// module syntax. Without this, Node treats `.js` as CommonJS in the
-// standalone bundle (whose top-level package.json is auto-generated by
-// Next and doesn't set `type: module`).
-await writeFile(
-  path.join(migrationsOut, "package.json"),
-  JSON.stringify({ type: "module" }, null, 2)
-)
-
-// Same for the dist-runtime root, where payload.config.mjs lives. The
-// `.mjs` extension is unambiguous, but a sibling package.json keeps
-// behaviour explicit if a future contributor renames the file.
+// Mark the directory as ESM so any `.js` peers parse as module syntax.
+// Belt-and-braces: the bundled output is `.mjs`, but a sibling package.json
+// keeps behaviour explicit and protects against future renames.
 await writeFile(
   path.join(outDir, "package.json"),
   JSON.stringify({ type: "module" }, null, 2)
@@ -113,5 +97,5 @@ await writeFile(
 
 // eslint-disable-next-line no-console
 console.log(
-  `[build-runtime-bundle] wrote ${migrationFiles.length} migration(s) to ${migrationsOut}`
+  `[build-runtime-bundle] wrote migrate-on-boot.bundled.mjs to ${outDir}`
 )

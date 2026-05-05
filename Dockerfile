@@ -46,10 +46,14 @@ RUN apk add --no-cache wget
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
-# Migrate-on-boot bundle: pre-compiled config + migrations + the script that
-# applies them. See scripts/migrate-on-boot.mjs for the why.
+# Migrate-on-boot bundle: a single self-contained `.mjs` produced by esbuild
+# with payload + db-postgres + drizzle + pg + the config + every migration's
+# up/down all INLINED. The runner stage is Next's `.next/standalone` output,
+# which traces server.js imports and does NOT preserve `node_modules/payload`
+# as a directly-importable package; therefore the migrate script must be
+# ESM-bundled. See scripts/build-runtime-bundle.mjs (bundler) and
+# scripts/migrate-on-boot-entry.ts (source) for the why.
 COPY --from=builder --chown=node:node /app/dist-runtime ./dist-runtime
-COPY --from=builder --chown=node:node /app/scripts/migrate-on-boot.mjs ./scripts/migrate-on-boot.mjs
 COPY --from=builder --chown=node:node /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 USER node
 EXPOSE 3000

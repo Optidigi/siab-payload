@@ -9,7 +9,10 @@
 set -e
 
 echo "[entrypoint] running migrate-on-boot..."
-node /app/scripts/migrate-on-boot.mjs
+# Use the esbuild-bundled copy (payload + adapters inlined). The Next.js
+# standalone runner image does not expose `node_modules/payload`, so the
+# unbundled source script (`scripts/migrate-on-boot.mjs`) cannot run here.
+node /app/dist-runtime/migrate-on-boot.bundled.mjs
 
 echo "[entrypoint] starting next server..."
 exec node /app/server.js

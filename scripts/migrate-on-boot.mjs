@@ -1,17 +1,21 @@
 #!/usr/bin/env node
 /**
- * Run any pending Payload migrations, then exit. Invoked by
- * `docker-entrypoint.sh` before `node server.js` so a fresh DB or a
- * post-deploy schema bump comes up healthy without operator intervention.
+ * UNBUNDLED reference / unit-test fixture twin of the production migration
+ * script. The actual runtime entrypoint in the Docker image is the
+ * esbuild-bundled `dist-runtime/migrate-on-boot.bundled.mjs` produced from
+ * `scripts/migrate-on-boot-entry.ts` — this file does NOT run in production.
  *
- * Loads the pre-bundled config from `dist-runtime/payload.config.mjs`
- * (built in the Dockerfile's builder stage by
- * `scripts/build-runtime-bundle.mjs`) and points Payload at the bundled
- * migrations under `dist-runtime/migrations/`.
+ * It exists because `tests/unit/migrate-on-boot.test.ts` reads this file's
+ * source, patches the `await import("payload")` call to point at an in-test
+ * stub, and asserts the control flow (count diff → exit code). Keeping the
+ * unbundled twin around is cheaper than wiring vitest to bundle the real
+ * entry through esbuild in-process.
+ *
+ * If you change the control flow here, mirror the change in
+ * `scripts/migrate-on-boot-entry.ts` (the production source).
  *
  * Exits 0 on success (including no-op when no migrations are pending).
- * Exits non-zero on any failure so `docker compose up -d` surfaces the
- * problem in `docker logs` and the restart loop is visible.
+ * Exits non-zero on any failure.
  */
 import path from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
