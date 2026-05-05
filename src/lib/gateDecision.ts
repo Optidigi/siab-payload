@@ -31,9 +31,8 @@ export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision 
     return { allow: false, reason: "super-admin-on-tenant-host" }
   }
 
-  const first = (user as any).tenants?.[0]?.tenant
-  const userTenantId =
-    first && typeof first === "object" ? (first as { id: number | string }).id : first
+  const first = user.tenants?.[0]?.tenant
+  const userTenantId = typeof first === "object" && first ? first.id : first
   if (userTenantId !== ctx.tenant.id) {
     return { allow: false, reason: "cross-tenant" }
   }

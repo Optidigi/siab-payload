@@ -35,10 +35,8 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
         if (tid != null && !cancelled) setResolvedTenantId(tid)
       } else {
         const first = me.tenants?.[0]?.tenant
-        if (first) {
-          const tid = typeof first === "object" ? first.id : first
-          if (!cancelled) setResolvedTenantId(tid)
-        }
+        const tid = typeof first === "object" && first ? first.id : first
+        if (tid != null && !cancelled) setResolvedTenantId(tid)
       }
     })()
     return () => { cancelled = true }

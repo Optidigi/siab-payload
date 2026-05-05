@@ -20,6 +20,11 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
  *   2. Backfill `users.tenant_id` from `users_tenants` (taking the first row
  *      per parent — by `_order` then `id` for determinism).
  *   3. Drop the `users_tenants` table.
+ *
+ * Concurrency: the three `db.execute` calls below run inside Payload's
+ * implicit per-migration transaction (db-postgres wraps each migration), so
+ * a concurrent write to `users.tenant_id` between the backfill INSERT and
+ * the column DROP cannot leak data. Still: run during a quiet window.
  */
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   // 1. Create the array table + indexes + FKs.
