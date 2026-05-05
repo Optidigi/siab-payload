@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/authGate"
 import { listAllUsers, listUsersForTenant } from "@/lib/queries/users"
 import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
+import { CreateUserForm } from "@/components/forms/CreateUserForm"
 
 export default async function UsersPage() {
   const { user, ctx } = await requireAuth()
@@ -10,7 +11,10 @@ export default async function UsersPage() {
     const users = await listAllUsers()
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-xl font-semibold">All users</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold">All users</h1>
+          <CreateUserForm />
+        </div>
         <UsersTable data={users as any} canManage />
       </div>
     )
