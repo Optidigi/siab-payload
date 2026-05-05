@@ -9,7 +9,6 @@ export const Testimonials: Block = {
       { name: "quote", type: "textarea", required: true },
       { name: "author", type: "text", required: true },
       { name: "role", type: "text" },
-      // @ts-expect-error -- "media" CollectionSlug registered in Task 2.6
       { name: "avatar", type: "upload", relationTo: "media" }
     ]}
   ]

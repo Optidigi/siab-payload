@@ -11,7 +11,6 @@ export const Hero: Block = {
       { name: "label", type: "text" },
       { name: "href", type: "text" }
     ]},
-    // @ts-expect-error -- "media" CollectionSlug registered in Task 2.6
     { name: "image", type: "upload", relationTo: "media" }
   ]
 }
