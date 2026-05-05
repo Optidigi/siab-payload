@@ -1,3 +1,7 @@
 export default function Home() {
-  return <main style={{ padding: 24, fontFamily: "ui-sans-serif" }}>siab-payload — frontend route group placeholder. Phase 5 replaces this.</main>
+  return (
+    <main className="flex min-h-screen items-center justify-center p-6">
+      <div className="text-muted-foreground">siab-payload — login at <a className="underline" href="/login">/login</a></div>
+    </main>
+  )
 }
