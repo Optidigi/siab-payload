@@ -1,0 +1,24 @@
+# Dev Postgres for siab-payload.
+# Deployed on the VPS at /srv/saas/siab-payload-dev/ ; reached from a developer
+# machine via:  ssh -L 5432:localhost:5433 prod
+# That tunnel makes the dev container reachable at localhost:5432 locally,
+# matching DATABASE_URI in .env.example.
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: siab-payload-postgres-dev
+    restart: unless-stopped
+    ports:
+      - "5433:5432"   # 5433 on host avoids collision with legacy siab-payload-postgres-1 on 5432
+    environment:
+      POSTGRES_DB: payload
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - siab-payload-postgres-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payload"]
+      interval: 5s
+
+volumes:
+  siab-payload-postgres-dev:
