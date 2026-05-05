@@ -21,9 +21,9 @@ pnpm dev
 
 Visit http://localhost:3000/admin to create the first user.
 
-## Hosts file (for multi-host testing later)
+## Hosts file (for multi-host testing)
 
-Phase 14 introduces tenant subdomains. Add to `C:\Windows\System32\drivers\etc\hosts` (Windows, run editor as admin) or `/etc/hosts`:
+Tenant subdomains are routed via host-based middleware (Phase 3, shipped). To exercise the multi-tenant flows locally, add to `C:\Windows\System32\drivers\etc\hosts` (Windows, run editor as admin) or `/etc/hosts`:
 
 ```
 127.0.0.1 admin.localhost
