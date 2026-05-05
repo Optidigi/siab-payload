@@ -16,25 +16,35 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "15.4.11",
-    "react": "19.2.5",
-    "react-dom": "19.2.5",
-    "payload": "3.84.1",
     "@payloadcms/db-postgres": "3.84.1",
     "@payloadcms/next": "3.84.1",
-    "@payloadcms/richtext-lexical": "3.84.1",
     "@payloadcms/plugin-multi-tenant": "3.84.1",
-    "graphql": "16.13.2"
+    "@payloadcms/richtext-lexical": "3.84.1",
+    "graphql": "16.13.2",
+    "next": "15.4.11",
+    "payload": "3.84.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "22.19.17",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.6.3"
+    "@vitest/ui": "^4.1.5",
+    "jsdom": "^29.1.1",
+    "typescript": "5.6.3",
+    "vitest": "^4.1.5"
   },
-  "engines": { "node": ">=22.0.0" },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "packageManager": "pnpm@10.28.2",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
   }
 }
