@@ -42,5 +42,8 @@ coverage/
 playwright-report/
 test-results/
 
+# local projection output (DATA_DIR)
+.data-out/
+
 # typescript incremental build cache
 *.tsbuildinfo
