@@ -17,6 +17,10 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-noreply@siteinabox.nl}
       NODE_ENV: production
       PORT: "3000"
+      # Default already baked into the image (Dockerfile ENV); kept here so
+      # ops can grep the compose file and see the binding without spelunking
+      # into the Dockerfile. Don't change without coordinating with healthcheck.
+      HOSTNAME: "0.0.0.0"
     volumes:
       # Per-tenant data lands here. Each SSR site container later RO-mounts
       # tenants/<id>/ from this same path. DATA_HOST_PATH overridable via .env;

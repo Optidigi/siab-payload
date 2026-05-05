@@ -34,6 +34,11 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Bind Next.js standalone server to all interfaces. Without this, the server
+# binds only to the container hostname, making /api/health (which curls
+# localhost:3000) and the Docker healthcheck fail with "connection refused".
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 RUN apk add --no-cache wget
 # node:22-alpine ships with a `node` user at UID 1000; reuse it (matches the
 # host's serveradmin UID 1000 so the bind-mounted /data-out is writable).
