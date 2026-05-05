@@ -18,11 +18,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # placeholders so `next build` (which evaluates the config) can complete.
 ENV PAYLOAD_SECRET=build-time-placeholder
 ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
-# Payload's importMap.js is gitignored (it's a generated file). Materialize it
-# before `next build` so the (payload)/layout.tsx import resolves. The
-# placeholder DB URI is fine — generate:importmap walks the config locally,
-# no DB query needed.
-RUN corepack enable pnpm && pnpm payload generate:importmap && pnpm build
+# Payload generates two files at runtime that are .gitignored:
+#   - src/payload-types.ts            (TS types for collections; consumed across the app)
+#   - src/app/(payload)/admin/importMap.js   (Payload admin layout import)
+# Locally they exist from prior dev runs; in CI we must produce both before
+# `next build`. Neither command queries the DB — they walk the config —
+# so the placeholder DATABASE_URI suffices.
+RUN corepack enable pnpm \
+ && pnpm payload generate:types \
+ && pnpm payload generate:importmap \
+ && pnpm build
 
 # 3. Runtime
 FROM node:22-alpine AS runner
