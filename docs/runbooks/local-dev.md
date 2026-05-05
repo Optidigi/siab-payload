@@ -63,7 +63,12 @@ If you'd rather match prod and run explicit migrations:
 pnpm payload migrate
 ```
 
-The repo ships an initial migration at `src/migrations/<timestamp>-initial-schema.ts`.
+The repo ships migrations under `src/migrations/`. In production, the
+Docker image's entrypoint runs an esbuild-bundled `migrate-on-boot.bundled.mjs`
+automatically before `node server.js` — there's no manual migrate step
+on deploy. For local development you keep using the CLI as above; the boot
+bundle (and the `dist-runtime/` directory it lives in) is only built and
+copied inside the Docker image, not in `pnpm dev`.
 
 ## Step 5: Create a local super-admin
 
