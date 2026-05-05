@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
+import { archiveTenantDir, createTenantDir } from "@/hooks/tenantLifecycle"
 
 export const Tenants: CollectionConfig = {
   slug: "tenants",
@@ -25,5 +26,8 @@ export const Tenants: CollectionConfig = {
       ] },
     { name: "siteRepo", type: "text", admin: { description: "GitHub repo, e.g. optidigi/site-clientasite" } },
     { name: "notes", type: "textarea" }
-  ]
+  ],
+  hooks: {
+    afterChange: [createTenantDir, archiveTenantDir]
+  }
 }

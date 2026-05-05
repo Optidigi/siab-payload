@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload"
 import path from "path"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { projectMediaToDisk } from "@/hooks/projectToDisk"
+import { deleteMediaFile } from "@/hooks/deleteFileFromDisk"
 
 export const Media: CollectionConfig = {
   slug: "media",
@@ -19,6 +20,7 @@ export const Media: CollectionConfig = {
     { name: "caption", type: "text" }
   ],
   hooks: {
-    afterChange: [projectMediaToDisk]
+    afterChange: [projectMediaToDisk],
+    afterDelete: [deleteMediaFile]
   }
 }

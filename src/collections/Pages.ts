@@ -8,6 +8,7 @@ import { CTA } from "@/blocks/CTA"
 import { RichText } from "@/blocks/RichText"
 import { ContactSection } from "@/blocks/ContactSection"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
+import { deletePageFile } from "@/hooks/deleteFileFromDisk"
 
 export const Pages: CollectionConfig = {
   slug: "pages",
@@ -37,6 +38,7 @@ export const Pages: CollectionConfig = {
       if (req.user) data.updatedBy = req.user.id
       return data
     }],
-    afterChange: [projectPageToDisk]
+    afterChange: [projectPageToDisk],
+    afterDelete: [deletePageFile]
   }
 }
