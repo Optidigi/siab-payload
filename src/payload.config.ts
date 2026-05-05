@@ -4,8 +4,10 @@ import path from "path"
 import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
 
+import { Forms } from "@/collections/Forms"
 import { Media } from "@/collections/Media"
 import { Pages } from "@/collections/Pages"
+import { SiteSettings } from "@/collections/SiteSettings"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
 
@@ -32,7 +34,7 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI }
   }),
   editor: lexicalEditor(),
-  collections: [Tenants, Users, Media, Pages],
+  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms],
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
