@@ -18,10 +18,17 @@ describe("stripAdminPrefix", () => {
 
 describe("isSuperAdminDomain", () => {
   it("matches NEXT_PUBLIC_SUPER_ADMIN_DOMAIN", () => {
-    expect(isSuperAdminDomain("siteinabox.nl", "siteinabox.nl")).toBe(true)
-    expect(isSuperAdminDomain("clientasite.nl", "siteinabox.nl")).toBe(false)
+    // Pass isDev=false so the dev-convenience branch doesn't influence prod assertions
+    expect(isSuperAdminDomain("siteinabox.nl", "siteinabox.nl", false)).toBe(true)
+    expect(isSuperAdminDomain("clientasite.nl", "siteinabox.nl", false)).toBe(false)
   })
   it("dev fallback: any 'localhost' is super-admin if env not set", () => {
-    expect(isSuperAdminDomain("localhost", undefined)).toBe(true)
+    expect(isSuperAdminDomain("localhost", undefined, false)).toBe(true)
+  })
+  it("dev convenience: localhost is super-admin in dev even when configured is set", () => {
+    expect(isSuperAdminDomain("localhost", "siteinabox.nl", true)).toBe(true)
+  })
+  it("prod: localhost is NOT super-admin when configured is set", () => {
+    expect(isSuperAdminDomain("localhost", "siteinabox.nl", false)).toBe(false)
   })
 })
