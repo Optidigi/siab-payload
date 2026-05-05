@@ -1,0 +1,66 @@
+# Production compose for siab-payload.
+# Deploy path on VPS: /srv/saas/siab-payload/
+# Pulls image from ghcr.io. Postgres lives alongside on the internal network.
+# Reverse proxying handled externally by nginx-proxy-manager (existing).
+services:
+  siab-payload:
+    image: ghcr.io/optidigi/siab-payload:latest
+    container_name: siab-payload
+    restart: unless-stopped
+    environment:
+      DATABASE_URI: postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      DATA_DIR: /data-out
+      NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: ${SUPER_ADMIN_DOMAIN:-siteinabox.nl}
+      NEXT_PUBLIC_VPS_IP: ${VPS_IP}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@siteinabox.nl}
+      NODE_ENV: production
+      PORT: "3000"
+    volumes:
+      # Per-tenant data lands here. Each SSR site container later RO-mounts
+      # tenants/<id>/ from this same path.
+      - /srv/data/saas/siab-payload:/data-out
+    networks: [proxy, internal]
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: siab-payload-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: payload
+      POSTGRES_USER: payload
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payload -d payload"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres-data:
+
+networks:
+  proxy:    { external: true }   # NPM lives here; created by nginx-proxy-manager stack
+  internal:                       # private — siab-payload <-> postgres only
