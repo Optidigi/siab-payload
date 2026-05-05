@@ -1,12 +1,15 @@
 import type { Access, Where } from "payload"
 
-export const canManageUsers: Access = (args) => {
-  const u = (args as any).user ?? args.req?.user
+export const canManageUsers: Access = ({ req }) => {
+  const u = req.user
   if (!u) return false
   if (u.role === "super-admin") return true
   if (u.role === "owner") {
-    const tenantId = typeof u.tenant === "string" ? u.tenant : u.tenant?.id
-    if (!tenantId) return false
+    // u.tenant is `number | string | Tenant | null | undefined` (string only in tests).
+    // Reduce to a plain id value.
+    const tenantId =
+      u.tenant && typeof u.tenant === "object" ? (u.tenant as { id: number | string }).id : u.tenant
+    if (tenantId == null) return false
     return { tenant: { equals: tenantId } } as Where
   }
   return { id: { equals: u.id } } as Where

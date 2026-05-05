@@ -4,12 +4,13 @@ import { isTenantMember } from "@/access/isTenantMember"
 import { isOwnerInTenant } from "@/access/isOwnerInTenant"
 import { canManageUsers } from "@/access/canManageUsers"
 
-const su = { user: { role: "super-admin", tenant: null } } as any
-const owner = { user: { role: "owner", tenant: { id: "t1" } } } as any
-const editor = { user: { role: "editor", tenant: { id: "t1" } } } as any
-const viewer = { user: { role: "viewer", tenant: { id: "t1" } } } as any
-const otherOwner = { user: { role: "owner", tenant: { id: "t2" } } } as any
-const anon = { user: null } as any
+// Fixtures match Payload's actual call shape: access functions receive { req, ... }
+// where req contains the authenticated user (or null).
+const su = { req: { user: { id: "su1", role: "super-admin", tenant: null } } } as any
+const owner = { req: { user: { id: "ow1", role: "owner", tenant: { id: "t1" } } } } as any
+const editor = { req: { user: { id: "ed1", role: "editor", tenant: { id: "t1" } } } } as any
+const viewer = { req: { user: { id: "vi1", role: "viewer", tenant: { id: "t1" } } } } as any
+const anon = { req: { user: null } } as any
 
 describe("isSuperAdmin", () => {
   it("true only for super-admin role", () => {
@@ -38,17 +39,14 @@ describe("isOwnerInTenant", () => {
 
 describe("canManageUsers — Users collection access", () => {
   it("super-admin can manage anyone", () => {
-    const where = canManageUsers(su)
-    expect(where).toBe(true)
+    expect(canManageUsers(su)).toBe(true)
   })
   it("owner sees only own-tenant users via where filter", () => {
-    const where = canManageUsers(owner)
-    expect(where).toEqual({ tenant: { equals: "t1" } })
+    expect(canManageUsers(owner)).toEqual({ tenant: { equals: "t1" } })
   })
   it("editor/viewer can only manage themselves", () => {
-    const editorWithId = { user: { ...editor.user, id: "u1" } } as any
-    const where = canManageUsers(editorWithId)
-    expect(where).toEqual({ id: { equals: "u1" } })
+    expect(canManageUsers(editor)).toEqual({ id: { equals: "ed1" } })
+    expect(canManageUsers(viewer)).toEqual({ id: { equals: "vi1" } })
   })
   it("anon cannot manage users", () => {
     expect(canManageUsers(anon)).toBe(false)
