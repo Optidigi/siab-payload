@@ -34,13 +34,13 @@ FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN apk add --no-cache wget \
- && addgroup -g 1000 app \
- && adduser -D -u 1000 -G app app
-COPY --from=builder --chown=app:app /app/.next/standalone ./
-COPY --from=builder --chown=app:app /app/.next/static ./.next/static
-COPY --from=builder --chown=app:app /app/public ./public
-USER app
+RUN apk add --no-cache wget
+# node:22-alpine ships with a `node` user at UID 1000; reuse it (matches the
+# host's serveradmin UID 1000 so the bind-mounted /data-out is writable).
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
+USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --start-period=60s --timeout=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
