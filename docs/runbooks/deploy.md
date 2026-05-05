@@ -309,6 +309,20 @@ specific keys. Pass props explicitly:
 <Foo a={derived.a} b={derived.b} c={derived.c} />
 ```
 
+### Issue: `dist-runtime/` appears in build logs but isn't in the repo
+
+**Cause:** This is expected. `dist-runtime/` is a build artifact directory
+produced inside the Docker image — it holds the esbuild-bundled
+`migrate-on-boot.bundled.mjs` (~5.8 MB, self-contained `.mjs` produced from
+`scripts/migrate-on-boot-entry.ts` by `scripts/build-runtime-bundle.mjs`).
+The entrypoint runs that bundle before `node server.js` so migrations apply
+on container boot.
+
+**Fix:** No action. `dist-runtime/` is gitignored and dockerignored — it's
+only generated in the Docker `builder` stage and copied into the `runner`
+stage. If you see it in a local checkout, it's because you ran the bundle
+script by hand (e.g. for debugging); it's safe to delete.
+
 ### Issue: `.env` values with single or double quotes confuse shell scripts
 
 **Cause:** Docker Compose's dotenv parser strips surrounding quotes from values
