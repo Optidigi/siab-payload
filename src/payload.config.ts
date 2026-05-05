@@ -41,8 +41,8 @@ export default buildConfig({
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
   admin: {
-    user: "users"
-    // Will be set to disable: true in Phase 5. Kept enabled for Phase 0–4 verification.
+    user: "users",
+    disable: true
   },
   plugins: [
     multiTenantPlugin<Config>({
