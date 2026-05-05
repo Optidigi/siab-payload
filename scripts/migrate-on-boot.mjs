@@ -38,6 +38,30 @@ process.env.PAYLOAD_MIGRATION_DIR = migrationDir
 // the DB adapter, not jobs/cron/etc.
 process.env.PAYLOAD_DISABLE_ADMIN = "true"
 
+/**
+ * Return the count of rows in `payload_migrations`, or 0 if the table doesn't
+ * exist yet (fresh DB). `payload.count` on a non-existent table throws
+ * Postgres error 42P01, so we probe with `to_regclass` first.
+ */
+async function safeMigrationCount(payload) {
+  const db = payload.db
+  if (db && typeof db.execute === "function") {
+    const prependSchema = db.schemaName ? `"${db.schemaName}".` : ""
+    const res = await db.execute({
+      drizzle: db.drizzle,
+      raw: `SELECT to_regclass('${prependSchema}"payload_migrations"') AS exists;`
+    })
+    const [row] = res.rows ?? []
+    const exists = row && typeof row === "object" && "exists" in row && !!row.exists
+    if (!exists) return 0
+  }
+  const { totalDocs } = await payload.count({
+    collection: "payload-migrations",
+    overrideAccess: true
+  })
+  return totalDocs
+}
+
 const start = Date.now()
 
 try {
@@ -49,10 +73,9 @@ try {
 
   // Capture how many migrations were applied. Payload's adapter.migrate()
   // doesn't return a count, so diff `payload-migrations` rows before/after.
-  const before = await payload.count({
-    collection: "payload-migrations",
-    overrideAccess: true
-  })
+  // On a fresh DB the table doesn't exist yet — probe via `to_regclass`
+  // before counting, mirroring @payloadcms/drizzle's `migrationTableExists`.
+  const beforeCount = await safeMigrationCount(payload)
 
   await payload.db.migrate()
 
@@ -61,7 +84,7 @@ try {
     overrideAccess: true
   })
 
-  const applied = Math.max(0, after.totalDocs - before.totalDocs)
+  const applied = Math.max(0, after.totalDocs - beforeCount)
   const ms = Date.now() - start
   if (applied === 0) {
     // eslint-disable-next-line no-console

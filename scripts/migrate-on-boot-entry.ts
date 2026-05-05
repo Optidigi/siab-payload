@@ -27,17 +27,48 @@ import config from "@/payload.config"
 // Suppress admin-only initialisation paths; we only need the DB adapter.
 process.env.PAYLOAD_DISABLE_ADMIN = "true"
 
+/**
+ * Return the count of rows in `payload_migrations`, or 0 if the table doesn't
+ * exist yet (i.e. fresh DB before the first migration ever ran). We can't use
+ * `payload.count({ collection: "payload-migrations" })` directly because it
+ * unconditionally issues a `select count(*) from "payload_migrations"` which
+ * fails with Postgres error 42P01 against an empty schema.
+ */
+async function safeMigrationCount(payload: { db: unknown; count: (args: { collection: string; overrideAccess: boolean }) => Promise<{ totalDocs: number }> }): Promise<number> {
+  const db = payload.db as {
+    execute?: (args: { drizzle?: unknown; raw: string }) => Promise<{ rows: Array<Record<string, unknown>> }>
+    drizzle?: unknown
+    schemaName?: string
+  }
+  if (typeof db.execute === "function") {
+    const prependSchema = db.schemaName ? `"${db.schemaName}".` : ""
+    const res = await db.execute({
+      drizzle: db.drizzle,
+      raw: `SELECT to_regclass('${prependSchema}"payload_migrations"') AS exists;`
+    })
+    const [row] = res.rows
+    const exists = row && typeof row === "object" && "exists" in row && !!row.exists
+    if (!exists) return 0
+  }
+  const { totalDocs } = await payload.count({
+    collection: "payload-migrations",
+    overrideAccess: true
+  })
+  return totalDocs
+}
+
 const start = Date.now()
 
 try {
   const payload = await getPayload({ config })
 
   // Diff `payload-migrations` rows before/after to count what was applied,
-  // since adapter.migrate() doesn't return a count.
-  const before = await payload.count({
-    collection: "payload-migrations",
-    overrideAccess: true
-  })
+  // since adapter.migrate() doesn't return a count. On a fresh DB the table
+  // doesn't exist yet, so any `payload.count` call would explode with
+  // `relation "payload_migrations" does not exist` (Postgres 42P01). Probe
+  // first via the same `to_regclass` trick `@payloadcms/drizzle` uses
+  // internally — see node_modules/@payloadcms/drizzle/dist/utilities/migrationTableExists.js.
+  const beforeCount = await safeMigrationCount(payload)
 
   // Pass the bundled migrations array explicitly — Drizzle's `migrate`
   // accepts `args.migrations` and uses it instead of scanning the
@@ -48,12 +79,14 @@ try {
     migrations
   })
 
+  // After migrate() runs, the table is guaranteed to exist (drizzle's
+  // migration runner creates it as part of applying any migration).
   const after = await payload.count({
     collection: "payload-migrations",
     overrideAccess: true
   })
 
-  const applied = Math.max(0, after.totalDocs - before.totalDocs)
+  const applied = Math.max(0, after.totalDocs - beforeCount)
   const ms = Date.now() - start
   if (applied === 0) {
     // eslint-disable-next-line no-console

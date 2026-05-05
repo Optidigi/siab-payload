@@ -85,7 +85,11 @@ export const getPayload = async () => ({
   // pathToFileURL keeps the path Windows-safe (Node's `import()` requires a
   // file:// URL on Windows for absolute paths).
   const stubURL = pathToFileURL(stubPath).href
-  const patched = realSrc.replace(
+  // Replace ALL occurrences — the script has both a docstring mention of
+  // `await import("payload")` and the real call. `String.prototype.replace`
+  // with a string pattern replaces only the first match (the docstring),
+  // leaving the real import unpatched and Node failing to resolve `payload`.
+  const patched = realSrc.replaceAll(
     'await import("payload")',
     `await import(${JSON.stringify(stubURL)})`
   )
