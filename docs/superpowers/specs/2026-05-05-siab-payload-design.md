@@ -15,10 +15,10 @@
 
 Build the central Payload v3 CMS instance that powers the siteinabox ecosystem. It is the missing piece in the existing four-repo stack:
 
-- `Optidigi/sitegen-orchestrator` — provisions new static landing-page repos
-- `Optidigi/sitegen-cms-orchestrator` — converts a static site to SSR + connects it to this CMS
-- `Optidigi/sitegen-template` — Astro 5 boilerplate cloned per site
-- `Optidigi/sitegen-themes` — theme catalog
+- `Optidigi/siab-site-orchestrator` — provisions new static landing-page repos
+- `Optidigi/siab-payload-orchestrator` — converts a static site to SSR + connects it to this CMS
+- `Optidigi/siab-site-template` — Astro 5 boilerplate cloned per site
+- `Optidigi/siab-site-themes` — theme catalog
 
 This repo (`deploy-siab-payload`) builds the image `ghcr.io/optidigi/siab-payload:latest`, which runs on the production VPS, serves the multi-tenant admin UI, and writes per-tenant JSON to disk for the SSR site containers to consume.
 
@@ -568,7 +568,7 @@ Structured logs via **pino** (JSON to stdout). Levels: `info` (publishes, logins
 - Payload v3 docs: https://payloadcms.com/docs
 - Multi-tenant plugin: https://payloadcms.com/docs/plugins/multi-tenant
 - Sibling repos:
-  - https://github.com/Optidigi/sitegen-orchestrator
-  - https://github.com/Optidigi/sitegen-cms-orchestrator
-  - https://github.com/Optidigi/sitegen-template
-  - https://github.com/Optidigi/sitegen-themes
+  - https://github.com/Optidigi/siab-site-orchestrator
+  - https://github.com/Optidigi/siab-payload-orchestrator
+  - https://github.com/Optidigi/siab-site-template
+  - https://github.com/Optidigi/siab-site-themes

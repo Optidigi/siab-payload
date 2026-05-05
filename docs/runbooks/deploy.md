@@ -191,7 +191,7 @@ the admin UI and rotate the password.
 
 ## Step 9 — Create the orchestrator service user
 
-The `sitegen-cms-orchestrator` integration calls Payload via API key. Create a
+The `siab-payload-orchestrator` integration calls Payload via API key. Create a
 dedicated super-admin service user with `enableAPIKey: true`.
 
 Easiest path: log in as the super-admin from Step 8, open the Users list, and
@@ -215,7 +215,7 @@ curl -X POST -H "Content-Type: application/json" -H "Authorization: JWT $TOKEN" 
 echo "Save this API key: $KEY"
 ```
 
-In `sitegen-cms-orchestrator/.env`:
+In `siab-payload-orchestrator/.env`:
 
 ```
 PAYLOAD_API_URL=https://admin.<your-domain>
@@ -346,7 +346,7 @@ read_env() {
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
   `POSTGRES_PASSWORD`, `PAYLOAD_SECRET`) out of `.env` into a secrets
   manager — Doppler, Vault, or a SOPS-encrypted file at minimum.
-- **CORS / CSRF allowlist.** Once `sitegen-cms-orchestrator` calls Payload
+- **CORS / CSRF allowlist.** Once `siab-payload-orchestrator` calls Payload
   cross-origin (it doesn't yet — currently same-VPS service-to-service),
   add the orchestrator's hostname to `cors` and `csrf` arrays in
   `payload.config.ts`.

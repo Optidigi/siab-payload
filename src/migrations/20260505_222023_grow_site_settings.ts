@@ -2,7 +2,7 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
 
 /**
  * Wave 5 — grow `site_settings` to model the business-info fields the
- * sitegen-cms-orchestrator ships during tenant seeding (description, language,
+ * siab-payload-orchestrator ships during tenant seeding (description, language,
  * aliases, NAP, opening hours, service area).
  *
  * Purely additive — no existing column is altered, no row is touched.

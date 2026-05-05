@@ -905,7 +905,7 @@ Add to your password manager or `.env`:
 PAYLOAD_API_TOKEN=<generated-key>
 ```
 
-(This token will live in the `sitegen-cms-orchestrator` repo's `.env`, not this one.)
+(This token will live in the `siab-payload-orchestrator` repo's `.env`, not this one.)
 
 - [ ] **Step 3: Verify the key works**
 
@@ -6773,7 +6773,7 @@ Then log in at https://admin.siteinabox.nl/login.
 
 - [ ] **Step 6: Create the orchestrator service user**
 
-Via the admin UI → Users → New → role=super-admin, no tenant, enable API key → copy the key into `sitegen-cms-orchestrator/.env` as `PAYLOAD_API_TOKEN`.
+Via the admin UI → Users → New → role=super-admin, no tenant, enable API key → copy the key into `siab-payload-orchestrator/.env` as `PAYLOAD_API_TOKEN`.
 
 **Phase 18 milestone:** **Production live.** `admin.siteinabox.nl` serves the shadcn dashboard. Image pulls from ghcr.io. Health check green. Orchestrator integration ready.
 
