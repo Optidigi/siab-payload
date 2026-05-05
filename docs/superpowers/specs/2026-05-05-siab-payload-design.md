@@ -1,8 +1,15 @@
 # siab-payload — design spec
 
-**Status:** approved (brainstorm phase)
+**Status:** approved (brainstorm phase) — implemented through Wave 3 (see [implementation plan](../plans/2026-05-05-siab-payload-implementation.md) for delivered-vs-pending status).
 **Date:** 2026-05-05
 **Owner:** Optidigi / siteinabox managers
+
+> **Reconciliation note (Wave 4):** Several technical details below were superseded during Phases 0-18 + Track 1 + Waves 1-3. The most consequential changes:
+> - **Users-tenant model.** What this spec calls `tenant` (singular relationship on Users) shipped as `tenants[]` (array of `{ tenant }` rows in a join table) — the plugin-native shape required by `@payloadcms/plugin-multi-tenant`. Domain invariant is unchanged: super-admin → empty array; other roles → exactly one entry.
+> - **Tenant-delete cleanup.** The plugin's `cleanupAfterTenantDelete` is **disabled** (incompatible with our Users-array validator running inside the FK-cascade transaction). Cleanup happens via Postgres `ON DELETE CASCADE` instead — see Wave 2-3 in the implementation plan.
+> - **Migrations.** Apply automatically on container boot (entrypoint runs `migrate-on-boot.bundled.mjs` before `node server.js`); operators no longer run a manual migrate step.
+>
+> Cross-references in this spec (`user.tenant`, `cleanupAfterTenantDelete: true`, manual migration) are kept for narrative continuity; the Wave-1/2/3 deltas are the source of truth for current behaviour.
 
 ## Purpose
 
@@ -26,7 +33,7 @@ The admin UI is a **full reskin** of Payload's defaults — every list, form, an
 | 3 | super-admin nav across tenants | **A.** In-app tenant switcher at `admin.siteinabox.nl/sites/<slug>/*`. Super-admin never logs into client subdomains. |
 | 4 | tenant onboarding automation | **A** (manual). Orchestrator creates the tenant record only (step 2). DNS, NPM proxy host, TLS cert, owner-user creation/invite are manual. |
 | 5 | content model | **B.** Pages, Media, SiteSettings (global per tenant), Forms, Tenants, Users. Reusable content (testimonials, FAQs, services) lives as inline blocks inside Pages. |
-| 6 | roles & user-tenant model | **B.** Roles per tenant: `super-admin` / `owner` / `editor` / `viewer`. Each user belongs to exactly one tenant (super-admins have `tenant: null`). |
+| 6 | roles & user-tenant model | **B.** Roles per tenant: `super-admin` / `owner` / `editor` / `viewer`. Each non-super-admin user belongs to exactly one tenant; super-admins belong to none. *(Shipped as `tenants[]` array — see Wave 1 reconciliation note above.)* |
 | 7 | dashboard data | **A.** Editorial activity sourced from Payload itself (no external integrations in v1). |
 
 ## Approach (chosen: 1)
@@ -102,7 +109,7 @@ nginx-proxy-manager (existing, on `proxy` network) — TLS termination, Let's En
 | `password` | hash | Payload built-in |
 | `name` | text | |
 | `role` | enum | `super-admin` / `owner` / `editor` / `viewer` |
-| `tenant` | relationship → Tenants | **null** when role is `super-admin`, **required** otherwise (validate hook enforces) |
+| `tenants` | array of `{ tenant: relationship → Tenants }` | **empty** when role is `super-admin`, **exactly one entry** otherwise (custom array-level `validate` enforces). Multiple users may share a tenant — clients add team editors. *(Originally specced as a singular `tenant` relationship; reshaped to plugin-native `tenants[]` in Wave 1 — migration `20260505_194128_users_tenants_array`. The field is manually declared with `tenantsArrayField.includeDefaultField: false` so we can attach the validator.)* |
 | `apiKey` | (Payload built-in) | enabled via `auth: { useAPIKey: true }`; the orchestrator uses one |
 
 ### Pages (auto-scoped by multi-tenant plugin)
@@ -155,7 +162,7 @@ Implemented as a *collection with a unique `tenant` constraint*, not a Payload g
 
 ### Access control
 
-The multi-tenant plugin auto-injects `where: { tenant: { equals: user.tenant } }` for non-super-admin users. Roles layer on top:
+The multi-tenant plugin auto-injects a tenant filter for non-super-admin users (using `user.tenants[].tenant`). Roles layer on top:
 
 | Collection | super-admin | owner | editor | viewer |
 |---|---|---|---|---|
@@ -233,19 +240,19 @@ if (domain === process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN) {
 if (!user) → redirect("/login")
 if (ctx.mode === "super-admin" && user.role !== "super-admin") → 403 + clearCookie
 if (ctx.mode === "tenant" && user.role === "super-admin") → 403 (super-admin doesn't log in here)
-if (ctx.mode === "tenant" && user.tenant !== ctx.tenant.id) → 403 + clearCookie
+if (ctx.mode === "tenant" && user.tenants[0]?.tenant !== ctx.tenant.id) → 403 + clearCookie
 ```
 
 ### Login flow
 
 1. Visit protected URL with no auth → redirect to `/login`
 2. POST `/api/users/login` (Payload built-in) → cookie set scoped to current host
-3. Auth gate validates `user.role` × `ctx.mode` × `user.tenant === ctx.tenant.id`
+3. Auth gate validates `user.role` × `ctx.mode` × `user.tenants[0].tenant === ctx.tenant.id`
 4. Mismatch → 403 + clear cookie
 
 ### Password reset / first-time invite
 
-When the super-admin (or tenant owner) creates a user record without setting a password, Payload's `forgot-password` flow sends an email with a reset link. The link's host **must match where they'll log in** — the email template is overridden to compute the right host from `user.tenant.domain` (or `siteinabox.nl` for super-admins).
+When the super-admin (or tenant owner) creates a user record without setting a password, Payload's `forgot-password` flow sends an email with a reset link. The link's host **must match where they'll log in** — the email template is overridden to compute the right host from the user's tenant domain (`user.tenants[0].tenant.domain`, resolved server-side) or falls back to `siteinabox.nl` for super-admins.
 
 ### Cookie scoping (security boundary)
 
@@ -354,6 +361,10 @@ On `Pages`, `Media`, `SiteSettings`. For published docs, transform to flat JSON 
 - `afterChange` on Tenants (op=create) → mkdir tenant dir + initial empty manifest
 - `afterChange` on Tenants (status → archived) → `rename tenants/<id>/ → archived/<id>/`
 - `afterChange` on Tenants (status → suspended) → no disk change; auth gate blocks logins
+- *(Wave 2-3 additions)* `afterChange` on Tenants (status: archived → non-archived) → `rename archived/<id>/ → tenants/<id>/` (restore)
+- *(Wave 2-3 additions)* `afterDelete` on Tenants → `fs.rm` both `tenants/<id>/` and `archived/<id>/`; clear stale `payload-tenant` cookie if a super-admin deleted the tenant they were scoped into
+- *(Wave 2-3 additions)* DB-side: `pages/media/site_settings/forms/users_tenants.tenant_id` use `ON DELETE CASCADE` (migration `20260505_202447_cascade_tenant_delete`). Tenant delete atomically removes all owned content; the down direction is intentionally non-reversible.
+- The plugin's built-in `cleanupAfterTenantDelete` is **disabled** (`false`). It runs cleanup writes from inside the tenant-delete transaction, which collides with our Users `tenants[]` validator (it counts the deleted tenant as still attached). FK CASCADE replaces it.
 
 ### Failure model
 
@@ -443,6 +454,8 @@ Kernel-level isolation — a compromised SSR site container cannot read other te
 
 Multi-stage Dockerfile (`deps` → `builder` → `runner`, node:22-alpine throughout). GitHub Actions on push to `main` builds and pushes to `ghcr.io/optidigi/siab-payload:latest` and `:sha-<commit>`. Production updates via manual `docker compose pull && docker compose up -d` (consistent with existing siteinabox image-pull discipline; Renovate handles dependency PRs upstream).
 
+*(Wave 2-3)* The image's entrypoint (`scripts/docker-entrypoint.sh`) runs `migrate-on-boot.bundled.mjs` — an esbuild-bundled, self-contained `.mjs` produced from `scripts/migrate-on-boot-entry.ts` — **before** `node server.js`. Migrations apply automatically on container boot (no-op when nothing pending). The bundle lives in `dist-runtime/` (gitignored, dockerignored — built inside the Docker image only).
+
 ### Environment variables
 
 | Var | Purpose |
@@ -521,7 +534,7 @@ Structured logs via **pino** (JSON to stdout). Levels: `info` (publishes, logins
 ### Critical (cannot ship without)
 
 1. **Tenant isolation.** For every collection × every endpoint, verify a user from tenant A cannot read, write, or count tenant B's data. ~30 tests, parameterized. P0 risk if it leaks.
-2. **Auth gate matrix.** Every combination of `(host, user.role, user.tenant)` evaluated. ~16 cases, table-driven.
+2. **Auth gate matrix.** Every combination of `(host, user.role, user.tenants[0]?.tenant)` evaluated. ~16 cases, table-driven.
 3. **afterChange JSON projection.** Snapshot tests: given a Page doc with each block type, the on-disk JSON matches expected shape. ~10 tests.
 
 ### Standard
