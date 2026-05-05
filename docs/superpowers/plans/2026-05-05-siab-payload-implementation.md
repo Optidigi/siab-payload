@@ -2,6 +2,29 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+## Delivery status (as of Wave 3 — 2026-05-05)
+
+| Batch | Outcome | Status | Merge SHA |
+|---|---|---|---|
+| Phases 0-16 | Backend + custom shadcn admin + tests | Done | (pre-Wave; see commit history) |
+| Phase 17 | E2E (Playwright) — super-admin flow, tenant editor flow, role-gate | Done | merged on `main` |
+| Phase 18 | Production Dockerfile + GHA CI + compose finalization | Done | merged on `main` |
+| Track 1 | Production smoke deploy on the VPS (HOSTNAME=0.0.0.0, UID 1000, DATA_HOST_PATH parameterization, middleware `/api-key` matcher fix) | Done | merged on `main` |
+| Wave 1 | Users `tenants[]` plugin-native migration (drops singular `tenant`; adds custom array validator; manual field with `tenantsArrayField.includeDefaultField: false`) | Done | `bf57967` |
+| Wave 2-3 | Deploy-safety + data-integrity batch — migrate-on-boot, FK CASCADE, tenant lifecycle hooks (restore + delete + stale-cookie clear), `cleanupAfterTenantDelete: false`, projector `id`-strip + `blockName` cleanup, `outputFileTracingRoot` | Done | `2f061ba` |
+| Wave 4 | Documentation consistency sweep | Done | (this branch) |
+| Wave 5+ | Renovate config (deferred — org-level at `/srv/saas/`), orchestrator-compatibility check (Track 3), lockfile sweep | Pending | — |
+
+**Reading note:** the per-phase task lists below describe the *original* shape of each step. Where Wave 1 / Wave 2-3 changed the technical approach, the source of truth is now:
+- the migration file in `src/migrations/` (e.g. `20260505_194128_users_tenants_array`, `20260505_202447_cascade_tenant_delete`)
+- the lifecycle hooks in `src/hooks/tenantLifecycle.ts`
+- the boot-migrate scripts in `scripts/` (`docker-entrypoint.sh`, `migrate-on-boot-entry.ts`, `build-runtime-bundle.mjs`)
+- the design spec's reconciliation note at the top of [2026-05-05-siab-payload-design.md](../specs/2026-05-05-siab-payload-design.md)
+
+In particular: the singular `Users.tenant` field shown in Task 1.2 / Task 3.4 / Task 15.x code samples shipped initially as specified, then was reshaped in Wave 1 to `tenants[]` (an array of `{ tenant }` rows) to match what the multi-tenant plugin's access wrappers expect. The original validator shown as `validateTenant` was renamed `validateTenants` and now operates on the array (super-admin → length 0; other roles → exactly 1).
+
+---
+
 **Goal:** Build the multi-tenant Payload v3 + custom shadcn admin that powers the siteinabox ecosystem, deployable to the production VPS as `ghcr.io/optidigi/siab-payload:latest`.
 
 **Architecture:** Single Next.js 15 app. Payload v3 runs as a backend module (`admin.disable: true`); every visible route is custom shadcn UI. Host header → tenant resolution; `admin.siteinabox.nl` is super-admin, `admin.<clientdomain>` is tenant-scoped. `@payloadcms/plugin-multi-tenant` auto-scopes queries. `afterChange` hooks project published content to per-tenant on-disk JSON consumed by the SSR site containers.
@@ -14,27 +37,29 @@
 
 ## Phase Overview
 
-| Phase | Outcome |
-|---|---|
-| 0 | Repo bootstrap — Next.js + Payload + Postgres run locally; pnpm dev works |
-| 1 | Tenants + Users collections; first super-admin seeded; orchestrator API key |
-| 2 | Multi-tenant plugin; Pages, Media, SiteSettings, Forms; access control |
-| 3 | Host-resolution middleware + auth gate |
-| 4 | afterChange JSON projection; atomic write; manifest; tenant dir lifecycle |
-| 5 | Disable Payload admin; scaffold shadcn shell (sidebar, topbar, theme) |
-| 6 | Auth UI (login, forgot/reset password) |
-| 7 | Super-admin dashboard view |
-| 8 | Sites management (list + tenant overview) |
-| 9 | Pages list + page editor + field renderer + block editor |
-| 10 | Media library |
-| 11 | Forms inbox |
-| 12 | Site settings |
-| 13 | User management + onboarding checklist |
-| 14 | Tenant-editor scoped routes (mirror of super-admin views) |
-| 15 | Email integration (Resend) for invite + reset |
-| 16 | Test suites — tenant isolation, auth gate matrix, projection snapshots |
-| 17 | E2E tests (Playwright) |
-| 18 | Production Dockerfile + GHA CI + compose finalization |
+All phases below are ✅ shipped on `main` (HEAD `2f061ba` at time of writing). See the "Delivery status" table above for the post-phase Wave/Track work.
+
+| Phase | Outcome | Status |
+|---|---|---|
+| 0 | Repo bootstrap — Next.js + Payload + Postgres run locally; pnpm dev works | ✅ |
+| 1 | Tenants + Users collections; first super-admin seeded; orchestrator API key | ✅ (Users reshaped to `tenants[]` in Wave 1) |
+| 2 | Multi-tenant plugin; Pages, Media, SiteSettings, Forms; access control | ✅ (`cleanupAfterTenantDelete` later turned off — Wave 2-3) |
+| 3 | Host-resolution middleware + auth gate | ✅ (matcher fix in Track 1: `(?!api/...)`) |
+| 4 | afterChange JSON projection; atomic write; manifest; tenant dir lifecycle | ✅ (lifecycle expanded in Wave 2-3: restore, delete, stale-cookie clear) |
+| 5 | Disable Payload admin; scaffold shadcn shell (sidebar, topbar, theme) | ✅ |
+| 6 | Auth UI (login, forgot/reset password) | ✅ |
+| 7 | Super-admin dashboard view | ✅ |
+| 8 | Sites management (list + tenant overview) | ✅ |
+| 9 | Pages list + page editor + field renderer + block editor | ✅ |
+| 10 | Media library | ✅ |
+| 11 | Forms inbox | ✅ |
+| 12 | Site settings | ✅ |
+| 13 | User management + onboarding checklist | ✅ |
+| 14 | Tenant-editor scoped routes (mirror of super-admin views) | ✅ |
+| 15 | Email integration (Resend) for invite + reset | ✅ |
+| 16 | Test suites — tenant isolation, auth gate matrix, projection snapshots | ✅ |
+| 17 | E2E tests (Playwright) | ✅ |
+| 18 | Production Dockerfile + GHA CI + compose finalization | ✅ (HOSTNAME=0.0.0.0 baked in Track 1; UID 1000 user; `${DATA_HOST_PATH:-…}` parameterization) |
 
 **Ship-able milestones:** End of Phase 4 = working backend (testable via curl + Payload's REST API). End of Phase 9 = super-admin can log in and edit pages. End of Phase 14 = full functional system. Phases 15–18 are productionization.
 
