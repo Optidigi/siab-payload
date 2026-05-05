@@ -1,0 +1,20 @@
+import { requireAuth } from "@/lib/authGate"
+import { getTenantBySlug } from "@/lib/queries/tenants"
+import { getOrCreateSiteSettings } from "@/lib/queries/settings"
+import { SettingsForm } from "@/components/forms/SettingsForm"
+import { notFound } from "next/navigation"
+
+export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { user } = await requireAuth()
+  const { slug } = await params
+  const tenant = await getTenantBySlug(slug)
+  if (!tenant) notFound()
+  const settings = await getOrCreateSiteSettings(tenant.id)
+  const canEdit = user.role === "super-admin" || user.role === "owner"
+  return (
+    <div className="flex flex-col gap-4">
+      <h1 className="text-xl font-semibold">Settings — {tenant.name}</h1>
+      <SettingsForm initial={settings} canEdit={canEdit} />
+    </div>
+  )
+}
