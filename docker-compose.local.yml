@@ -1,16 +1,21 @@
-# Dev Postgres for siab-payload.
-# This compose file is deployed to the VPS (e.g. ~/siab-payload-dev/) and run there.
-# Local development reaches it via:  ssh -L 5432:localhost:5433 -N -f prod
-# The tunnel maps local 5432 -> VPS 5433, so DATABASE_URI in .env.example
-# (postgres://payload:.../localhost:5432/payload) just works.
-# See README.md for the full local-dev workflow.
+# Local-dev Postgres for siab-payload.
+# Run on the developer machine (any platform with a Docker engine):
+#   docker compose -f docker-compose.local.yml up -d
+# DATABASE_URI in .env.example targets localhost:5432 so this works out of the box.
+# See docs/runbooks/local-dev.md for the full workflow.
+#
+# If port 5432 is already in use locally (e.g. a system Postgres), override:
+#   POSTGRES_HOST_PORT=5433 docker compose -f docker-compose.local.yml up -d
+# and update DATABASE_URI in your .env to match.
 services:
   postgres:
     image: postgres:17-alpine
     container_name: siab-payload-postgres-dev
     restart: unless-stopped
     ports:
-      - "5433:5432"   # 5433 on host keeps 5432 free for the production stack (Phase 18)
+      # Host port is configurable so devs with a system Postgres on 5432 can override.
+      # Default 5432 matches the DATABASE_URI in .env.example.
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     environment:
       POSTGRES_DB: payload
       POSTGRES_USER: payload
