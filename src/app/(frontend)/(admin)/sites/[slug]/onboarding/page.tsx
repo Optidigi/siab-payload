@@ -15,7 +15,10 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
         <h1 className="text-xl font-semibold">Onboarding — {tenant.name}</h1>
         <p className="text-sm text-muted-foreground">Manual steps to bring <code>admin.{tenant.domain}</code> live.</p>
       </div>
-      <OnboardingChecklist tenant={{ ...tenant, domain: tenant.domain ?? "" }} vpsIp={vpsIp} />
+      <OnboardingChecklist
+        tenant={{ id: tenant.id, slug: tenant.slug, domain: tenant.domain ?? "" }}
+        vpsIp={vpsIp}
+      />
     </div>
   )
 }
