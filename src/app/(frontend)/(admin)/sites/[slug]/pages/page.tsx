@@ -1,0 +1,25 @@
+import { requireRole } from "@/lib/authGate"
+import { getTenantBySlug } from "@/lib/queries/tenants"
+import { listPages } from "@/lib/queries/pages"
+import { PagesTable } from "@/components/tables/PagesTable"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
+import Link from "next/link"
+import { notFound } from "next/navigation"
+
+export default async function PagesIndex({ params }: { params: Promise<{ slug: string }> }) {
+  await requireRole(["super-admin"])
+  const { slug } = await params
+  const tenant = await getTenantBySlug(slug)
+  if (!tenant) notFound()
+  const pages = await listPages(tenant.id)
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Pages — {tenant.name}</h1>
+        <Button asChild><Link href={`/sites/${slug}/pages/new`}><Plus className="mr-1 h-4 w-4"/> New page</Link></Button>
+      </div>
+      <PagesTable data={pages as any} base={`/sites/${slug}/pages`}/>
+    </div>
+  )
+}
