@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+.env
+.env.local
+.env.test
+docs
+tests
+.superpowers
+.claude
+README.md
+.data-out
+.data-test-*
+playwright-report
+test-results
+*.tsbuildinfo
