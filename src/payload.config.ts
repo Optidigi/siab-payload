@@ -5,6 +5,7 @@ import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
 
 import { Tenants } from "@/collections/Tenants"
+import { Users } from "@/collections/Users"
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -29,12 +30,12 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI }
   }),
   editor: lexicalEditor(),
-  collections: [Tenants],
+  collections: [Tenants, Users],
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
   admin: {
-    user: undefined
+    user: "users"
     // Will be set to disable: true in Phase 5. Kept enabled for Phase 0–4 verification.
   }
 })
