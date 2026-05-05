@@ -1,4 +1,5 @@
 import { postgresAdapter } from "@payloadcms/db-postgres"
+import { resendAdapter } from "@payloadcms/email-resend"
 import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant"
 import { lexicalEditor } from "@payloadcms/richtext-lexical"
 import path from "path"
@@ -36,6 +37,11 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI }
   }),
   editor: lexicalEditor(),
+  email: resendAdapter({
+    defaultFromAddress: process.env.EMAIL_FROM || "noreply@siteinabox.nl",
+    defaultFromName: "SiteInABox",
+    apiKey: process.env.RESEND_API_KEY || ""
+  }),
   collections: [Tenants, Users, Media, Pages, SiteSettings, Forms],
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
