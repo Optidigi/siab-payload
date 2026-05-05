@@ -1,4 +1,5 @@
 import { postgresAdapter } from "@payloadcms/db-postgres"
+import { multiTenantPlugin } from "@payloadcms/plugin-multi-tenant"
 import { lexicalEditor } from "@payloadcms/richtext-lexical"
 import path from "path"
 import { buildConfig } from "payload"
@@ -10,6 +11,7 @@ import { Pages } from "@/collections/Pages"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
+import type { Config } from "@/payload-types"
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -41,5 +43,18 @@ export default buildConfig({
   admin: {
     user: "users"
     // Will be set to disable: true in Phase 5. Kept enabled for Phase 0–4 verification.
-  }
+  },
+  plugins: [
+    multiTenantPlugin<Config>({
+      collections: {
+        pages: {},
+        media: {},
+        "site-settings": { isGlobal: false },
+        forms: {}
+      },
+      tenantField: { name: "tenant" },
+      tenantsArrayField: { includeDefaultField: false },
+      userHasAccessToAllTenants: (user) => user?.role === "super-admin"
+    })
+  ]
 })
