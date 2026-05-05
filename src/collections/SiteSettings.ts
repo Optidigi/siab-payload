@@ -1,7 +1,14 @@
 import type { CollectionConfig } from "payload"
+import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 
 export const SiteSettings: CollectionConfig = {
   slug: "site-settings",
+  access: {
+    read: canRead,
+    create: canUpdateSettings,
+    update: canUpdateSettings,
+    delete: ({ req }) => req.user?.role === "super-admin"
+  },
   admin: { useAsTitle: "siteName", description: "One record per tenant." },
   fields: [
     { name: "siteName", type: "text", required: true },

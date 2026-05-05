@@ -1,8 +1,10 @@
 import type { CollectionConfig } from "payload"
 import path from "path"
+import { canRead, canWrite } from "@/access/roleHelpers"
 
 export const Media: CollectionConfig = {
   slug: "media",
+  access: { read: canRead, create: canWrite, update: canWrite, delete: canWrite },
   upload: {
     // Files written under DATA_DIR/_uploads-tmp/ during create/update; the
     // projectMediaToDisk hook (Phase 4) moves each file into the per-tenant

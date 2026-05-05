@@ -1,4 +1,5 @@
 import type { CollectionConfig } from "payload"
+import { canRead, canWrite } from "@/access/roleHelpers"
 import { Hero } from "@/blocks/Hero"
 import { FeatureList } from "@/blocks/FeatureList"
 import { Testimonials } from "@/blocks/Testimonials"
@@ -9,6 +10,7 @@ import { ContactSection } from "@/blocks/ContactSection"
 
 export const Pages: CollectionConfig = {
   slug: "pages",
+  access: { read: canRead, create: canWrite, update: canWrite, delete: canWrite },
   admin: { useAsTitle: "title", defaultColumns: ["title", "slug", "status", "updatedAt"] },
   fields: [
     { name: "title", type: "text", required: true },

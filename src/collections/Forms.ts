@@ -1,7 +1,16 @@
 import type { CollectionConfig } from "payload"
+import { canRead, canWrite } from "@/access/roleHelpers"
 
 export const Forms: CollectionConfig = {
   slug: "forms",
+  access: {
+    read: canRead,
+    // Public form posts: any unauthenticated visitor can submit. Lock down
+    // further with rate limits / CAPTCHA in a later phase if abuse appears.
+    create: () => true,
+    update: canWrite,
+    delete: ({ req }) => req.user?.role === "super-admin" || req.user?.role === "owner"
+  },
   admin: {
     useAsTitle: "email",
     defaultColumns: ["email", "name", "formName", "status", "createdAt"],
