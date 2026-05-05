@@ -16,7 +16,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // Resolve tenant id if not passed in (most callers won't pass it).
   // Strategy:
   //   1. /api/users/me -> if user.role === "super-admin", parse /sites/<slug> from URL
-  //   2. otherwise tenant id is on the user record (user.tenant)
+  //   2. otherwise tenant id is on the user record (user.tenants[0].tenant)
   useEffect(() => {
     if (resolvedTenantId != null) return
     let cancelled = false
@@ -33,9 +33,10 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
         const tJson = await tRes.json()
         const tid = tJson.docs?.[0]?.id
         if (tid != null && !cancelled) setResolvedTenantId(tid)
-      } else if (me.tenant) {
-        const tid = typeof me.tenant === "object" ? me.tenant.id : me.tenant
-        if (!cancelled) setResolvedTenantId(tid)
+      } else {
+        const first = me.tenants?.[0]?.tenant
+        const tid = typeof first === "object" && first ? first.id : first
+        if (tid != null && !cancelled) setResolvedTenantId(tid)
       }
     })()
     return () => { cancelled = true }

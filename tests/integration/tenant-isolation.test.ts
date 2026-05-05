@@ -50,19 +50,15 @@ describe("tenant isolation — scoped collections", () => {
       })
 
       it("editor in t1 only sees own-tenant docs in unfiltered list", async () => {
-        // With the multi-tenant plugin's withTenantAccess wrapper and no `tenants`
-        // array on the user, the plugin denies all reads. That's an even stronger
-        // guarantee than tenant scoping — accept either: empty list OR Forbidden.
-        try {
-          const res = await payload.find({
-            collection: slug, user: fx.editor1, overrideAccess: false, limit: 100
-          } as any)
-          for (const d of res.docs as any[]) {
-            const tenantId = typeof d.tenant === "object" && d.tenant ? d.tenant.id : d.tenant
-            if (tenantId != null) expect(tenantId).toBe(fx.t1.id)
-          }
-        } catch (e: any) {
-          expect(String(e?.message ?? e)).toMatch(/forbidden|not allowed|access/i)
+        // With the multi-tenant plugin's withTenantAccess wrapper and the
+        // tenants[] array on the user, the plugin scopes reads to the user's
+        // tenant. We expect every returned doc to be in t1.
+        const res = await payload.find({
+          collection: slug, user: fx.editor1, overrideAccess: false, limit: 100
+        } as any)
+        for (const d of res.docs as any[]) {
+          const tenantId = typeof d.tenant === "object" && d.tenant ? d.tenant.id : d.tenant
+          if (tenantId != null) expect(tenantId).toBe(fx.t1.id)
         }
       })
     })
@@ -119,7 +115,7 @@ describe("tenant isolation — super-admin and user mgmt", () => {
   it("owner in t1 cannot delete users in t2", async () => {
     const t2User = await payload.create({
       collection: "users", overrideAccess: true,
-      data: { email: "edit2@test.local", password: "test1234", name: "E2", role: "editor", tenant: fx.t2.id } as any
+      data: { email: "edit2@test.local", password: "test1234", name: "E2", role: "editor", tenants: [{ tenant: fx.t2.id }] } as any
     })
     await expect(
       payload.delete({ collection: "users", id: t2User.id, user: fx.owner1, overrideAccess: false } as any)
@@ -129,7 +125,7 @@ describe("tenant isolation — super-admin and user mgmt", () => {
   it("owner in t1 can manage users in own tenant", async () => {
     const created = await payload.create({
       collection: "users", user: fx.owner1, overrideAccess: false,
-      data: { email: "new@test.local", password: "test1234", name: "N", role: "editor", tenant: fx.t1.id } as any
+      data: { email: "new@test.local", password: "test1234", name: "N", role: "editor", tenants: [{ tenant: fx.t1.id }] } as any
     })
     expect(created.id).toBeTruthy()
   })

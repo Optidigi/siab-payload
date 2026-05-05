@@ -64,15 +64,16 @@ export default buildConfig({
         forms: {}
       },
       tenantField: { name: "tenant" },
+      // We declare the `tenants` array field manually on the Users collection
+      // (see `src/collections/Users.ts`) so we can attach a custom `validate`
+      // enforcing the "exactly-one tenant for non-super-admins, none for
+      // super-admins" invariant. The plugin uses the same field shape
+      // (name: "tenants", row: { tenant: relationship }) regardless.
       tenantsArrayField: { includeDefaultField: false },
-      // Disable the built-in afterTenantDelete cleanup hook. The plugin
-      // assumes users have a `tenants` array field (many-to-many), but our
-      // Users collection uses a single `tenant` relationship — so the hook's
-      // `find({ where: { 'tenants.tenant': ... } })` query throws
-      // `QueryError: The following path cannot be queried: tenants` and logs
-      // a noisy (but harmless) error. Per-tenant content cleanup is handled
-      // by Postgres FK cascade; the user `tenant` FK is `ON DELETE SET NULL`,
-      // which is the desired behavior here.
+      // Leave the built-in afterTenantDelete cleanup hook disabled pending
+      // the Wave 2 FK-cascade work. Per-tenant content cleanup currently
+      // relies on Postgres FK cascade; the user `tenant` FK is
+      // `ON DELETE SET NULL`. Re-enable in Wave 2 alongside FK cascade fix.
       cleanupAfterTenantDelete: false,
       userHasAccessToAllTenants: (user) => user?.role === "super-admin"
     })

@@ -16,17 +16,41 @@ describe("Users collection config", () => {
     ])
   })
 
-  it("has tenant relationship", () => {
-    const f = Users.fields.find((x: any) => x.name === "tenant") as any
-    expect(f.relationTo).toBe("tenants")
+  it("has tenants array field with a `tenant` relationship row", () => {
+    const f = Users.fields.find((x: any) => x.name === "tenants") as any
+    expect(f.type).toBe("array")
+    const row = f.fields.find((x: any) => x.name === "tenant") as any
+    expect(row.type).toBe("relationship")
+    expect(row.relationTo).toBe("tenants")
+    expect(row.required).toBe(true)
   })
 
-  it("validates super-admin must have null tenant", () => {
-    const f = Users.fields.find((x: any) => x.name === "tenant") as any
+  it("does not have a singular `tenant` field (plugin-native shape uses tenants[])", () => {
+    const f = (Users.fields as any[]).find((x: any) => x.name === "tenant")
+    expect(f).toBeUndefined()
+  })
+
+  it("validates super-admin must have empty tenants[] and others have exactly one", () => {
+    const f = Users.fields.find((x: any) => x.name === "tenants") as any
     expect(typeof f.validate).toBe("function")
-    expect(f.validate(null,  { siblingData: { role: "super-admin" }, operation: "create" })).toBe(true)
-    expect(f.validate("ten1",{ siblingData: { role: "super-admin" }, operation: "create" })).toMatch(/super-admin/)
-    expect(f.validate(null,  { siblingData: { role: "editor" },      operation: "create" })).toMatch(/required/i)
-    expect(f.validate("ten1",{ siblingData: { role: "editor" },      operation: "create" })).toBe(true)
+    // super-admin: empty is OK, any entry is rejected
+    expect(f.validate([],                       { siblingData: { role: "super-admin" }, operation: "create" })).toBe(true)
+    expect(f.validate([{ tenant: "t1" }],       { siblingData: { role: "super-admin" }, operation: "create" })).toMatch(/super-admin/)
+    // editor/owner/viewer: empty rejected, exactly one allowed, more than one rejected
+    expect(f.validate([],                       { siblingData: { role: "editor" },      operation: "create" })).toMatch(/exactly one/i)
+    expect(f.validate([{ tenant: "t1" }],       { siblingData: { role: "editor" },      operation: "create" })).toBe(true)
+    expect(f.validate([{ tenant: "t1" }, { tenant: "t2" }], { siblingData: { role: "editor" }, operation: "create" })).toMatch(/exactly one/i)
+  })
+
+  it("validator treats undefined/null tenants the same as empty array", () => {
+    // Payload may pass `undefined` (field omitted from update) or `null` (cleared)
+    // — both should funnel through the same len === 0 branch as `[]`.
+    const f = Users.fields.find((x: any) => x.name === "tenants") as any
+    // super-admin: undefined / null both pass (length 0)
+    expect(f.validate(undefined, { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
+    expect(f.validate(null,      { siblingData: { role: "super-admin" }, operation: "update" })).toBe(true)
+    // non-super-admin: both fail with the "exactly one" message
+    expect(f.validate(undefined, { siblingData: { role: "editor" },      operation: "update" })).toMatch(/exactly one/i)
+    expect(f.validate(null,      { siblingData: { role: "editor" },      operation: "update" })).toMatch(/exactly one/i)
   })
 })

@@ -39,22 +39,22 @@ export async function seedFixture(payload: Payload) {
   })
   const owner1 = await payload.create({
     collection: "users",
-    data: { email: "owner1@test.local", password: "test1234", name: "Owner1", role: "owner", tenant: t1.id } as any,
+    data: { email: "owner1@test.local", password: "test1234", name: "Owner1", role: "owner", tenants: [{ tenant: t1.id }] } as any,
     overrideAccess: true
   })
   const editor1 = await payload.create({
     collection: "users",
-    data: { email: "editor1@test.local", password: "test1234", name: "Editor1", role: "editor", tenant: t1.id } as any,
+    data: { email: "editor1@test.local", password: "test1234", name: "Editor1", role: "editor", tenants: [{ tenant: t1.id }] } as any,
     overrideAccess: true
   })
   const viewer1 = await payload.create({
     collection: "users",
-    data: { email: "viewer1@test.local", password: "test1234", name: "Viewer1", role: "viewer", tenant: t1.id } as any,
+    data: { email: "viewer1@test.local", password: "test1234", name: "Viewer1", role: "viewer", tenants: [{ tenant: t1.id }] } as any,
     overrideAccess: true
   })
   const owner2 = await payload.create({
     collection: "users",
-    data: { email: "owner2@test.local", password: "test1234", name: "Owner2", role: "owner", tenant: t2.id } as any,
+    data: { email: "owner2@test.local", password: "test1234", name: "Owner2", role: "owner", tenants: [{ tenant: t2.id }] } as any,
     overrideAccess: true
   })
 

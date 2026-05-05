@@ -10,11 +10,11 @@ export type GateDecision =
  * from `authGate.ts` so unit tests can import it without booting Payload.
  *
  * The matrix:
- *   no user                                              -> no-user
- *   super-admin host, user.role !== super-admin          -> wrong-host
- *   tenant host,      user.role === super-admin          -> super-admin-on-tenant-host
- *   tenant host,      user.tenant !== ctx.tenant.id      -> cross-tenant
- *   otherwise                                            -> allow
+ *   no user                                                       -> no-user
+ *   super-admin host, user.role !== super-admin                   -> wrong-host
+ *   tenant host,      user.role === super-admin                   -> super-admin-on-tenant-host
+ *   tenant host,      user.tenants[0].tenant !== ctx.tenant.id    -> cross-tenant
+ *   otherwise                                                     -> allow
  */
 export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision => {
   if (!user) return { allow: false, reason: "no-user" }
@@ -24,15 +24,15 @@ export const evaluateGate = (user: User | null, ctx: SiabContext): GateDecision 
     return { allow: true }
   }
 
-  // ctx.mode === "tenant"
+  // ctx.mode === "tenant" — non-super-admin users carry exactly one tenant
+  // in their `tenants[]` array (plugin-multi-tenant native shape; our domain
+  // invariant collapses it to length 1 for non-super-admins).
   if (user.role === "super-admin") {
     return { allow: false, reason: "super-admin-on-tenant-host" }
   }
 
-  const userTenantId =
-    user.tenant && typeof user.tenant === "object"
-      ? (user.tenant as { id: number | string }).id
-      : user.tenant
+  const first = user.tenants?.[0]?.tenant
+  const userTenantId = typeof first === "object" && first ? first.id : first
   if (userTenantId !== ctx.tenant.id) {
     return { allow: false, reason: "cross-tenant" }
   }
