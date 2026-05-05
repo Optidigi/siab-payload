@@ -40,8 +40,10 @@ process.env.PAYLOAD_DISABLE_ADMIN = "true"
 
 // Drizzle's migrate() will prompt via `prompts` if it finds a payload_migrations
 // row with batch=-1 (left by `payload db:push`). In a Docker entrypoint there's
-// no TTY and the prompt hangs forever. Destroy stdin so prompts cancels
-// immediately. See migrate-on-boot-entry.ts and the wave 2-3 review I-1.
+// no TTY and the prompt hangs forever. Destroying stdin is belt-and-braces
+// but does NOT short-circuit prompts' render loop — empirically observed on
+// the first prod deploy. The real fix lives in `purgeDevMigrationMarker`:
+// surgically delete the `batch=-1` row before invoking migrate(). See I-1.
 process.stdin.destroy()
 
 /**
@@ -68,6 +70,28 @@ async function safeMigrationCount(payload) {
   return totalDocs
 }
 
+/**
+ * Remove any `batch === -1` rows from `payload_migrations`. Drizzle's migrate()
+ * treats those as a dev-mode push marker and prompts for confirmation —
+ * which hangs forever in a non-TTY container. Idempotent.
+ */
+async function purgeDevMigrationMarker(payload) {
+  const db = payload.db
+  if (!db || typeof db.execute !== "function") return
+  const prependSchema = db.schemaName ? `"${db.schemaName}".` : ""
+  const probe = await db.execute({
+    drizzle: db.drizzle,
+    raw: `SELECT to_regclass('${prependSchema}"payload_migrations"') AS exists;`
+  })
+  const [row] = probe.rows ?? []
+  const exists = row && typeof row === "object" && "exists" in row && !!row.exists
+  if (!exists) return
+  await db.execute({
+    drizzle: db.drizzle,
+    raw: `DELETE FROM ${prependSchema}"payload_migrations" WHERE batch = -1;`
+  })
+}
+
 const start = Date.now()
 
 try {
@@ -76,6 +100,9 @@ try {
   const config = configMod.default ?? configMod
 
   const payload = await getPayload({ config })
+
+  // Purge any `batch === -1` row before invoking migrate(); see I-1.
+  await purgeDevMigrationMarker(payload)
 
   // Capture how many migrations were applied. Payload's adapter.migrate()
   // doesn't return a count, so diff `payload-migrations` rows before/after.
