@@ -7,6 +7,7 @@ import { FAQ } from "@/blocks/FAQ"
 import { CTA } from "@/blocks/CTA"
 import { RichText } from "@/blocks/RichText"
 import { ContactSection } from "@/blocks/ContactSection"
+import { projectPageToDisk } from "@/hooks/projectToDisk"
 
 export const Pages: CollectionConfig = {
   slug: "pages",
@@ -35,6 +36,7 @@ export const Pages: CollectionConfig = {
     beforeChange: [({ data, req }) => {
       if (req.user) data.updatedBy = req.user.id
       return data
-    }]
+    }],
+    afterChange: [projectPageToDisk]
   }
 }

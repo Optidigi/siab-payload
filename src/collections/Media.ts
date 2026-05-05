@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload"
 import path from "path"
 import { canRead, canWrite } from "@/access/roleHelpers"
+import { projectMediaToDisk } from "@/hooks/projectToDisk"
 
 export const Media: CollectionConfig = {
   slug: "media",
@@ -16,5 +17,8 @@ export const Media: CollectionConfig = {
   fields: [
     { name: "alt", type: "text" },
     { name: "caption", type: "text" }
-  ]
+  ],
+  hooks: {
+    afterChange: [projectMediaToDisk]
+  }
 }

@@ -1,5 +1,6 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
+import { projectSettingsToDisk } from "@/hooks/projectToDisk"
 
 export const SiteSettings: CollectionConfig = {
   slug: "site-settings",
@@ -32,5 +33,8 @@ export const SiteSettings: CollectionConfig = {
       { name: "href", type: "text", required: true },
       { name: "external", type: "checkbox", defaultValue: false }
     ]}
-  ]
+  ],
+  hooks: {
+    afterChange: [projectSettingsToDisk]
+  }
 }
