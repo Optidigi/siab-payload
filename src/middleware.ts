@@ -34,6 +34,10 @@ export const config = {
     //   - Payload API + admin (handled by their own routes)
     //   - Next.js internals
     //   - common static asset paths
-    "/((?!api|admin|_next/static|_next/image|favicon.ico|robots.txt|llms.txt).*)"
+    //
+    // The trailing `/` after `api` and `admin` is intentional — without it,
+    // `api-key` and any future `admin-*` route would be incorrectly excluded
+    // (the negative lookahead would match the `api` prefix in `api-key`).
+    "/((?!api/|admin/|_next/static|_next/image|favicon.ico|robots.txt|llms.txt).*)"
   ]
 }
