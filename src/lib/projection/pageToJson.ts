@@ -49,9 +49,10 @@ const projectField = (v: any, parentArrayKey?: string): any => {
     for (const [k, val] of Object.entries(v)) {
       // Strip the Payload-assigned id on rows inside known array fields.
       if (insideArrayRow && k === "id") continue
-      // Drop null/undefined blockName (Payload's admin sets it to null when
-      // the operator leaves the per-block label blank).
-      if (k === "blockName" && (val == null)) continue
+      // Drop null/undefined/empty blockName. Payload's admin sets it to null
+      // when blank; some UI versions emit "" instead. Either way the consumer
+      // doesn't want to ship a no-op blockName.
+      if (k === "blockName" && (val == null || val === "")) continue
       // Recurse. When the value IS the named array (e.g. blocks: [...]),
       // pass `k` so children know they're inside an array-row.
       out[k] = projectField(val, ARRAY_ROW_KEYS.has(k) ? k : undefined)

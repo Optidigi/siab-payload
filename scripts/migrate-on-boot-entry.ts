@@ -27,6 +27,16 @@ import config from "@/payload.config"
 // Suppress admin-only initialisation paths; we only need the DB adapter.
 process.env.PAYLOAD_DISABLE_ADMIN = "true"
 
+// Drizzle's migrate() will prompt on stdin via the `prompts` package if it
+// finds a `payload_migrations` row with `batch === -1` (the marker
+// `payload db:push` leaves behind during dev). In a Docker entrypoint there
+// is no TTY; the prompt would silently hang the container forever — Docker's
+// `restart: unless-stopped` doesn't catch a zero-progress process, only a
+// crash. Destroying stdin makes `prompts` treat input as immediately cancelled,
+// which exits 0 (no migrations applied, but at least the failure is loud at
+// the next health-check rather than infinite). See I-1 in the wave 2-3 review.
+process.stdin.destroy()
+
 /**
  * Return the count of rows in `payload_migrations`, or 0 if the table doesn't
  * exist yet (i.e. fresh DB before the first migration ever ran). We can't use

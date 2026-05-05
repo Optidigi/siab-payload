@@ -2,6 +2,7 @@ import type { CollectionConfig } from "payload"
 import { isSuperAdmin } from "@/access/isSuperAdmin"
 import {
   archiveTenantDir,
+  clearTenantCookieIfStale,
   createTenantDir,
   removeTenantDir,
   restoreTenantDir
@@ -34,6 +35,6 @@ export const Tenants: CollectionConfig = {
   ],
   hooks: {
     afterChange: [createTenantDir, archiveTenantDir, restoreTenantDir],
-    afterDelete: [removeTenantDir]
+    afterDelete: [removeTenantDir, clearTenantCookieIfStale]
   }
 }

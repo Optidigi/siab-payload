@@ -38,6 +38,12 @@ process.env.PAYLOAD_MIGRATION_DIR = migrationDir
 // the DB adapter, not jobs/cron/etc.
 process.env.PAYLOAD_DISABLE_ADMIN = "true"
 
+// Drizzle's migrate() will prompt via `prompts` if it finds a payload_migrations
+// row with batch=-1 (left by `payload db:push`). In a Docker entrypoint there's
+// no TTY and the prompt hangs forever. Destroy stdin so prompts cancels
+// immediately. See migrate-on-boot-entry.ts and the wave 2-3 review I-1.
+process.stdin.destroy()
+
 /**
  * Return the count of rows in `payload_migrations`, or 0 if the table doesn't
  * exist yet (fresh DB). `payload.count` on a non-existent table throws
