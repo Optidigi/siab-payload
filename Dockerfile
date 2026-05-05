@@ -27,7 +27,8 @@ ENV DATABASE_URI=postgres://placeholder@placeholder/placeholder
 RUN corepack enable pnpm \
  && pnpm payload generate:types \
  && pnpm payload generate:importmap \
- && pnpm build
+ && pnpm build \
+ && node scripts/build-runtime-bundle.mjs
 
 # 3. Runtime
 FROM node:22-alpine AS runner
@@ -45,8 +46,13 @@ RUN apk add --no-cache wget
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
+# Migrate-on-boot bundle: pre-compiled config + migrations + the script that
+# applies them. See scripts/migrate-on-boot.mjs for the why.
+COPY --from=builder --chown=node:node /app/dist-runtime ./dist-runtime
+COPY --from=builder --chown=node:node /app/scripts/migrate-on-boot.mjs ./scripts/migrate-on-boot.mjs
+COPY --from=builder --chown=node:node /app/scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --start-period=60s --timeout=10s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
-CMD ["node", "server.js"]
+ENTRYPOINT ["/bin/sh", "/app/scripts/docker-entrypoint.sh"]

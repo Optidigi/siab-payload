@@ -37,9 +37,13 @@ export default buildConfig({
     pool: { connectionString: DATABASE_URI },
     // Schema is managed via committed migration files in `src/migrations/`.
     // Generate via `pnpm payload migrate:create <name>`, apply via
-    // `pnpm payload migrate`. `push` is left at its default (false in prod)
-    // because the runtime push doesn't fire in NODE_ENV=production builds
-    // anyway — see docs/runbooks/deploy.md Step 5.
+    // `pnpm payload migrate`. In production, `scripts/migrate-on-boot.mjs`
+    // runs migrations from a pre-bundled JS copy (`dist-runtime/migrations/`)
+    // before `node server.js` starts; it sets PAYLOAD_MIGRATION_DIR so the
+    // adapter looks there instead of the source-tree default.
+    ...(process.env.PAYLOAD_MIGRATION_DIR
+      ? { migrationDir: process.env.PAYLOAD_MIGRATION_DIR }
+      : {})
   }),
   editor: lexicalEditor(),
   email: resendAdapter({
