@@ -19,8 +19,10 @@ services:
       PORT: "3000"
     volumes:
       # Per-tenant data lands here. Each SSR site container later RO-mounts
-      # tenants/<id>/ from this same path.
-      - /srv/data/saas/siab-payload:/data-out
+      # tenants/<id>/ from this same path. DATA_HOST_PATH overridable via .env;
+      # defaults to /srv path (ops convention with root). Override with a
+      # home-dir path when running as a non-root deploy user.
+      - ${DATA_HOST_PATH:-/srv/data/saas/siab-payload}:/data-out
     networks: [proxy, internal]
     depends_on:
       postgres: { condition: service_healthy }
