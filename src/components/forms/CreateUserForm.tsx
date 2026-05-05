@@ -61,7 +61,8 @@ export function CreateUserForm() {
       email: v.email, name: v.name, password: v.password, role: v.role
     }
     if (v.role !== "super-admin" && v.tenantId) {
-      createBody.tenant = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
+      const tenantId = isNaN(Number(v.tenantId)) ? v.tenantId : Number(v.tenantId)
+      createBody.tenants = [{ tenant: tenantId }]
     }
     if (v.enableAPIKey) {
       createBody.enableAPIKey = true

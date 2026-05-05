@@ -18,7 +18,7 @@ export async function inviteUser(input: {
       email: input.email,
       name: input.name,
       role: input.role,
-      tenant: input.tenantId,
+      tenants: [{ tenant: input.tenantId }],
       password: tempPassword
     } as any
   })
