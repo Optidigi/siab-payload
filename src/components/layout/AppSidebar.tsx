@@ -20,9 +20,9 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs">S</span>
-          SiteInABox
+        <Link href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs">S</span>
+          <span className="group-data-[collapsible=icon]:hidden">SiteInABox</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
