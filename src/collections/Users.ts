@@ -1,5 +1,6 @@
 import type { CollectionConfig, RelationshipFieldValidation } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
+import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 
 const validateTenant: RelationshipFieldValidation = (value, { siblingData }: any) => {
   const role = siblingData?.role
@@ -13,7 +14,37 @@ const validateTenant: RelationshipFieldValidation = (value, { siblingData }: any
 
 export const Users: CollectionConfig = {
   slug: "users",
-  auth: { useAPIKey: true },
+  auth: {
+    useAPIKey: true,
+    forgotPassword: {
+      generateEmailHTML: async (args) => {
+        const token = (args as any)?.token as string | undefined
+        const user = (args as any)?.user as any
+        const req = (args as any)?.req
+
+        let host = `admin.${process.env.NEXT_PUBLIC_SUPER_ADMIN_DOMAIN || "siteinabox.nl"}`
+        if (user && user.role !== "super-admin" && user.tenant) {
+          const tenantId = typeof user.tenant === "object" && user.tenant ? user.tenant.id : user.tenant
+          try {
+            const tenant = await req.payload.findByID({
+              collection: "tenants",
+              id: tenantId,
+              overrideAccess: true
+            })
+            if (tenant?.domain) host = `admin.${tenant.domain}`
+          } catch {
+            // Fall back to super-admin host if the tenant can't be resolved
+          }
+        }
+
+        const proto = process.env.NODE_ENV === "production" ? "https" : "http"
+        const port = process.env.NODE_ENV === "production" ? "" : `:${process.env.PORT || 3001}`
+        const resetUrl = `${proto}://${host}${port}/reset-password/${token ?? ""}`
+        return resetPasswordTemplate({ resetUrl }).html
+      },
+      generateEmailSubject: () => "Reset your siab-payload password"
+    }
+  },
   access: {
     // create: super-admin / owner can create. Bootstrap exception: if there
     // are zero users, allow unauthenticated creation so the first super-admin
