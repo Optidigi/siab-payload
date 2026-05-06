@@ -33,7 +33,11 @@ export function useSignedPreviewToken({
       })
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}))
-        throw new Error(detail.message ?? `mint failed: HTTP ${res.status}`)
+        const msg =
+          res.status === 403
+            ? "You don't have access to this tenant's preview."
+            : detail.message ?? `mint failed: HTTP ${res.status}`
+        throw new Error(msg)
       }
       const json = (await res.json()) as { token: string; exp: number }
       tokenRef.current = json
