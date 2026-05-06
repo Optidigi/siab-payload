@@ -9,7 +9,14 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
     <Card>
       <CardHeader><CardTitle className="text-base">Recent activity</CardTitle></CardHeader>
       <CardContent className="p-0">
-        <Table>
+        {/*
+          Align outer columns to the card's px-6 header padding so "When"
+          (first column) sits under "Recent activity" and "Status" (last
+          column) ends at the same right edge as the card title row.
+          Inner columns keep their natural px-2 cell spacing, and row
+          dividers still extend edge-to-edge of the card.
+        */}
+        <Table className="[&_thead_th:first-child]:pl-6 [&_thead_th:last-child]:pr-6 [&_tbody_td:first-child]:pl-6 [&_tbody_td:last-child]:pr-6">
           <TableHeader>
             <TableRow>
               <TableHead>When</TableHead>
