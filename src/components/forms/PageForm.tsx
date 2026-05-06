@@ -49,11 +49,21 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
   status: z.enum(["draft", "published"]),
   blocks: z.array(z.any()),
+  // `.nullish()` (T | null | undefined) is load-bearing — Postgres returns
+  // `null` for unset optional text columns inside groups, and `payload-types`
+  // declares `seo.title?: string | null`. With plain `.optional()` (T |
+  // undefined only) zod rejects those nulls on second save: a fresh page
+  // post-create has `defaultValues.seo = {title: null, description: null,
+  // ogImage: null}` — the parent `??` short-circuit doesn't dig into the
+  // children — and `handleSubmit` short-circuits to `onInvalid` before any
+  // network call, lighting both text fields red. ogImage uses `z.any()`
+  // which already tolerates null, but standardise on `.nullish()` so the
+  // intent is uniform across the group.
   seo: z.object({
-    title: z.string().optional(),
-    description: z.string().optional(),
-    ogImage: z.any().optional()
-  }).optional()
+    title: z.string().nullish(),
+    description: z.string().nullish(),
+    ogImage: z.any().nullish()
+  }).nullish()
 })
 type Values = z.infer<typeof schema>
 
