@@ -128,18 +128,25 @@ export function useNavigationGuard(
     // Capture the anchor URL — the page we're guarding. We restore to
     // this URL whenever a popstate moves us off it.
     //
-    // We deliberately do NOT push a sentinel history entry on mount.
-    // The sentinel approach (push a duplicate of the current URL so the
-    // first back press lands on a "safe" copy) sounds safer in theory
-    // but in practice traps the user: every back press lands on the same
-    // pathname, hits the "same path → re-push silently" branch below,
-    // and the dialog never fires. Without the sentinel, the first back
-    // press lands on a different page, falls through to the "different
-    // path → restore + dialog" branch, and the user actually sees the
-    // confirm. Fresh-tab edge case (history.length === 1) is already
-    // covered by beforeunload — popstate doesn't fire when there's
-    // nowhere to go back to.
+    // Sentinel pushState pattern (load-bearing, do NOT remove again):
+    // we push a duplicate-URL entry on top of the current one, preserving
+    // Next's existing `history.state` (which carries `__NA` and the
+    // App Router tree). On the first back press the browser pops onto
+    // this sentinel — same URL as before — so Next's own popstate
+    // listener sees no path change and its `dispatchTraverseAction`
+    // is a no-op (no unmount). Our handler then opens the dialog from
+    // a still-mounted PageForm.
+    //
+    // An earlier wave deleted this sentinel because the same-path
+    // branch silently re-pushed without surfacing the dialog, which
+    // looked like the sentinel was "trapping" the user. The actual
+    // bug was that branch swallowing the event — fixed below by also
+    // calling `setPending` there. Without the sentinel popstate is a
+    // real cross-route navigation, Next's transition unmounts
+    // PageForm before our `setPending` can paint, and the dialog
+    // never appears.
     anchorUrl.current = window.location.href
+    window.history.pushState(window.history.state, "", anchorUrl.current)
 
     const onPopState = () => {
       if (bypassPopstate.current) {
@@ -148,22 +155,25 @@ export function useNavigationGuard(
         return
       }
 
-      // Hash/search-only changes within the SAME pathname: don't block.
-      // (e.g., a future page using ?tab=foo for tab state, or a back
-      // press through a multi-step in-page wizard.) Today no editor URL
-      // uses query state semantically, so this branch rarely fires —
-      // it's defensive for future routes.
+      // First back press lands here: same pathname (we just popped
+      // off the sentinel). Re-arm the sentinel for the *next* back
+      // press, then open the dialog — silently re-pushing without
+      // setPending was the original "trap" symptom.
       const anchorPath = new URL(anchorUrl.current).pathname
       if (window.location.pathname === anchorPath) {
-        window.history.pushState({ navGuard: true }, "", anchorUrl.current)
+        window.history.pushState(window.history.state, "", anchorUrl.current)
+        setPending({ kind: "popstate", href: anchorUrl.current })
         return
       }
 
-      // Different pathname — capture destination, restore URL via push,
-      // open dialog. The browser has already committed the popstate by
-      // the time we get here, so we push to undo the URL change visually.
+      // Different pathname — sentinel didn't hold (e.g. user
+      // double-tapped back, or first-load edge case where the
+      // sentinel hadn't armed yet). Restore URL visually via push,
+      // open dialog with the destination the user actually wanted.
+      // (Race: PageForm may still unmount before paint here. The
+      // sentinel branch above is the reliable path; this is fallback.)
       const destination = window.location.href
-      window.history.pushState({ navGuard: true }, "", anchorUrl.current)
+      window.history.pushState(window.history.state, "", anchorUrl.current)
       setPending({ kind: "popstate", href: destination })
     }
 
@@ -189,11 +199,24 @@ export function useNavigationGuard(
     if (!pending) return
     if (pending.kind === "popstate") {
       bypassPopstate.current = true
-      // Forward-navigate to the destination URL the user originally
-      // tried to reach. router.push is direction-agnostic — no need to
-      // count back/forward steps.
-      const u = new URL(pending.href)
-      router.push(u.pathname + u.search + u.hash)
+      // Two cases — both leave us sitting on a fresh sentinel above the
+      // editor entry, but they need different exits:
+      //
+      //  - same-path branch (typical back press, sentinel held): we
+      //    don't know where the user came from before the editor.
+      //    Stack is [..., prev, editor, sentinel-new]; `go(-2)` pops
+      //    both back to `prev`, honouring the back-button intent.
+      //
+      //  - different-path branch (sentinel didn't hold, e.g. forward
+      //    press onto a different URL): we DO have the destination
+      //    they wanted. router.push gets us there in a direction-
+      //    agnostic way.
+      if (pending.href === anchorUrl.current) {
+        window.history.go(-2)
+      } else {
+        const u = new URL(pending.href)
+        router.push(u.pathname + u.search + u.hash)
+      }
     } else if (pending.kind === "click") {
       router.push(pending.href)
     }
