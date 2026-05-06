@@ -1,5 +1,5 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
@@ -90,12 +90,15 @@ export function BlockTypePicker({
     }
   }, [open, reload])
 
-  const presetsBySlug: Record<string, BlockPreset[]> = {}
-  for (const p of presets) {
-    const slug = p.blockType
-    if (!presetsBySlug[slug]) presetsBySlug[slug] = []
-    presetsBySlug[slug].push(p)
-  }
+  const presetsBySlug = useMemo(() => {
+    const out: Record<string, BlockPreset[]> = {}
+    for (const p of presets) {
+      const slug = p.blockType
+      if (!out[slug]) out[slug] = []
+      out[slug].push(p)
+    }
+    return out
+  }, [presets])
 
   const insertAt = defaultIndex ?? Number.MAX_SAFE_INTEGER
 
