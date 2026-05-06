@@ -218,7 +218,7 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
             </Card>
             <Card>
               <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-              <CardContent><BlockEditor/></CardContent>
+              <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
             </Card>
           </div>
           <div className="space-y-4">

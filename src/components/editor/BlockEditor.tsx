@@ -20,7 +20,11 @@ import { BlockListItem } from "./BlockListItem"
 import { BlockTypePicker } from "./BlockTypePicker"
 import { InsertSlot } from "./InsertSlot"
 
-export function BlockEditor() {
+// `tenantId` is threaded all the way down to SaveAsPresetDialog (POST body)
+// and BlockTypePicker (list-fetch filter). The multi-tenant plugin requires
+// tenant on creates and only auto-scopes reads/writes for non-super-admin
+// users — passing it explicitly works for both roles, so we always do.
+export function BlockEditor({ tenantId }: { tenantId: number | string }) {
   const { control } = useFormContext()
   const { fields, append, insert, remove, move } = useFieldArray({ control, name: "blocks" })
 
@@ -82,6 +86,7 @@ export function BlockEditor() {
                     total={fields.length}
                     blockSlug={slug}
                     blockConfig={cfg}
+                    tenantId={tenantId}
                     onRemove={() => remove(i)}
                     onMove={(from, to) => move(from, to)}
                   />
@@ -102,6 +107,7 @@ export function BlockEditor() {
         defaultIndex={pickerIndex}
         controlledOpen={pickerOpen}
         onOpenChange={setPickerOpen}
+        tenantId={tenantId}
       />
       <button
         type="button"

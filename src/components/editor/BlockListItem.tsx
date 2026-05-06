@@ -14,6 +14,7 @@ export function BlockListItem({
   total,
   blockSlug,
   blockConfig,
+  tenantId,
   onRemove,
   onMove
 }: {
@@ -22,6 +23,9 @@ export function BlockListItem({
   total: number
   blockSlug: string
   blockConfig: any
+  // Forwarded to SaveAsPresetDialog so the POST body carries the tenant
+  // (the multi-tenant plugin requires it on creates for super-admin users).
+  tenantId: number | string
   onRemove: () => void
   onMove: (from: number, to: number) => void
 }) {
@@ -95,6 +99,7 @@ export function BlockListItem({
         onOpenChange={setSaveAsPresetOpen}
         blockIndex={index}
         blockSlug={blockSlug}
+        tenantId={tenantId}
       />
     </div>
   )

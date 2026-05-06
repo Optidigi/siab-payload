@@ -36,7 +36,8 @@ export function BlockTypePicker({
   onAdd,
   defaultIndex,
   controlledOpen,
-  onOpenChange
+  onOpenChange,
+  tenantId
 }: {
   // `seed` is optional; when present, the new block is inserted with these
   // field values merged under `{ blockType: slug, ... }`. The slug always
@@ -45,6 +46,10 @@ export function BlockTypePicker({
   defaultIndex?: number
   controlledOpen?: boolean
   onOpenChange?: (open: boolean) => void
+  // Scope the preset list to this tenant. The plugin auto-scopes for
+  // editors/owners, but super-admins see all tenants by default — passing
+  // tenantId in the where clause is the explicit, role-agnostic answer.
+  tenantId: number | string
 }) {
   const [internalOpen, setInternalOpen] = useState(false)
   const isControlled = controlledOpen !== undefined
@@ -65,7 +70,8 @@ export function BlockTypePicker({
   const reload = useCallback(async () => {
     setPresetError(null)
     try {
-      const res = await fetch("/api/block-presets?limit=200&depth=0&sort=-updatedAt")
+      const url = `/api/block-presets?limit=200&depth=0&sort=-updatedAt&where[tenant][equals]=${encodeURIComponent(String(tenantId))}`
+      const res = await fetch(url)
       if (!res.ok) {
         const detail = await parsePayloadError(res)
         throw new Error(detail.message)
@@ -75,7 +81,7 @@ export function BlockTypePicker({
     } catch (e) {
       setPresetError(e instanceof Error ? e.message : String(e))
     }
-  }, [])
+  }, [tenantId])
 
   useEffect(() => {
     if (open) {

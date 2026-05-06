@@ -60,12 +60,17 @@ export function SaveAsPresetDialog({
   onOpenChange,
   blockIndex,
   blockSlug,
+  tenantId,
   onSaved
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   blockIndex: number
   blockSlug: string
+  // Required in the POST body for super-admin users (the multi-tenant plugin
+  // doesn't auto-attach a tenant for them); harmless and consistent for
+  // editors/owners since the plugin would inject the same value either way.
+  tenantId: number | string
   onSaved?: () => void
 }) {
   const { getValues } = useFormContext()
@@ -118,7 +123,8 @@ export function SaveAsPresetDialog({
           name: name.trim(),
           description: description.trim() || undefined,
           blockType: blockSlug,
-          data
+          data,
+          tenant: tenantId
         })
       })
       if (!res.ok) {
