@@ -90,7 +90,7 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" type="button">Choose</Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[640px] sm:max-w-[640px]">
+          <SheetContent side="right" className="w-[640px] sm:max-w-[640px]" showCloseButton={false}>
             <SheetHeader>
               <SheetTitle className="flex items-center justify-between">
                 <span>Choose media</span>
