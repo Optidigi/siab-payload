@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -14,6 +14,7 @@ import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { parsePayloadError } from "@/lib/api"
+import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
 import type { Page } from "@/payload-types"
 
@@ -82,6 +83,11 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
           type: "server",
           message: detail.message
         })
+        // setError mutates the errors object synchronously, but defer
+        // the scroll to next frame so RHF has flushed re-renders that
+        // would otherwise move the field's DOM position out from under
+        // us.
+        requestAnimationFrame(() => scrollToFirstError(form.formState.errors))
       }
       setSubmitError(detail.message)
       toast.error(`Save failed: ${detail.message}`)
@@ -111,11 +117,17 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   else if (isDirty) saveStatus = "dirty"
   else if (lastSavedAt) saveStatus = "saved"
 
-  const retry = () => form.handleSubmit(onSubmit)()
+  // RHF calls onInvalid when zod validation fails before onSubmit ever
+  // runs. Jump the user to the first offending field.
+  const onInvalid = (errors: FieldErrors<Values>) => {
+    scrollToFirstError(errors as Record<string, unknown>)
+  }
+
+  const retry = () => form.handleSubmit(onSubmit, onInvalid)()
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader><CardTitle>Page</CardTitle></CardHeader>
