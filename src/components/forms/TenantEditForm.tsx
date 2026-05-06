@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { Tenant } from "@/payload-types"
 
@@ -28,29 +29,6 @@ const schema = z.object({
 type Values = z.infer<typeof schema>
 
 type Counts = { pages: number; media: number; forms: number; siteSettings: number }
-
-/**
- * Best-effort extraction of the most actionable error from a Payload REST
- * response. Returns `{field?, message}` so callers can decide whether to
- * highlight a specific form field or just show a toast.
- */
-async function parsePayloadError(res: Response): Promise<{ field?: string; message: string }> {
-  const txt = await res.text().catch(() => "")
-  if (!txt) return { message: `HTTP ${res.status}` }
-  try {
-    const json = JSON.parse(txt)
-    // Payload v3 shape: { errors: [{ message, data: { errors: [{ path, message }] } }] }
-    const top = Array.isArray(json?.errors) ? json.errors[0] : null
-    const inner = Array.isArray(top?.data?.errors) ? top.data.errors[0] : null
-    if (inner?.path && inner?.message) {
-      return { field: String(inner.path), message: String(inner.message) }
-    }
-    if (top?.message) return { message: String(top.message) }
-  } catch {
-    // Not JSON — fall through.
-  }
-  return { message: txt.slice(0, 200) }
-}
 
 export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Counts }) {
   const router = useRouter()

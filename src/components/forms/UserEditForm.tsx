@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -29,28 +30,6 @@ const schema = z
 type Values = z.infer<typeof schema>
 
 type TenantLite = { id: number | string; name: string; slug: string }
-
-/**
- * Best-effort extraction of the most actionable error from a Payload REST
- * response. Same pattern as TenantEditForm.parsePayloadError — if these
- * keep multiplying, lift to src/lib/api.ts.
- */
-async function parsePayloadError(res: Response): Promise<{ field?: string; message: string }> {
-  const txt = await res.text().catch(() => "")
-  if (!txt) return { message: `HTTP ${res.status}` }
-  try {
-    const json = JSON.parse(txt)
-    const top = Array.isArray(json?.errors) ? json.errors[0] : null
-    const inner = Array.isArray(top?.data?.errors) ? top.data.errors[0] : null
-    if (inner?.path && inner?.message) {
-      return { field: String(inner.path), message: String(inner.message) }
-    }
-    if (top?.message) return { message: String(top.message) }
-  } catch {
-    // not JSON
-  }
-  return { message: txt.slice(0, 200) }
-}
 
 export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLite[] }) {
   const router = useRouter()
