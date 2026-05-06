@@ -13,18 +13,24 @@ const buttonVariants = cva(
   "inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
-      // Hover-contrast bump: previous values (/90 default+destructive, /80
-      // secondary) were too subtle. Bumped to /85 / /85 / /75 — still tasteful
-      // but the visual feedback is clearly visible. outline/ghost/link already
-      // swap to a different color token on hover so they stay as-is.
+      // Hover contrast — second pass. Previous /85 / /85 / /75 was still
+      // subtle, especially destructive on dark mode (where the base is
+      // /60, making /85 a near-invisible 9% absolute drop). Now:
+      //   - default + destructive → /75 (clearly visible color shift)
+      //   - destructive ALSO gets `hover:shadow-md` so the lift is felt
+      //     even when the color shift is subtle (saturated reds compress
+      //     opacity changes perceptually)
+      //   - secondary → /65 (proportional bump)
+      //   - outline / ghost / link unchanged (already swap to a different
+      //     color token on hover)
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/85",
+        default: "bg-primary text-primary-foreground hover:bg-primary/75",
         destructive:
-          "bg-destructive text-white hover:bg-destructive/85 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
+          "bg-destructive text-white hover:bg-destructive/75 hover:shadow-md focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/75",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/65",
         ghost:
           "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
         link: "text-primary underline-offset-4 hover:underline",
