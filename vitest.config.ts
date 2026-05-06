@@ -18,6 +18,12 @@ export default defineConfig({
     testTimeout: 30000
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "src") }
+    alias: {
+      "@": path.resolve(__dirname, "src"),
+      // Stub Next.js' `server-only` marker — not installed in this repo
+      // (Next bundles it implicitly), so vitest fails to resolve it
+      // when a unit test imports a module guarded by `import "server-only"`.
+      "server-only": path.resolve(__dirname, "tests/__mocks__/server-only.ts"),
+    }
   }
 })
