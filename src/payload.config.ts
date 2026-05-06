@@ -6,6 +6,7 @@ import path from "path"
 import { buildConfig } from "payload"
 import { fileURLToPath } from "url"
 
+import { BlockPresets } from "@/collections/BlockPresets"
 import { Forms } from "@/collections/Forms"
 import { Media } from "@/collections/Media"
 import { Pages } from "@/collections/Pages"
@@ -51,7 +52,7 @@ export default buildConfig({
     defaultFromName: "SiteInABox",
     apiKey: process.env.RESEND_API_KEY || ""
   }),
-  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms],
+  collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets],
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
@@ -65,7 +66,8 @@ export default buildConfig({
         pages: {},
         media: {},
         "site-settings": { isGlobal: false },
-        forms: {}
+        forms: {},
+        "block-presets": {}
       },
       tenantField: { name: "tenant" },
       // We declare the `tenants` array field manually on the Users collection
