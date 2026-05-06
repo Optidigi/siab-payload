@@ -22,9 +22,11 @@ import {
  */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  // `theme` is "light" | "dark" | "system" | undefined (during SSR/first paint).
-  // Coerce undefined to "system" to keep the radio in a known state without
-  // flicker after hydration.
+  // `theme` is "light" | "dark" | "system" | undefined (during SSR/first
+  // paint). Coerce undefined to "system" so the radio group has a defined
+  // value on first render. (The trigger icon's brief light-state flash on
+  // dark-themed clients is a next-themes hydration concern inherited from
+  // the previous toggle — unchanged here.)
   const value = theme ?? "system"
 
   return (
@@ -33,7 +35,7 @@ export function ThemeToggle() {
         <Button variant="ghost" size="icon">
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
+          <span className="sr-only">Change theme</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-36">

@@ -17,8 +17,8 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   const inTenantView = mode === "super-admin" && !!tenantSlug
   const base = inTenantView ? `/sites/${tenantSlug}` : ""
 
-  // Content group (Pages/Media/Forms/Settings/Team/Onboarding) only makes
-  // sense in two contexts:
+  // Content group (Pages/Media/Forms/Settings — plus Team/Onboarding when
+  // their inner gates pass) only makes sense in two contexts:
   //   1. tenant editors (mode === "tenant") — they author for their own tenant
   //   2. super-admin viewing a specific tenant (inTenantView === true) —
   //      links resolve to /sites/<slug>/* and edit that tenant's content
