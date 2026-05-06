@@ -13,6 +13,7 @@ import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
@@ -51,8 +52,10 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   })
 
   // Guard against accidental tab close / refresh / off-site nav while the
-  // form has unsaved work or a save is in flight.
-  useNavigationGuard(form.formState.isDirty || pending)
+  // form has unsaved work or a save is in flight. Headless hook —
+  // pairs with <UnsavedChangesDialog/> below for the in-app + popstate
+  // confirms.
+  const guard = useNavigationGuard(form.formState.isDirty || pending)
 
   const onSubmit = async (values: Values) => {
     setPending(true)
@@ -191,6 +194,11 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
         onSave={triggerSave}
         onRetry={retry}
         onJumpToError={jumpToError}
+      />
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
       />
     </Form>
   )
