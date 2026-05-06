@@ -17,6 +17,14 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   const inTenantView = mode === "super-admin" && !!tenantSlug
   const base = inTenantView ? `/sites/${tenantSlug}` : ""
 
+  // Selected-state matcher. Special-case "/" (Dashboard) to require an
+  // exact match — otherwise startsWith("/") would match every route.
+  // For all other links, an exact match OR a deeper sub-path counts as
+  // "active" (e.g. /sites/foo/pages keeps "Sites" highlighted in Overview
+  // because the user is conceptually still in that section).
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
+
   // Content group (Pages/Media/Forms/Settings — plus Team/Onboarding when
   // their inner gates pass) only makes sense in two contexts:
   //   1. tenant editors (mode === "tenant") — they author for their own tenant
@@ -41,11 +49,11 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem><SidebarMenuButton asChild><Link href="/"><LayoutDashboard /> Dashboard</Link></SidebarMenuButton></SidebarMenuItem>
+              <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/")}><Link href="/"><LayoutDashboard /> Dashboard</Link></SidebarMenuButton></SidebarMenuItem>
               {mode === "super-admin" && !inTenantView && (
                 <>
-                  <SidebarMenuItem><SidebarMenuButton asChild><Link href="/sites"><Globe /> Sites</Link></SidebarMenuButton></SidebarMenuItem>
-                  <SidebarMenuItem><SidebarMenuButton asChild><Link href="/users"><Users /> Users</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/sites")}><Link href="/sites"><Globe /> Sites</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive("/users")}><Link href="/users"><Users /> Users</Link></SidebarMenuButton></SidebarMenuItem>
                 </>
               )}
             </SidebarMenu>
@@ -56,15 +64,15 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
             <SidebarGroupLabel>Content</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/pages`}><FileText /> Pages</Link></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/media`}><ImageIcon /> Media</Link></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/forms`}><Inbox /> Forms</Link></SidebarMenuButton></SidebarMenuItem>
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/settings`}><Settings /> Settings</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/pages`)}><Link href={`${base}/pages`}><FileText /> Pages</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/media`)}><Link href={`${base}/media`}><ImageIcon /> Media</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/forms`)}><Link href={`${base}/forms`}><Inbox /> Forms</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/settings`)}><Link href={`${base}/settings`}><Settings /> Settings</Link></SidebarMenuButton></SidebarMenuItem>
                 {(inTenantView || role === "owner") && (
-                  <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/users`}><Users /> Team</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/users`)}><Link href={`${base}/users`}><Users /> Team</Link></SidebarMenuButton></SidebarMenuItem>
                 )}
                 {inTenantView && (
-                  <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/onboarding`}><ListChecks /> Onboarding</Link></SidebarMenuButton></SidebarMenuItem>
+                  <SidebarMenuItem><SidebarMenuButton asChild isActive={isActive(`${base}/onboarding`)}><Link href={`${base}/onboarding`}><ListChecks /> Onboarding</Link></SidebarMenuButton></SidebarMenuItem>
                 )}
               </SidebarMenu>
             </SidebarGroupContent>
