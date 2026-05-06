@@ -4,6 +4,9 @@ import { StatCards } from "@/components/dashboard/StatCards"
 import { EditsChart } from "@/components/dashboard/EditsChart"
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed"
 import { StatusPill } from "@/components/shared/StatusPill"
+import { Button } from "@/components/ui/button"
+import { Pencil } from "lucide-react"
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireRole } from "@/lib/authGate"
 
@@ -29,6 +32,9 @@ export default async function TenantOverviewPage({ params }: { params: Promise<{
             <span>{tenant.domain}</span> · <StatusPill status={tenant.status as string} />
           </div>
         </div>
+        <Button asChild variant="outline">
+          <Link href={`/sites/${tenant.slug}/edit`}><Pencil className="mr-1 h-4 w-4"/> Edit tenant</Link>
+        </Button>
       </div>
       <StatCards stats={[
         { label: "Published pages", value: stats.publishedPages },
