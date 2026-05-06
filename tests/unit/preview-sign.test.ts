@@ -23,7 +23,8 @@ describe("signPreviewToken", () => {
 
   it("encodes claims in the payload segment", () => {
     const { token } = signPreviewToken({ tenantId: 7, pageId: 99 }, SECRET, 1_700_000_000)
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf-8"))
+    const payloadSeg = token.split(".")[1] ?? ""
+    const payload = JSON.parse(Buffer.from(payloadSeg, "base64url").toString("utf-8"))
     expect(payload.tenantId).toBe(7)
     expect(payload.pageId).toBe(99)
     expect(payload.exp).toBe(1_700_000_000 + 30 * 60)
@@ -31,7 +32,8 @@ describe("signPreviewToken", () => {
 
   it("supports string pageId for draft-<uuid> sentinel", () => {
     const { token } = signPreviewToken({ tenantId: 1, pageId: "draft-abc" }, SECRET)
-    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf-8"))
+    const payloadSeg = token.split(".")[1] ?? ""
+    const payload = JSON.parse(Buffer.from(payloadSeg, "base64url").toString("utf-8"))
     expect(payload.pageId).toBe("draft-abc")
   })
 
