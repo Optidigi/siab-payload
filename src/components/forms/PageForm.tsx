@@ -1,6 +1,6 @@
 "use client"
 import { useState } from "react"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { parsePayloadError } from "@/lib/api"
+import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
 import type { Page } from "@/payload-types"
 
@@ -47,6 +50,10 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
       : { title: "", slug: "", status: "draft", blocks: [], seo: {} }
   })
 
+  // Guard against accidental tab close / refresh / off-site nav while the
+  // form has unsaved work or a save is in flight.
+  useNavigationGuard(form.formState.isDirty || pending)
+
   const onSubmit = async (values: Values) => {
     setPending(true)
     setSubmitError(null)
@@ -65,8 +72,28 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
     }
     setPending(false)
     if (!res.ok) {
-      setSubmitError(`HTTP ${res.status}`)
-      toast.error("Save failed")
+      // Drill into Payload's error envelope so a slug-regex / unique
+      // conflict / required-field error lights up the offending field
+      // instead of bubbling up as an opaque "HTTP 400".
+      const detail = await parsePayloadError(res)
+      if (detail.field) {
+        // RHF accepts dotted paths (e.g. "seo.title"). Cast widens to any
+        // because `keyof Values` is only the top-level keys, but RHF's
+        // runtime accepts the full FieldPath. Matches the pattern in
+        // TenantEditForm/UserEditForm for consistency.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        form.setError(detail.field as any, {
+          type: "server",
+          message: detail.message
+        })
+        // setError mutates the errors object synchronously, but defer
+        // the scroll to next frame so RHF has flushed re-renders that
+        // would otherwise move the field's DOM position out from under
+        // us.
+        requestAnimationFrame(() => scrollToFirstError(form.formState.errors))
+      }
+      setSubmitError(detail.message)
+      toast.error(`Save failed: ${detail.message}`)
       return
     }
     setSubmitError(null)
@@ -84,20 +111,34 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
     }
   }
 
-  // Compute save status for the bar. "idle" means: not dirty AND nothing
-  // saved yet — keeps the bar hidden on initial render.
+  // RHF calls onInvalid when zod validation fails before onSubmit ever
+  // runs. Jump the user to the first offending field.
+  const onInvalid = (errors: FieldErrors<Values>) => {
+    scrollToFirstError(errors as Record<string, unknown>)
+  }
+
+  const retry = () => form.handleSubmit(onSubmit, onInvalid)()
+  const triggerSave = () => form.handleSubmit(onSubmit, onInvalid)()
+  const jumpToError = () =>
+    scrollToFirstError(form.formState.errors as Record<string, unknown>)
+
+  // Compute save status for the pill. "idle" means: not dirty AND
+  // nothing saved yet — keeps the pill hidden on initial render.
+  // Validation errors take precedence over dirty so the operator sees
+  // why their save was blocked.
   const isDirty = form.formState.isDirty
+  const errorCount = Object.keys(form.formState.errors).length
+  const dirtyCount = Object.keys(form.formState.dirtyFields).length
   let saveStatus: SaveStatus = "idle"
   if (pending) saveStatus = "saving"
+  else if (errorCount > 0) saveStatus = "error"
   else if (submitError) saveStatus = "error"
   else if (isDirty) saveStatus = "dirty"
   else if (lastSavedAt) saveStatus = "saved"
 
-  const retry = () => form.handleSubmit(onSubmit)()
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <Card>
               <CardHeader><CardTitle>Page</CardTitle></CardHeader>
@@ -142,10 +183,15 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
               </CardContent>
             </Card>
           </div>
-          <div className="lg:col-span-3">
-            <SaveStatusBar status={saveStatus} onRetry={retry} />
-          </div>
       </form>
+      <SaveStatusBar
+        status={saveStatus}
+        dirtyCount={dirtyCount}
+        errorCount={errorCount}
+        onSave={triggerSave}
+        onRetry={retry}
+        onJumpToError={jumpToError}
+      />
     </Form>
   )
 }
