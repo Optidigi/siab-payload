@@ -51,11 +51,16 @@ export function BlockEditor() {
     move(from, to)
   }
 
-  const onAdd = (slug: string, atIndex: number) => {
+  // `seed` is optional pre-filled field values from a saved preset. The
+  // slug always wins — preset.blockType is never trusted to override the
+  // tile the user picked. RHF's `useFieldArray` will assign its own
+  // synthetic `.id` to the new row regardless of what we pass.
+  const onAdd = (slug: string, atIndex: number, seed?: Record<string, unknown>) => {
+    const row = { blockType: slug, ...(seed ?? {}) }
     if (atIndex >= fields.length) {
-      append({ blockType: slug })
+      append(row)
     } else {
-      insert(atIndex, { blockType: slug })
+      insert(atIndex, row)
     }
   }
 
