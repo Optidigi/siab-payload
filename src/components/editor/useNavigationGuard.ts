@@ -31,9 +31,11 @@ import { useRouter } from "next/navigation"
  *  - in-app `<Link>` and `<a>` clicks within the SPA (custom dialog)
  *  - browser back/forward (via popstate-pushState pattern, custom dialog)
  *
- * Trade-off: the popstate sentinel leaves one extra history entry per
- * dirty session — operators may need one extra back-press to leave the
- * editor's URL after the form unmounts. Documented and accepted.
+ * Trade-off: confirming "Discard changes" on a popstate dialog uses
+ * `router.push(destination)` rather than `history.go(-N)` — that adds
+ * one extra entry to history (the editor URL stays in the back stack
+ * one position deep). Acceptable; in exchange we avoid back/forward
+ * direction-counting and its edge cases.
  *
  * Bypass cases (the click guard does NOT block these):
  *  - external links (different origin)
@@ -123,11 +125,21 @@ export function useNavigationGuard(
       })
     }
 
-    // Capture the anchor URL and push a sentinel so the user's first
-    // back press lands on a duplicate of the current URL. We restore to
-    // this URL on every popstate that we want to block.
+    // Capture the anchor URL — the page we're guarding. We restore to
+    // this URL whenever a popstate moves us off it.
+    //
+    // We deliberately do NOT push a sentinel history entry on mount.
+    // The sentinel approach (push a duplicate of the current URL so the
+    // first back press lands on a "safe" copy) sounds safer in theory
+    // but in practice traps the user: every back press lands on the same
+    // pathname, hits the "same path → re-push silently" branch below,
+    // and the dialog never fires. Without the sentinel, the first back
+    // press lands on a different page, falls through to the "different
+    // path → restore + dialog" branch, and the user actually sees the
+    // confirm. Fresh-tab edge case (history.length === 1) is already
+    // covered by beforeunload — popstate doesn't fire when there's
+    // nowhere to go back to.
     anchorUrl.current = window.location.href
-    window.history.pushState({ navGuard: true }, "", window.location.href)
 
     const onPopState = () => {
       if (bypassPopstate.current) {
@@ -137,16 +149,19 @@ export function useNavigationGuard(
       }
 
       // Hash/search-only changes within the SAME pathname: don't block.
-      // Ensures things like in-page anchors don't trigger the dialog.
+      // (e.g., a future page using ?tab=foo for tab state, or a back
+      // press through a multi-step in-page wizard.) Today no editor URL
+      // uses query state semantically, so this branch rarely fires —
+      // it's defensive for future routes.
       const anchorPath = new URL(anchorUrl.current).pathname
       if (window.location.pathname === anchorPath) {
         window.history.pushState({ navGuard: true }, "", anchorUrl.current)
         return
       }
 
-      // Capture destination, restore URL, open dialog. The browser has
-      // already committed the popstate by the time we get here, so we
-      // re-push the sentinel to undo the URL change visually.
+      // Different pathname — capture destination, restore URL via push,
+      // open dialog. The browser has already committed the popstate by
+      // the time we get here, so we push to undo the URL change visually.
       const destination = window.location.href
       window.history.pushState({ navGuard: true }, "", anchorUrl.current)
       setPending({ kind: "popstate", href: destination })
