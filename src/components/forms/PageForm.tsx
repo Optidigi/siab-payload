@@ -13,6 +13,7 @@ import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/editor/SaveStatusBar"
 import { PreviewPane } from "@/components/editor/PreviewPane"
+import { SplitDivider } from "@/components/editor/SplitDivider"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
@@ -91,6 +92,24 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
       window.localStorage.setItem("page-editor:preview-mode", previewMode)
     }
   }, [previewMode])
+
+  // Split percentage: how much of the viewport the preview occupies in side
+  // mode. Lazy initializer mirrors `previewMode` above — read localStorage
+  // once on mount; clamp to [20, 80] so a corrupted value can never wedge
+  // the layout. 50 is the default split.
+  const [splitPct, setSplitPct] = useState<number>(() => {
+    if (typeof window === "undefined") return 50
+    const stored = window.localStorage.getItem("page-editor:preview-split")
+    const n = stored ? Number(stored) : NaN
+    return Number.isFinite(n) && n >= 20 && n <= 80 ? n : 50
+  })
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("page-editor:preview-split", String(splitPct))
+    }
+  }, [splitPct])
+  const [isDragging, setIsDragging] = useState(false)
+  const previewWrapperRef = useRef<HTMLDivElement>(null)
 
   // Cross-pane focus state. focusin in PageForm's <form> sets the focused
   // block index; PreviewPane forwards it to the iframe via postMessage.
@@ -326,14 +345,43 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
       />
-      {previewMode !== "hidden" && (
-        <div
-          className={
-            previewMode === "side"
-              ? "fixed inset-y-0 right-0 w-[600px] border-l bg-background z-30 shadow-lg"
-              : "fixed inset-0 bg-background z-40"
-          }
-        >
+      {previewMode === "side" && (
+        <>
+          <SplitDivider
+            pct={splitPct}
+            setPct={setSplitPct}
+            iframeWrapperRef={previewWrapperRef}
+            isDragging={isDragging}
+            setIsDragging={setIsDragging}
+          />
+          <div
+            ref={previewWrapperRef}
+            className="fixed inset-y-0 right-0 border-l bg-background z-30 shadow-lg"
+            style={{
+              width: `${splitPct}%`,
+              // Skip the smoothing transition while dragging so pointer
+              // moves track frame-perfect; restore it for keyboard
+              // nudges and snap-on-release so those feel less jumpy.
+              transition: isDragging ? "none" : "width 80ms ease-out",
+            }}
+          >
+            <PreviewPane
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              control={form.control as unknown as import("react-hook-form").Control<any>}
+              tenantId={tenantId}
+              tenantOrigin={tenantOrigin}
+              pageId={initial?.id ?? `draft-${draftSessionId}`}
+              previewMode={previewMode}
+              setPreviewMode={setPreviewMode}
+              focusedBlockIndex={focusedBlockIndex}
+              focusSeq={focusSeq}
+              onClickBlock={handleClickBlock}
+            />
+          </div>
+        </>
+      )}
+      {previewMode === "fullscreen" && (
+        <div className="fixed inset-0 bg-background z-40">
           <PreviewPane
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             control={form.control as unknown as import("react-hook-form").Control<any>}
