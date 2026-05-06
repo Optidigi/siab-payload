@@ -133,46 +133,68 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMo
     // ready is set by preview:ready postMessage, not by token state
   }, [tokenState])
 
+  // Build the body based on state. The toolbar wraps EVERY body so escape
+  // controls (mode toggle, hide) are always reachable — even from error
+  // states. Without this, an operator who hits "Server misconfigured" or
+  // "Invalid tenant origin" while in fullscreen mode has no way out short
+  // of clearing localStorage. Earlier versions early-returned each error
+  // case before the toolbar mounted; that was the bug operators hit.
+  const widths: Record<ViewportMode, string> = { mobile: "375px", laptop: "1024px", full: "100%" }
+  const previewUrl =
+    tokenState.status === "ready" && parsedTenantOrigin != null
+      ? `${parsedTenantOrigin}/__preview?t=${encodeURIComponent(tokenState.token)}`
+      : null
+
+  let body: React.ReactNode
   if (parsedTenantOrigin == null) {
-    return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+    body = (
+      <div className="m-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
         Preview disabled: invalid tenant origin (<code>{tenantOrigin}</code>).
       </div>
     )
-  }
-
-  if (isInvalidOrigin) {
-    return (
-      <div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+  } else if (isInvalidOrigin) {
+    body = (
+      <div className="m-4 rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
         Preview disabled: tenant origin must differ from admin origin (sandbox-attr safety invariant).
       </div>
     )
-  }
-
-  if (tokenState.status === "loading") {
-    return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground p-4 text-center">
+  } else if (tokenState.status === "loading") {
+    body = (
+      <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground p-4 text-center">
         {isSlowLoad
           ? "Still loading… check the tenant origin and HMAC secret if this persists."
           : "Loading preview…"}
       </div>
     )
-  }
-
-  if (tokenState.status === "error") {
-    return (
-      <div className="space-y-2 p-4">
+  } else if (tokenState.status === "error") {
+    body = (
+      <div className="m-4 space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-4">
         <p className="text-sm text-destructive">Preview error: {tokenState.message}</p>
         <button type="button" className="text-sm underline" onClick={() => forceRefresh()}>
           Retry
         </button>
       </div>
     )
+  } else {
+    body = (
+      <div className="flex-1 overflow-auto bg-muted/30">
+        <div
+          className="mx-auto h-full transition-[width] duration-200"
+          style={{ width: widths[viewport] }}
+        >
+          <iframe
+            key={tokenState.token} // remount on token rotation so manual refresh definitely reloads
+            ref={iframeRef}
+            src={previewUrl ?? ""}
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            className="h-full w-full border-0 bg-background"
+            title="Page preview"
+            onLoad={() => setIframeLoadedAt(Date.now())}
+          />
+        </div>
+      </div>
+    )
   }
-
-  const { token } = tokenState
-  const previewUrl = `${tenantOrigin}/__preview?t=${encodeURIComponent(token)}`
-  const widths: Record<ViewportMode, string> = { mobile: "375px", laptop: "1024px", full: "100%" }
 
   return (
     <div className="flex h-full flex-col">
@@ -183,28 +205,15 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMo
         setViewport={setViewport}
         onRefresh={() => {
           forceRefresh()
-          if (iframeRef.current) iframeRef.current.src = previewUrl
+          if (iframeRef.current && previewUrl) iframeRef.current.src = previewUrl
         }}
-        onOpenInNewTab={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+        onOpenInNewTab={() => {
+          if (previewUrl) window.open(previewUrl, "_blank", "noopener,noreferrer")
+        }}
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
       />
-      <div className="flex-1 overflow-auto bg-muted/30">
-        <div
-          className="mx-auto h-full transition-[width] duration-200"
-          style={{ width: widths[viewport] }}
-        >
-          <iframe
-            key={token} // remount on token rotation so manual refresh definitely reloads
-            ref={iframeRef}
-            src={previewUrl}
-            sandbox="allow-scripts allow-same-origin allow-forms"
-            className="h-full w-full border-0 bg-background"
-            title="Page preview"
-            onLoad={() => setIframeLoadedAt(Date.now())}
-          />
-        </div>
-      </div>
+      {body}
     </div>
   )
 }
