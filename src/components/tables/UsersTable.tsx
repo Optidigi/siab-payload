@@ -1,19 +1,27 @@
 "use client"
 import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "./DataTable"
 import { RoleBadge } from "@/components/shared/RoleBadge"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
 import { Button } from "@/components/ui/button"
-import { Trash2 } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu"
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
 import type { User } from "@/payload-types"
 
 export function UsersTable({ data, canManage }: { data: User[]; canManage: boolean }) {
   const router = useRouter()
-  // Holds the user the operator clicked the trash icon on; controls the
-  // typed-confirm dialog. Single shared instance keeps state minimal.
+  // Single shared dialog target — set when the operator picks Delete from
+  // a row's kebab menu.
   const [target, setTarget] = useState<User | null>(null)
 
   const remove = async () => {
@@ -35,17 +43,41 @@ export function UsersTable({ data, canManage }: { data: User[]; canManage: boole
       ? ([{
           id: "actions",
           header: "",
-          cell: ({ row }: any) => (
-            <Button
-              size="icon"
-              variant="ghost"
-              type="button"
-              aria-label={`Remove ${row.original.email}`}
-              onClick={() => setTarget(row.original)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          )
+          cell: ({ row }: any) => {
+            const u = row.original as User
+            return (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    type="button"
+                    aria-label={`Actions for ${u.email}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem asChild>
+                    <Link href={`/users/${u.id}/edit`}>
+                      <Pencil className="mr-2 h-4 w-4" /> Edit
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      setTarget(u)
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )
+          }
         }] as ColumnDef<User, any>[])
       : [])
   ]
@@ -60,7 +92,7 @@ export function UsersTable({ data, canManage }: { data: User[]; canManage: boole
           title="Remove user"
           description={
             <>
-              This permanently removes <strong>{target.email}</strong>'s account and revokes
+              This permanently removes <strong>{target.email}</strong>&apos;s account and revokes
               their access to every tenant they belong to. The user record cannot be restored.
             </>
           }
