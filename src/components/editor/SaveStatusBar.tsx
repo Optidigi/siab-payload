@@ -1,8 +1,10 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Loader2, AlertCircle, CheckCircle2, Save } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, Save, Eye, EyeOff, Maximize } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+
+export type PreviewMode = "hidden" | "side" | "fullscreen"
 
 /**
  * SaveStatusBar — floating top-right status pill that reflects the
@@ -36,6 +38,8 @@ type Props = {
   onSave: () => void
   onRetry?: () => void
   onJumpToError?: () => void
+  previewMode?: PreviewMode
+  setPreviewMode?: (m: PreviewMode) => void
 }
 
 export function SaveStatusBar({
@@ -44,7 +48,9 @@ export function SaveStatusBar({
   errorCount = 0,
   onSave,
   onRetry,
-  onJumpToError
+  onJumpToError,
+  previewMode,
+  setPreviewMode
 }: Props) {
   // Hide the "saved" tick after a delay so the pill doesn't linger.
   // We keep the element mounted during the fade for a cleaner
@@ -66,8 +72,61 @@ export function SaveStatusBar({
     setSavedFading(false)
   }, [status])
 
-  if (status === "idle") return null
-  if (status === "saved" && !showSaved) return null
+  // Preview-mode toggle is rendered as a sibling so it stays visible even
+  // when the save pill is "idle". When the pill is hidden we still render
+  // the toggle alone in the same position.
+  const previewToggle =
+    setPreviewMode && previewMode !== undefined ? (
+      <Button
+        variant="ghost"
+        size="icon"
+        type="button"
+        onClick={() => {
+          const next: Record<PreviewMode, PreviewMode> = {
+            hidden: "side",
+            side: "fullscreen",
+            fullscreen: "hidden",
+          }
+          setPreviewMode(next[previewMode])
+        }}
+        aria-label={
+          previewMode === "hidden"
+            ? "Show preview"
+            : previewMode === "side"
+            ? "Fullscreen preview"
+            : "Hide preview"
+        }
+        title={
+          previewMode === "hidden"
+            ? "Show preview"
+            : previewMode === "side"
+            ? "Fullscreen preview"
+            : "Hide preview"
+        }
+        className="h-7 w-7"
+      >
+        {previewMode === "hidden" && <Eye className="h-3.5 w-3.5" />}
+        {previewMode === "side" && <Maximize className="h-3.5 w-3.5" />}
+        {previewMode === "fullscreen" && <EyeOff className="h-3.5 w-3.5" />}
+      </Button>
+    ) : null
+
+  // Hidden states: pill not rendered, but if a preview toggle is provided
+  // we still surface it in the same anchored position so the operator can
+  // toggle the preview pane independent of save state.
+  if (status === "idle" || (status === "saved" && !showSaved)) {
+    if (!previewToggle) return null
+    return (
+      <div
+        className={cn(
+          "fixed bottom-4 left-4 right-4 z-40 sm:bottom-auto sm:left-auto sm:top-16 sm:right-4",
+          "flex items-center gap-1 rounded-md border bg-card/80 px-2 py-1 shadow-sm backdrop-blur",
+        )}
+      >
+        {previewToggle}
+      </div>
+    )
+  }
 
   // Position: top-right on desktop (clears the 48px sticky SiteHeader at z-10
   // by anchoring at top-16 = 64px → 16px gap below the header), bottom strip
@@ -164,35 +223,46 @@ export function SaveStatusBar({
       ? cn("transition-opacity duration-500", savedFading && "opacity-0")
       : ""
 
-  if (isClickableJump) {
-    return (
-      <button
-        type="button"
-        role="status"
-        aria-live="polite"
-        aria-label={label}
-        onClick={onJumpToError}
-        className={cn(
-          positionClasses,
-          baseClasses,
-          tone,
-          fadeClass,
-          "cursor-pointer hover:opacity-90"
-        )}
-      >
-        {body}
-      </button>
-    )
-  }
-
-  return (
+  // The pill itself doesn't include the preview toggle (different visual
+  // treatment); instead we wrap pill + toggle in a flex container so they
+  // sit side-by-side at the same anchor.
+  const pill = isClickableJump ? (
+    <button
+      type="button"
+      role="status"
+      aria-live="polite"
+      aria-label={label}
+      onClick={onJumpToError}
+      className={cn(
+        baseClasses,
+        tone,
+        fadeClass,
+        "cursor-pointer hover:opacity-90"
+      )}
+    >
+      {body}
+    </button>
+  ) : (
     <div
       role="status"
       aria-live="polite"
       aria-label={label}
-      className={cn(positionClasses, baseClasses, tone, fadeClass)}
+      className={cn(baseClasses, tone, fadeClass)}
     >
       {body}
+    </div>
+  )
+
+  if (!previewToggle) {
+    return <div className={positionClasses}>{pill}</div>
+  }
+
+  return (
+    <div className={cn(positionClasses, "flex items-center gap-2")}>
+      {pill}
+      <div className="flex items-center rounded-md border bg-card/80 px-1 py-1 shadow-sm backdrop-blur">
+        {previewToggle}
+      </div>
     </div>
   )
 }

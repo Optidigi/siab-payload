@@ -13,7 +13,12 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">{page.title}</h1>
-      <PageForm initial={page as any} tenantId={ctx.tenant.id} baseHref="/pages"/>
+      <PageForm
+        initial={page as any}
+        tenantId={ctx.tenant.id}
+        baseHref="/pages"
+        tenantOrigin={`https://${ctx.tenant.domain}`}
+      />
     </div>
   )
 }

@@ -11,7 +11,11 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">New page · {tenant.name}</h1>
-      <PageForm tenantId={tenant.id} baseHref={`/sites/${slug}/pages`}/>
+      <PageForm
+        tenantId={tenant.id}
+        baseHref={`/sites/${slug}/pages`}
+        tenantOrigin={`https://${tenant.domain}`}
+      />
     </div>
   )
 }

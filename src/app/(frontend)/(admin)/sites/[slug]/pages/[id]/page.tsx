@@ -15,7 +15,12 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">{page.title}</h1>
-      <PageForm initial={page as any} tenantId={tenant.id} baseHref={`/sites/${slug}/pages`}/>
+      <PageForm
+        initial={page as any}
+        tenantId={tenant.id}
+        baseHref={`/sites/${slug}/pages`}
+        tenantOrigin={`https://${tenant.domain}`}
+      />
     </div>
   )
 }
