@@ -18,7 +18,11 @@ export function InsertSlot({ onClick, label = "Add block" }: { onClick: () => vo
         type="button"
         onClick={onClick}
         aria-label={label}
-        className="absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100"
+        // Hover-reveal on pointer devices; permanently visible on touch (no
+        // hover state to trigger the reveal). Without this, touch users
+        // would only have the trailing "+ Add block" button and couldn't
+        // insert between existing blocks at all.
+        className="absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
       >
         <span className="flex items-center gap-1 rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-sm hover:border-primary hover:text-primary">
           <Plus className="h-3 w-3" />

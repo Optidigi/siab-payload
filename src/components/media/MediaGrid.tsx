@@ -40,7 +40,10 @@ export function MediaGrid({
   const [usageFor, setUsageFor] = useState<Media | null>(null)
 
   const usageOf = (m: Media): MediaUsageEntry => {
-    const entry = usage?.get(m.id as any)
+    // Map keys are `number | string` (the union of Payload id types — pg
+    // adapter uses numbers, mongo uses strings). `Media.id` is the same
+    // union per payload-types.ts, so no cast is needed.
+    const entry = usage?.get(m.id as number | string)
     return entry ?? { pages: [], settings: false }
   }
   const usageCount = (m: Media) => {

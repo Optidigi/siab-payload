@@ -26,7 +26,12 @@ export function BlockTypePicker({
   onOpenChange
 }: {
   onAdd: (slug: string, atIndex: number) => void
-  defaultIndex: number
+  // Optional — only meaningful in controlled mode (called from InsertSlot
+  // with a specific insertion index). Trigger-only callers using the
+  // default "+ Add block" button can omit it; the onAdd handler in
+  // BlockEditor falls back to append() when atIndex >= fields.length, so
+  // Number.MAX_SAFE_INTEGER reliably routes to "append at end".
+  defaultIndex?: number
   controlledOpen?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
@@ -55,7 +60,7 @@ export function BlockTypePicker({
               key={b.slug}
               type="button"
               className="rounded-md border p-3 text-left hover:bg-accent"
-              onClick={() => { onAdd(b.slug, defaultIndex); setOpen(false) }}
+              onClick={() => { onAdd(b.slug, defaultIndex ?? Number.MAX_SAFE_INTEGER); setOpen(false) }}
             >
               <div className="font-medium">{b.slug}</div>
               <div className="text-xs text-muted-foreground">{b.fields.length} fields</div>

@@ -12,7 +12,6 @@ import {
 } from "@dnd-kit/core"
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
@@ -46,11 +45,9 @@ export function BlockEditor() {
     const from = fields.findIndex((f) => f.id === active.id)
     const to = fields.findIndex((f) => f.id === over.id)
     if (from === -1 || to === -1) return
-    const next = arrayMove(fields, from, to)
-    // Mirror the dnd-kit reorder onto RHF's field array via move(). Using
-    // move (not replace) keeps RHF's internal field IDs stable, which is
-    // important for the SortableContext key continuity.
-    void next
+    // Mirror dnd-kit's reorder onto RHF's field array. Using move() (not
+    // replace via arrayMove → setValue) keeps RHF's internal field IDs
+    // stable, which is what SortableContext keys off.
     move(from, to)
   }
 
