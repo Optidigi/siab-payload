@@ -13,6 +13,7 @@ import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { Page } from "@/payload-types"
 
@@ -70,8 +71,20 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
     }
     setPending(false)
     if (!res.ok) {
-      setSubmitError(`HTTP ${res.status}`)
-      toast.error("Save failed")
+      // Drill into Payload's error envelope so a slug-regex / unique
+      // conflict / required-field error lights up the offending field
+      // instead of bubbling up as an opaque "HTTP 400".
+      const detail = await parsePayloadError(res)
+      if (detail.field) {
+        // RHF accepts dotted paths (e.g. "seo.title"); cast for the
+        // generic FieldPath constraint.
+        form.setError(detail.field as keyof Values, {
+          type: "server",
+          message: detail.message
+        })
+      }
+      setSubmitError(detail.message)
+      toast.error(`Save failed: ${detail.message}`)
       return
     }
     setSubmitError(null)
