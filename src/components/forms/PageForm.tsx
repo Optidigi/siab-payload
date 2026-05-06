@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
+import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
 import { toast } from "sonner"
 import type { Page } from "@/payload-types"
 
@@ -36,6 +37,8 @@ const seoFields = [
 export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tenantId: number | string; baseHref: string }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: initial
@@ -46,12 +49,31 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
 
   const onSubmit = async (values: Values) => {
     setPending(true)
+    setSubmitError(null)
     const url = initial ? `/api/pages/${initial.id}` : "/api/pages"
     const method = initial ? "PATCH" : "POST"
     const body = JSON.stringify({ ...values, tenant: tenantId })
-    const res = await fetch(url, { method, headers: { "content-type": "application/json" }, body })
+    let res: Response
+    try {
+      res = await fetch(url, { method, headers: { "content-type": "application/json" }, body })
+    } catch (e) {
+      setPending(false)
+      const msg = e instanceof Error ? e.message : "Network error"
+      setSubmitError(msg)
+      toast.error("Save failed")
+      return
+    }
     setPending(false)
-    if (!res.ok) { toast.error("Save failed"); return }
+    if (!res.ok) {
+      setSubmitError(`HTTP ${res.status}`)
+      toast.error("Save failed")
+      return
+    }
+    setSubmitError(null)
+    setLastSavedAt(Date.now())
+    // Reset RHF dirty state to the just-saved values so SaveStatusBar
+    // transitions out of "dirty" once the save lands.
+    form.reset(values, { keepValues: true })
     toast.success(values.status === "published" ? "Published" : "Saved")
     if (!initial) {
       const json = await res.json()
@@ -61,6 +83,17 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
       router.refresh()
     }
   }
+
+  // Compute save status for the bar. "idle" means: not dirty AND nothing
+  // saved yet — keeps the bar hidden on initial render.
+  const isDirty = form.formState.isDirty
+  let saveStatus: SaveStatus = "idle"
+  if (pending) saveStatus = "saving"
+  else if (submitError) saveStatus = "error"
+  else if (isDirty) saveStatus = "dirty"
+  else if (lastSavedAt) saveStatus = "saved"
+
+  const retry = () => form.handleSubmit(onSubmit)()
 
   return (
     <Form {...form}>
@@ -108,6 +141,9 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
                 {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
               </CardContent>
             </Card>
+          </div>
+          <div className="lg:col-span-3">
+            <SaveStatusBar status={saveStatus} onRetry={retry} />
           </div>
       </form>
     </Form>
