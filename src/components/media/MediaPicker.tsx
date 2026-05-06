@@ -52,6 +52,16 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
 
   useEffect(() => { if (open) reload() }, [open, reload])
 
+  // Boundary normalization: if a parent passes us a populated Media object
+  // (e.g. from a depth>=1 fetch), reduce it to its id so the form holds a
+  // primitive. Prevents Payload upstream bug on next submit (see
+  // PageForm.normalizeUploadId for the matching belt).
+  useEffect(() => {
+    if (value && typeof value === "object" && "id" in value) {
+      onChange((value as { id: number | string }).id)
+    }
+  }, [value, onChange])
+
   // The form stores either a Media id (number) OR a populated Media object.
   // Resolve to a display object if we can find it.
   const valueId = typeof value === "object" && value ? (value as any).id : value

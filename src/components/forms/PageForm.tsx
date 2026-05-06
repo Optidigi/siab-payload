@@ -15,11 +15,27 @@ import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBa
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
 import { Trash2 } from "lucide-react"
 import type { Page } from "@/payload-types"
+
+/**
+ * Payload upload fields accept either a numeric id or null. The form may
+ * hold a fully populated Media object after a fetched page is loaded
+ * with depth>=1. Normalize back to id (or null) before submit so we
+ * don't trip a Payload v3.84.1 upstream bug in beforeValidate where
+ * parseFloat(<object>) returns NaN and validation rejects the field.
+ */
+const normalizeUploadId = (v: unknown): number | string | null => {
+  if (v == null) return null
+  if (typeof v === "object" && v !== null && "id" in (v as Record<string, unknown>)) {
+    return (v as { id: number | string }).id
+  }
+  return v as number | string
+}
 
 const schema = z.object({
   title: z.string().min(1),
@@ -65,7 +81,15 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
     setSubmitError(null)
     const url = initial ? `/api/pages/${initial.id}` : "/api/pages"
     const method = initial ? "PATCH" : "POST"
-    const body = JSON.stringify({ ...values, tenant: tenantId })
+    // Normalize ogImage to a bare id so Payload's beforeValidate hook
+    // doesn't choke on a populated Media object — see normalizeUploadId.
+    const body = JSON.stringify({
+      ...values,
+      tenant: tenantId,
+      seo: values.seo
+        ? { ...values.seo, ogImage: normalizeUploadId(values.seo.ogImage) }
+        : values.seo,
+    })
     let res: Response
     try {
       res = await fetch(url, { method, headers: { "content-type": "application/json" }, body })
@@ -221,39 +245,66 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
         onCancel={guard.cancel}
         onConfirm={guard.confirm}
       />
-      {initial && (
-        <>
-          <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4 mt-8">
-            <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+      <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4 mt-8">
+        <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {initial ? (
+            <>
               Deleting page <strong>{initial.title}</strong> removes the page and any
               block content. Cannot be undone.
-            </p>
-            <Button
-              type="button"
-              variant="destructive"
-              className="mt-3"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete page
-            </Button>
-          </section>
-          <TypedConfirmDialog
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            title={`Delete ${initial.title}`}
-            description={
-              <>
-                This will permanently delete the page <strong>{initial.title}</strong> and
-                remove it from the live site. <strong>Cannot be undone.</strong>
-              </>
-            }
-            confirmPhrase={initial.slug}
-            confirmLabel="Delete page"
-            onConfirm={onDelete}
-          />
-        </>
+            </>
+          ) : (
+            <>Once saved, you can permanently delete this page from here.</>
+          )}
+        </p>
+        {initial ? (
+          <Button
+            type="button"
+            variant="destructive"
+            className="mt-3"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete page
+          </Button>
+        ) : (
+          <TooltipProvider>
+            <Tooltip>
+              {/* A disabled <Button> swallows pointer events, so wrap in a
+                  span trigger so the tooltip still surfaces on hover/focus. */}
+              <TooltipTrigger asChild>
+                <span tabIndex={0} className="mt-3 inline-block">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete page
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Save the page first to enable delete.</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </section>
+      {initial && (
+        <TypedConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title={`Delete ${initial.title}`}
+          description={
+            <>
+              This will permanently delete the page <strong>{initial.title}</strong> and
+              remove it from the live site. <strong>Cannot be undone.</strong>
+            </>
+          }
+          confirmPhrase={initial.slug}
+          confirmLabel="Delete page"
+          onConfirm={onDelete}
+        />
       )}
     </Form>
   )
