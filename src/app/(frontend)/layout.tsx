@@ -10,7 +10,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
   return (
     <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
           <Toaster richColors />
         </ThemeProvider>
