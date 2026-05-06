@@ -85,9 +85,11 @@ export function SaveStatusBar({
   if (status === "idle") return null
   if (status === "saved" && !showSaved) return null
 
-  // Position: top-right desktop, bottom strip on mobile.
+  // Position: top-right on desktop (clears the 48px sticky SiteHeader at z-10
+  // by anchoring at top-16 = 64px → 16px gap below the header), bottom strip
+  // on mobile.
   const positionClasses =
-    "fixed bottom-4 left-4 right-4 z-40 sm:bottom-auto sm:left-auto sm:top-4 sm:right-4"
+    "fixed bottom-4 left-4 right-4 z-40 sm:bottom-auto sm:left-auto sm:top-16 sm:right-4"
 
   let tone = "border bg-muted text-muted-foreground"
   let body: React.ReactNode = null

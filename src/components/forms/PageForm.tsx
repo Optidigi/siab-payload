@@ -77,9 +77,12 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
       // instead of bubbling up as an opaque "HTTP 400".
       const detail = await parsePayloadError(res)
       if (detail.field) {
-        // RHF accepts dotted paths (e.g. "seo.title"); cast for the
-        // generic FieldPath constraint.
-        form.setError(detail.field as keyof Values, {
+        // RHF accepts dotted paths (e.g. "seo.title"). Cast widens to any
+        // because `keyof Values` is only the top-level keys, but RHF's
+        // runtime accepts the full FieldPath. Matches the pattern in
+        // TenantEditForm/UserEditForm for consistency.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        form.setError(detail.field as any, {
           type: "server",
           message: detail.message
         })

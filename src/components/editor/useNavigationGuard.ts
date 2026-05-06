@@ -21,6 +21,12 @@ import { useRouter } from "next/navigation"
  *  - browser back/forward to an off-site origin
  *  - in-app `<Link>` and `<a>` clicks within the SPA
  *
+ * Does NOT catch:
+ *  - same-origin browser back/forward (no `routeChangeStart` event in
+ *    Next.js App Router; no API to intercept the popstate-triggered
+ *    navigation before it commits). Acceptable degradation for an
+ *    operator-only surface.
+ *
  * Bypass cases (the click guard does NOT block these):
  *  - external links (different origin)
  *  - `target="_blank"` anchors
@@ -104,5 +110,10 @@ export function useNavigationGuard(
       window.removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
     }
-  }, [when, message, router])
+    // `router` is stable across renders in Next.js 13+ App Router —
+    // including it in deps would cause unnecessary listener teardown +
+    // re-registration on every parent re-render (PageForm re-renders
+    // on every keystroke under RHF default mode).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [when, message])
 }
