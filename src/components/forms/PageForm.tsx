@@ -13,9 +13,12 @@ import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
+import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
+import { Trash2 } from "lucide-react"
 import type { Page } from "@/payload-types"
 
 const schema = z.object({
@@ -42,6 +45,7 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   const [pending, setPending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: initial
@@ -51,8 +55,10 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   })
 
   // Guard against accidental tab close / refresh / off-site nav while the
-  // form has unsaved work or a save is in flight.
-  useNavigationGuard(form.formState.isDirty || pending)
+  // form has unsaved work or a save is in flight. Headless hook —
+  // pairs with <UnsavedChangesDialog/> below for the in-app + popstate
+  // confirms.
+  const guard = useNavigationGuard(form.formState.isDirty || pending)
 
   const onSubmit = async (values: Values) => {
     setPending(true)
@@ -121,6 +127,24 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   const triggerSave = () => form.handleSubmit(onSubmit, onInvalid)()
   const jumpToError = () =>
     scrollToFirstError(form.formState.errors as Record<string, unknown>)
+
+  const onDelete = async () => {
+    if (!initial) return
+    const res = await fetch(`/api/pages/${initial.id}`, { method: "DELETE" })
+    if (!res.ok) {
+      const detail = await parsePayloadError(res)
+      throw new Error(detail.message)
+    }
+    // Clear dirty so the navigation guard doesn't fire on the post-
+    // delete redirect. router.replace is programmatic so the click
+    // guard wouldn't fire anyway, but if a future code path adds a
+    // guard between here and the redirect, this keeps the state
+    // machine coherent. Belt-and-braces.
+    form.reset(form.getValues(), { keepValues: true })
+    toast.success(`Deleted ${initial.title}`)
+    router.replace(baseHref)
+    router.refresh()
+  }
 
   // Compute save status for the pill. "idle" means: not dirty AND
   // nothing saved yet — keeps the pill hidden on initial render.
@@ -192,6 +216,45 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
         onRetry={retry}
         onJumpToError={jumpToError}
       />
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+      />
+      {initial && (
+        <>
+          <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4 mt-8">
+            <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Deleting page <strong>{initial.title}</strong> removes the page and any
+              block content. Cannot be undone.
+            </p>
+            <Button
+              type="button"
+              variant="destructive"
+              className="mt-3"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete page
+            </Button>
+          </section>
+          <TypedConfirmDialog
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title={`Delete ${initial.title}`}
+            description={
+              <>
+                This will permanently delete the page <strong>{initial.title}</strong> and
+                remove it from the live site. <strong>Cannot be undone.</strong>
+              </>
+            }
+            confirmPhrase={initial.slug}
+            confirmLabel="Delete page"
+            onConfirm={onDelete}
+          />
+        </>
+      )}
     </Form>
   )
 }
