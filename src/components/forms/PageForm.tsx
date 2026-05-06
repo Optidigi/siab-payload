@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -91,6 +91,53 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
       window.localStorage.setItem("page-editor:preview-mode", previewMode)
     }
   }, [previewMode])
+
+  // Cross-pane focus state. focusin in PageForm's <form> sets the focused
+  // block index; PreviewPane forwards it to the iframe via postMessage.
+  // focusSeqRef monotonically increments so the iframe can ignore stale
+  // messages — necessary because the user can rapidly tab through fields.
+  const [focusedBlockIndex, setFocusedBlockIndex] = useState<number | null>(null)
+  const [focusSeq, setFocusSeq] = useState(0)
+  const focusSeqRef = useRef(0)
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null
+      if (!target) return
+      // shadcn Select trigger is a <button> without a `name` — read it via
+      // closest("[name]") so any nested input inside a labelled wrapper
+      // still resolves.
+      const named = target.closest("[name]") as HTMLElement | null
+      const name = named?.getAttribute("name") ?? ""
+      // Anchored regex so `seo.*`, bare `blocks`, `pages.0.blocks.…` (non-
+      // anchored) etc. don't match — only top-level `blocks.<n>.…`.
+      const m = /^blocks\.(\d+)\./.exec(name)
+      const captured = m?.[1]
+      if (captured) {
+        const idx = parseInt(captured, 10)
+        if (!Number.isNaN(idx)) {
+          focusSeqRef.current += 1
+          setFocusSeq(focusSeqRef.current)
+          setFocusedBlockIndex(idx)
+        }
+      }
+    }
+    document.addEventListener("focusin", onFocusIn)
+    return () => document.removeEventListener("focusin", onFocusIn)
+  }, [])
+
+  // Iframe → admin: scroll the editor row for the clicked block + focus
+  // its first input. Querying by `[name^="blocks.<n>."]` works because
+  // RHF + react-hook-form's Controller registers fields with that exact
+  // name shape.
+  const handleClickBlock = (index: number) => {
+    const firstInput = document.querySelector(
+      `[name^="blocks.${index}."]`,
+    ) as HTMLElement | null
+    if (firstInput) {
+      firstInput.scrollIntoView({ behavior: "smooth", block: "center" })
+      firstInput.focus({ preventScroll: true })
+    }
+  }
 
   // Stable draft session id for unsaved Pages (no real id yet).
   const draftSessionId = useMemo(() => {
@@ -295,6 +342,9 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             pageId={initial?.id ?? `draft-${draftSessionId}`}
             previewMode={previewMode}
             setPreviewMode={setPreviewMode}
+            focusedBlockIndex={focusedBlockIndex}
+            focusSeq={focusSeq}
+            onClickBlock={handleClickBlock}
           />
         </div>
       )}

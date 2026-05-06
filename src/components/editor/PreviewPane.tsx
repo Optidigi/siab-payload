@@ -12,12 +12,18 @@ type Props = {
   pageId: number | string
   previewMode: PreviewMode
   setPreviewMode: (m: PreviewMode) => void
+  // Cross-pane focus sync. focusedBlockIndex changes when the user focuses
+  // a field whose name starts with `blocks.<n>.`. focusSeq is a monotonic
+  // counter that lets the iframe drop stale messages.
+  focusedBlockIndex?: number | null
+  focusSeq?: number
+  onClickBlock?: (index: number) => void
 }
 
 const DEBOUNCE_MS = 100
 const HEARTBEAT_TIMEOUT_MS = 60_000
 
-export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMode, setPreviewMode }: Props) {
+export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMode, setPreviewMode, focusedBlockIndex, focusSeq, onClickBlock }: Props) {
   const { state: tokenState, forceRefresh } = useSignedPreviewToken({ tenantId, pageId })
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [status, setStatus] = useState<PreviewStatus>("loading")
@@ -53,7 +59,7 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMo
     const expected = parsedTenantOrigin
     const onMessage = (e: MessageEvent) => {
       if (e.origin !== expected) return
-      const data = e.data as { type?: string; version?: number; message?: string } | null
+      const data = e.data as { type?: string; version?: number; message?: string; index?: number } | null
       if (!data || typeof data !== "object") return
       if (data.type === "preview:ready" && data.version === 1) {
         setStatus("ready")
@@ -65,11 +71,15 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMo
         // Per-block errors don't take the whole preview red; log only.
         // eslint-disable-next-line no-console
         console.warn("[preview] block render error:", data.message)
+      } else if (data.type === "preview:click-block" && data.version === 1) {
+        if (typeof data.index === "number" && onClickBlock) {
+          onClickBlock(data.index)
+        }
       }
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [parsedTenantOrigin])
+  }, [parsedTenantOrigin, onClickBlock])
 
   // Watchdog: if no heartbeat for 60s after ready, mark reconnecting.
   useEffect(() => {
@@ -122,6 +132,25 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMo
     }, DEBOUNCE_MS)
     return () => clearTimeout(t)
   }, [draftValues, status, parsedTenantOrigin])
+
+  // Cross-pane focus push: when a field in the editor gets focus, ping the
+  // iframe so it can scroll + outline the matching block. Iframe drops
+  // stale messages by `seq`, so we don't need to debounce here.
+  useEffect(() => {
+    if (focusedBlockIndex == null || status !== "ready") return
+    if (parsedTenantOrigin == null) return
+    const win = iframeRef.current?.contentWindow
+    if (!win) return
+    win.postMessage(
+      {
+        type: "preview:focus-block",
+        version: 1,
+        index: focusedBlockIndex,
+        seq: focusSeq ?? 0,
+      },
+      parsedTenantOrigin,
+    )
+  }, [focusedBlockIndex, focusSeq, status, parsedTenantOrigin])
 
   // Token lifecycle → status
   useEffect(() => {
