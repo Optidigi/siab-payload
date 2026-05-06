@@ -47,22 +47,26 @@ export function PreviewToolbar({
       : `Error${errorMessage ? `: ${errorMessage}` : ""}`
 
   return (
-    <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2">
+    <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
       <div className="flex items-center gap-2 min-w-0">
         <span className={cn("h-2 w-2 rounded-full shrink-0", dotClass)} aria-hidden />
         <span className="text-xs text-muted-foreground truncate">{label}</span>
       </div>
       <div className="flex items-center gap-1">
-        <Button variant={viewport === "mobile" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("mobile")} aria-label="Mobile viewport (375px)">
-          <Smartphone className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant={viewport === "laptop" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("laptop")} aria-label="Laptop viewport (1024px)">
-          <Monitor className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant={viewport === "full" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("full")} aria-label="Full viewport">
-          <Maximize2 className="h-3.5 w-3.5" />
-        </Button>
-        <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+        {/* Viewport switcher — hidden on <md (no mouse-pointer affordance,
+            and the phone is a phone). Re-shows at md+ where it's useful. */}
+        <div className="hidden md:flex items-center gap-1">
+          <Button variant={viewport === "mobile" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("mobile")} aria-label="Mobile viewport (375px)">
+            <Smartphone className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant={viewport === "laptop" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("laptop")} aria-label="Laptop viewport (1024px)">
+            <Monitor className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant={viewport === "full" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("full")} aria-label="Full viewport">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+          <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+        </div>
         {/* Fullscreen-mode toggle — uses Expand/Shrink (distinct from the
             Maximize2 used by the viewport "full" button just above, so the
             two don't visually collide). */}
@@ -103,7 +107,7 @@ export function PreviewToolbar({
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} aria-label="Refresh preview">
           <RotateCw className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onOpenInNewTab} aria-label="Open preview in new tab">
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-7 w-7" onClick={onOpenInNewTab} aria-label="Open preview in new tab">
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
       </div>

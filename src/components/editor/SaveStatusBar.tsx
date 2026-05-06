@@ -103,11 +103,13 @@ export function SaveStatusBar({
             ? "Fullscreen preview"
             : "Hide preview"
         }
-        className="h-7 w-7"
+        // Phone-first: 44×44 thumb target on <md, shrink on md+ to match
+        // the desktop pill density.
+        className="h-11 w-11 md:h-7 md:w-7"
       >
-        {previewMode === "hidden" && <Eye className="h-3.5 w-3.5" />}
-        {previewMode === "side" && <Maximize className="h-3.5 w-3.5" />}
-        {previewMode === "fullscreen" && <EyeOff className="h-3.5 w-3.5" />}
+        {previewMode === "hidden" && <Eye className="h-5 w-5 md:h-3.5 md:w-3.5" />}
+        {previewMode === "side" && <Maximize className="h-5 w-5 md:h-3.5 md:w-3.5" />}
+        {previewMode === "fullscreen" && <EyeOff className="h-5 w-5 md:h-3.5 md:w-3.5" />}
       </Button>
     ) : null
 
@@ -119,7 +121,7 @@ export function SaveStatusBar({
     return (
       <div
         className={cn(
-          "fixed bottom-4 left-4 right-4 z-40 sm:bottom-auto sm:left-auto sm:top-16 sm:right-4",
+          "fixed left-4 right-4 z-40 bottom-[max(1rem,env(safe-area-inset-bottom))] md:bottom-auto md:left-auto md:top-16 md:right-4",
           "flex items-center gap-1 rounded-md border bg-card/80 px-2 py-1 shadow-sm backdrop-blur",
         )}
       >
@@ -132,7 +134,7 @@ export function SaveStatusBar({
   // by anchoring at top-16 = 64px → 16px gap below the header), bottom strip
   // on mobile.
   const positionClasses =
-    "fixed bottom-4 left-4 right-4 z-40 sm:bottom-auto sm:left-auto sm:top-16 sm:right-4"
+    "fixed left-4 right-4 z-40 bottom-[max(1rem,env(safe-area-inset-bottom))] md:bottom-auto md:left-auto md:top-16 md:right-4"
 
   let tone = "border bg-muted text-muted-foreground"
   let body: React.ReactNode = null
