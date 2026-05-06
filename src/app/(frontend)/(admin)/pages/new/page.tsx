@@ -8,7 +8,11 @@ export default async function NewTenantPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold">New page</h1>
-      <PageForm tenantId={ctx.tenant.id} baseHref="/pages"/>
+      <PageForm
+        tenantId={ctx.tenant.id}
+        baseHref="/pages"
+        tenantOrigin={`https://${ctx.tenant.domain}`}
+      />
     </div>
   )
 }
