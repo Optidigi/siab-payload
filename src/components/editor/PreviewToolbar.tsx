@@ -1,7 +1,8 @@
 "use client"
-import { Smartphone, Monitor, Maximize2, ExternalLink, RotateCw } from "lucide-react"
+import { Smartphone, Monitor, Maximize2, Minimize2, ExternalLink, RotateCw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import type { PreviewMode } from "./SaveStatusBar"
 
 export type ViewportMode = "mobile" | "laptop" | "full"
 export type PreviewStatus = "loading" | "ready" | "reconnecting" | "error"
@@ -13,6 +14,8 @@ type Props = {
   setViewport: (m: ViewportMode) => void
   onRefresh: () => void
   onOpenInNewTab: () => void
+  previewMode: PreviewMode
+  setPreviewMode: (m: PreviewMode) => void
 }
 
 export function PreviewToolbar({
@@ -22,6 +25,8 @@ export function PreviewToolbar({
   setViewport,
   onRefresh,
   onOpenInNewTab,
+  previewMode,
+  setPreviewMode,
 }: Props) {
   const dotClass =
     status === "ready"
@@ -56,6 +61,40 @@ export function PreviewToolbar({
         </Button>
         <Button variant={viewport === "full" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("full")} aria-label="Full viewport">
           <Maximize2 className="h-3.5 w-3.5" />
+        </Button>
+        <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+        {previewMode === "side" ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setPreviewMode("fullscreen")}
+            aria-label="Fullscreen preview"
+            title="Fullscreen preview"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setPreviewMode("side")}
+            aria-label="Exit fullscreen (side mode)"
+            title="Exit fullscreen (side mode)"
+          >
+            <Minimize2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          onClick={() => setPreviewMode("hidden")}
+          aria-label="Hide preview"
+          title="Hide preview"
+        >
+          <X className="h-3.5 w-3.5" />
         </Button>
         <span className="mx-1 h-4 w-px bg-border" aria-hidden />
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} aria-label="Refresh preview">

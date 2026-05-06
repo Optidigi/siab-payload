@@ -293,6 +293,8 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             tenantId={tenantId}
             tenantOrigin={tenantOrigin}
             pageId={initial?.id ?? `draft-${draftSessionId}`}
+            previewMode={previewMode}
+            setPreviewMode={setPreviewMode}
           />
         </div>
       )}

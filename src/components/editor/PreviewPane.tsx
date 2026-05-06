@@ -3,18 +3,21 @@ import { useEffect, useRef, useState } from "react"
 import { useWatch, type Control } from "react-hook-form"
 import { useSignedPreviewToken } from "./useSignedPreviewToken"
 import { PreviewToolbar, type ViewportMode, type PreviewStatus } from "./PreviewToolbar"
+import type { PreviewMode } from "./SaveStatusBar"
 
 type Props = {
   control: Control<any>
   tenantId: number | string
   tenantOrigin: string  // e.g. "https://amicare.example.com"
   pageId: number | string
+  previewMode: PreviewMode
+  setPreviewMode: (m: PreviewMode) => void
 }
 
 const DEBOUNCE_MS = 100
 const HEARTBEAT_TIMEOUT_MS = 60_000
 
-export function PreviewPane({ control, tenantId, tenantOrigin, pageId }: Props) {
+export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMode, setPreviewMode }: Props) {
   const { state: tokenState, forceRefresh } = useSignedPreviewToken({ tenantId, pageId })
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [status, setStatus] = useState<PreviewStatus>("loading")
@@ -183,6 +186,8 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId }: Props) 
           if (iframeRef.current) iframeRef.current.src = previewUrl
         }}
         onOpenInNewTab={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+        previewMode={previewMode}
+        setPreviewMode={setPreviewMode}
       />
       <div className="flex-1 overflow-auto bg-muted/30">
         <div
