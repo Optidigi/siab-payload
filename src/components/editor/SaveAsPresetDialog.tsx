@@ -16,6 +16,28 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { parsePayloadError } from "@/lib/api"
 import { blockBySlug } from "@/blocks/registry"
+import type { Field } from "payload"
+
+/**
+ * Flatten row/collapsible wrappers — they're presentational containers
+ * with no key in form data, so for the missing-required scan we want to
+ * see their inner fields at the same level as their siblings. We do NOT
+ * descend into group/array/blocks: a `required` flag there governs the
+ * container itself, not its sub-fields, and per-row required-ness inside
+ * an array is an empty-array vs. populated-array question that the user
+ * resolves through the array UI, not through the preset save dialog.
+ */
+function flattenWrapperFields(fields: readonly Field[]): Field[] {
+  const out: Field[] = []
+  for (const f of fields) {
+    if (f.type === "row" || f.type === "collapsible") {
+      if ("fields" in f) out.push(...flattenWrapperFields(f.fields))
+    } else {
+      out.push(f)
+    }
+  }
+  return out
+}
 
 /**
  * Save-as-preset dialog.
@@ -69,10 +91,12 @@ export function SaveAsPresetDialog({
   const { id: _omitId, blockType: _omitBlockType, ...data } = liveBlock
 
   // Passive missing-required check (purely informational — we don't gate).
+  // Flattens row/collapsible wrappers so a required field inside one of
+  // those is still visible to the scan.
   const cfg = blockBySlug[blockSlug]
   const missingRequired: string[] = []
   if (cfg) {
-    for (const f of cfg.fields) {
+    for (const f of flattenWrapperFields(cfg.fields as Field[])) {
       if ("required" in f && f.required && "name" in f && f.name) {
         const v = (data as Record<string, unknown>)[f.name]
         if (v == null || v === "") missingRequired.push(f.name)
