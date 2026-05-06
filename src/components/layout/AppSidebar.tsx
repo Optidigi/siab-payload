@@ -17,6 +17,17 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   const inTenantView = mode === "super-admin" && !!tenantSlug
   const base = inTenantView ? `/sites/${tenantSlug}` : ""
 
+  // Content group (Pages/Media/Forms/Settings/Team/Onboarding) only makes
+  // sense in two contexts:
+  //   1. tenant editors (mode === "tenant") — they author for their own tenant
+  //   2. super-admin viewing a specific tenant (inTenantView === true) —
+  //      links resolve to /sites/<slug>/* and edit that tenant's content
+  // For super-admin AT TOP LEVEL (no tenant picked), every Content link
+  // would resolve to a top-level route that just redirects to /sites — dead
+  // ends. Hide the group entirely; the user picks a site from the Overview
+  // group's Sites link instead.
+  const showContent = mode === "tenant" || inTenantView
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
@@ -40,23 +51,25 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Content</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/pages`}><FileText /> Pages</Link></SidebarMenuButton></SidebarMenuItem>
-              <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/media`}><ImageIcon /> Media</Link></SidebarMenuButton></SidebarMenuItem>
-              <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/forms`}><Inbox /> Forms</Link></SidebarMenuButton></SidebarMenuItem>
-              <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/settings`}><Settings /> Settings</Link></SidebarMenuButton></SidebarMenuItem>
-              {(mode === "super-admin" || role === "owner") && (
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/users`}><Users /> Team</Link></SidebarMenuButton></SidebarMenuItem>
-              )}
-              {inTenantView && (
-                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/onboarding`}><ListChecks /> Onboarding</Link></SidebarMenuButton></SidebarMenuItem>
-              )}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {showContent && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Content</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/pages`}><FileText /> Pages</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/media`}><ImageIcon /> Media</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/forms`}><Inbox /> Forms</Link></SidebarMenuButton></SidebarMenuItem>
+                <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/settings`}><Settings /> Settings</Link></SidebarMenuButton></SidebarMenuItem>
+                {(inTenantView || role === "owner") && (
+                  <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/users`}><Users /> Team</Link></SidebarMenuButton></SidebarMenuItem>
+                )}
+                {inTenantView && (
+                  <SidebarMenuItem><SidebarMenuButton asChild><Link href={`${base}/onboarding`}><ListChecks /> Onboarding</Link></SidebarMenuButton></SidebarMenuItem>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter />
     </Sidebar>
