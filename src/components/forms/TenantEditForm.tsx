@@ -29,6 +29,29 @@ type Values = z.infer<typeof schema>
 
 type Counts = { pages: number; media: number; forms: number; siteSettings: number }
 
+/**
+ * Best-effort extraction of the most actionable error from a Payload REST
+ * response. Returns `{field?, message}` so callers can decide whether to
+ * highlight a specific form field or just show a toast.
+ */
+async function parsePayloadError(res: Response): Promise<{ field?: string; message: string }> {
+  const txt = await res.text().catch(() => "")
+  if (!txt) return { message: `HTTP ${res.status}` }
+  try {
+    const json = JSON.parse(txt)
+    // Payload v3 shape: { errors: [{ message, data: { errors: [{ path, message }] } }] }
+    const top = Array.isArray(json?.errors) ? json.errors[0] : null
+    const inner = Array.isArray(top?.data?.errors) ? top.data.errors[0] : null
+    if (inner?.path && inner?.message) {
+      return { field: String(inner.path), message: String(inner.message) }
+    }
+    if (top?.message) return { message: String(top.message) }
+  } catch {
+    // Not JSON — fall through.
+  }
+  return { message: txt.slice(0, 200) }
+}
+
 export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Counts }) {
   const router = useRouter()
   const [savePending, setSavePending] = useState(false)
@@ -55,14 +78,27 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
     })
     setSavePending(false)
     if (!res.ok) {
-      const txt = await res.text().catch(() => "")
-      toast.error(`Save failed: ${txt.slice(0, 200)}`)
+      // Surface the specific Payload validation error rather than dumping
+      // raw JSON in a toast. Payload's REST shape is
+      // `{errors:[{message,name,...,data:{errors:[{path,message}]}}]}`
+      // — flatten to the most useful inner field error if present, else
+      // fall back to the top-level message.
+      const detail = await parsePayloadError(res)
+      if (detail.field === "slug" || detail.field === "domain") {
+        form.setError(detail.field as "slug" | "domain", { message: detail.message })
+        toast.error(`${detail.field}: ${detail.message}`)
+      } else {
+        toast.error(`Save failed: ${detail.message}`)
+      }
       return
     }
     toast.success("Tenant updated")
     if (values.slug !== tenant.slug) {
-      // Slug change moves the tenant to a new URL — replace so back button doesn't 404.
+      // Slug change moves the tenant to a new URL — replace so back button
+      // doesn't 404, then refresh so the destination's RSC cache reflects
+      // the new tenant data.
       router.replace(`/sites/${values.slug}/edit`)
+      router.refresh()
     } else {
       router.refresh()
     }
@@ -71,11 +107,15 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
   const onDelete = async () => {
     const res = await fetch(`/api/tenants/${tenant.id}`, { method: "DELETE" })
     if (!res.ok) {
-      const txt = await res.text().catch(() => "")
-      throw new Error(`Delete failed (${res.status}): ${txt.slice(0, 200)}`)
+      const detail = await parsePayloadError(res)
+      throw new Error(`Delete failed (${res.status}): ${detail.message}`)
     }
     toast.success(`Deleted ${tenant.name}`)
+    // router.refresh() AFTER replace() — without it, the /sites listing's
+    // RSC cache still holds the now-deleted tenant and re-renders it as a
+    // ghost row until the user manually refreshes.
     router.replace("/sites")
+    router.refresh()
   }
 
   return (
@@ -134,11 +174,14 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
           <span className="font-medium">all associated content</span> (cascades at the
           database level). This cannot be undone.
         </p>
-        <ul className="mt-3 list-disc pl-5 text-sm text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
+          Counts at page load — anything added since may also be wiped:
+        </p>
+        <ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">
           <li>{counts.pages} page{counts.pages === 1 ? "" : "s"}</li>
           <li>{counts.media} media file{counts.media === 1 ? "" : "s"}</li>
           <li>{counts.forms} form submission{counts.forms === 1 ? "" : "s"}</li>
-          <li>{counts.siteSettings === 0 ? "No site settings" : "Site settings (1 record)"}</li>
+          <li>{counts.siteSettings} site settings record{counts.siteSettings === 1 ? "" : "s"}</li>
           <li>On-disk dir at <code className="text-[11px]">tenants/{tenant.id}/</code> (and any <code className="text-[11px]">archived/{tenant.id}/</code>)</li>
           <li>Tenant-membership rows for any users assigned to this tenant (the user records themselves stay)</li>
         </ul>

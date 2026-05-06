@@ -30,6 +30,11 @@ export default async function EditTenantPage({ params }: { params: Promise<{ slu
         <p className="text-sm text-muted-foreground">{tenant.name} · {tenant.domain}</p>
       </div>
       <TenantEditForm
+        // Defensive: force a fresh client form mount when slug changes
+        // (post-rename navigation). Today the route segment unmounts the
+        // form on its own, but if the form ever lifts above the [slug]
+        // segment, this guards against stale react-hook-form defaultValues.
+        key={tenant.slug}
         tenant={tenant}
         counts={{
           pages: pages.totalDocs,
