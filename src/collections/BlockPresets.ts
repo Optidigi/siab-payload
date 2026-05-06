@@ -81,7 +81,7 @@ export const BlockPresets: CollectionConfig = {
       name: "createdBy",
       type: "relationship",
       relationTo: "users",
-      admin: { readOnly: true, hidden: false }
+      admin: { readOnly: true }
     }
   ],
   hooks: {

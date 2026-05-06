@@ -9,11 +9,19 @@ permissions:
   contents: read
   packages: write
 
+# Force any JS-based actions still bundling Node 20 (currently the docker/*
+# family) onto the runner's Node 24. Default flips on 2026-06-02; we opt in
+# now to silence the deprecation warning and avoid a hard cutover later.
+# The actions themselves are unchanged.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout@v5 is the first major that ships Node 24 natively.
+      - uses: actions/checkout@v5
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

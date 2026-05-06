@@ -14,11 +14,12 @@ import { MigrateUpArgs, MigrateDownArgs, sql } from '@payloadcms/db-postgres'
  * Payload's per-collection convention; without this, the admin UI's
  * document-locking machinery throws when you try to save/edit one.
  *
- * No `.json` snapshot ships with this migration — it was hand-written
- * because the dev-Postgres docker container wasn't running on the operator's
- * Windows host at authoring time. The next `pnpm payload migrate:create`
- * will autogen a snapshot diff baseline; if any drift surfaces, hand-fix
- * per the same pattern as `20260505_222023_grow_site_settings`.
+ * Snapshot (`.json`) was hand-augmented from the previous migration's
+ * snapshot (Docker wasn't running locally at authoring time, so
+ * `migrate:create` couldn't autogen). Future `migrate:create` runs will
+ * diff against this hand-written baseline; verify no spurious drift on
+ * the next collection change. Pattern matches the hand-edit note in
+ * `20260505_222023_grow_site_settings`.
  */
 export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
   await db.execute(sql`
