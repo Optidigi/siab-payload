@@ -28,13 +28,20 @@ import type { Page } from "@/payload-types"
  * with depth>=1. Normalize back to id (or null) before submit so we
  * don't trip a Payload v3.84.1 upstream bug in beforeValidate where
  * parseFloat(<object>) returns NaN and validation rejects the field.
+ *
+ * Any non-primitive shape that ISN'T `{ id, ... }` collapses to null —
+ * sending `{}` or any malformed object would re-trigger the same upstream
+ * parseFloat-over-object → NaN path we're working around.
  */
 const normalizeUploadId = (v: unknown): number | string | null => {
   if (v == null) return null
-  if (typeof v === "object" && v !== null && "id" in (v as Record<string, unknown>)) {
-    return (v as { id: number | string }).id
+  if (typeof v === "object") {
+    const id = (v as { id?: unknown }).id
+    if (typeof id === "number" || typeof id === "string") return id
+    return null
   }
-  return v as number | string
+  if (typeof v === "number" || typeof v === "string") return v
+  return null
 }
 
 const schema = z.object({

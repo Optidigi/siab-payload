@@ -56,9 +56,17 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
   // (e.g. from a depth>=1 fetch), reduce it to its id so the form holds a
   // primitive. Prevents Payload upstream bug on next submit (see
   // PageForm.normalizeUploadId for the matching belt).
+  //
+  // Loop safety: RHF's `field.onChange` from <Controller> is NOT guaranteed
+  // stable across renders, but the typeof-object guard is what stops the
+  // effect from re-firing — once we've called onChange(value.id), `value`
+  // becomes a primitive and the if-condition is false on the next render.
+  // Do NOT remove that guard; identity churn on `onChange` alone would
+  // otherwise loop forever.
   useEffect(() => {
     if (value && typeof value === "object" && "id" in value) {
-      onChange((value as { id: number | string }).id)
+      const id = (value as { id: unknown }).id
+      if (typeof id === "number" || typeof id === "string") onChange(id)
     }
   }, [value, onChange])
 
