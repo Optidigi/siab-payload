@@ -10,6 +10,7 @@ services:
     environment:
       DATABASE_URI: postgres://payload:${POSTGRES_PASSWORD}@postgres:5432/payload
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      PREVIEW_HMAC_SECRET: ${PREVIEW_HMAC_SECRET}
       DATA_DIR: /data-out
       NEXT_PUBLIC_SUPER_ADMIN_DOMAIN: ${SUPER_ADMIN_DOMAIN:-siteinabox.nl}
       NEXT_PUBLIC_VPS_IP: ${VPS_IP}
