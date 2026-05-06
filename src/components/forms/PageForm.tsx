@@ -108,15 +108,6 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
     }
   }
 
-  // Compute save status for the bar. "idle" means: not dirty AND nothing
-  // saved yet — keeps the bar hidden on initial render.
-  const isDirty = form.formState.isDirty
-  let saveStatus: SaveStatus = "idle"
-  if (pending) saveStatus = "saving"
-  else if (submitError) saveStatus = "error"
-  else if (isDirty) saveStatus = "dirty"
-  else if (lastSavedAt) saveStatus = "saved"
-
   // RHF calls onInvalid when zod validation fails before onSubmit ever
   // runs. Jump the user to the first offending field.
   const onInvalid = (errors: FieldErrors<Values>) => {
@@ -124,6 +115,23 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
   }
 
   const retry = () => form.handleSubmit(onSubmit, onInvalid)()
+  const triggerSave = () => form.handleSubmit(onSubmit, onInvalid)()
+  const jumpToError = () =>
+    scrollToFirstError(form.formState.errors as Record<string, unknown>)
+
+  // Compute save status for the pill. "idle" means: not dirty AND
+  // nothing saved yet — keeps the pill hidden on initial render.
+  // Validation errors take precedence over dirty so the operator sees
+  // why their save was blocked.
+  const isDirty = form.formState.isDirty
+  const errorCount = Object.keys(form.formState.errors).length
+  const dirtyCount = Object.keys(form.formState.dirtyFields).length
+  let saveStatus: SaveStatus = "idle"
+  if (pending) saveStatus = "saving"
+  else if (errorCount > 0) saveStatus = "error"
+  else if (submitError) saveStatus = "error"
+  else if (isDirty) saveStatus = "dirty"
+  else if (lastSavedAt) saveStatus = "saved"
 
   return (
     <Form {...form}>
@@ -172,10 +180,15 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
               </CardContent>
             </Card>
           </div>
-          <div className="lg:col-span-3">
-            <SaveStatusBar status={saveStatus} onRetry={retry} />
-          </div>
       </form>
+      <SaveStatusBar
+        status={saveStatus}
+        dirtyCount={dirtyCount}
+        errorCount={errorCount}
+        onSave={triggerSave}
+        onRetry={retry}
+        onJumpToError={jumpToError}
+      />
     </Form>
   )
 }
