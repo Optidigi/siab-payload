@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { toast } from "sonner"
 import type { Page } from "@/payload-types"
 
@@ -46,6 +47,10 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
           blocks: (initial.blocks as any) ?? [], seo: (initial.seo as any) ?? {} }
       : { title: "", slug: "", status: "draft", blocks: [], seo: {} }
   })
+
+  // Guard against accidental tab close / refresh / off-site nav while the
+  // form has unsaved work or a save is in flight.
+  useNavigationGuard(form.formState.isDirty || pending)
 
   const onSubmit = async (values: Values) => {
     setPending(true)

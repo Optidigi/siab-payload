@@ -14,8 +14,9 @@ import { Button } from "@/components/ui/button"
  *   submit succeeded  -> "All changes saved" briefly (4s) then hide
  *   submit failed     -> "Save failed — Retry" (red); Retry calls onRetry
  *
- * It also installs a beforeunload guard while the form is dirty so
- * operators can't lose unsaved work by closing the tab.
+ * The bar is purely visual: navigation guarding lives in
+ * `useNavigationGuard`, which the parent form is responsible for
+ * mounting against its own dirty/pending state.
  */
 export type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error"
 
@@ -35,19 +36,6 @@ export function SaveStatusBar({
       return () => clearTimeout(t)
     }
     setShowSaved(false)
-  }, [status])
-
-  // beforeunload guard while the form is dirty (or actively saving).
-  useEffect(() => {
-    const dirty = status === "dirty" || status === "saving" || status === "error"
-    if (!dirty) return
-    const handler = (e: BeforeUnloadEvent) => {
-      e.preventDefault()
-      // Most browsers ignore the message but require returnValue to be set.
-      e.returnValue = ""
-    }
-    window.addEventListener("beforeunload", handler)
-    return () => window.removeEventListener("beforeunload", handler)
   }, [status])
 
   // Don't render at all on first render before any change has happened.
