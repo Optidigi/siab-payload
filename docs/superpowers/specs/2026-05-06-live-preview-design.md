@@ -1,7 +1,7 @@
 # Live Preview — Design Spec
 
 **Date:** 2026-05-06
-**Status:** Draft for operator review (brainstorm output, pre-plan)
+**Status:** Approved (post 2-researcher + 2-reviewer stress-test consensus + operator gate). Ready for implementation plan.
 **Wave:** 3 (final wave on the Phase-1 admin roadmap)
 **Repos touched:** `siab-payload` (CMS) + `sitegen-template` (Astro template) + `sitegen-cms-orchestrator` (env wiring only)
 
@@ -74,17 +74,31 @@ Image refs (Payload Media id) resolved to URLs by `Blocks.astro` before the comp
 
 ### Renderers built in this wave
 
+Field names below are verified against `siab-payload/src/blocks/*.ts` at HEAD `cab090d`. `*` = required.
+
 | Component | Source props (CMS Block) | Notes |
 |---|---|---|
-| `Hero.tsx` | `eyebrow`, `headline*`, `subheadline`, `cta { label, href }`, `image` | `*` required |
-| `FeatureList.tsx` | `title`, `intro`, `features[] { title*, description, icon }` | array of feature rows |
-| `Testimonials.tsx` | `title`, `items[] { quote*, author*, role, avatar }` | |
-| `FAQ.tsx` | `title`, `items[] { question*, answer* }` | |
-| `CTA.tsx` | `headline`, `body`, `primaryButton { label, href }`, `secondaryButton { label, href }` | |
-| `RichText.tsx` | `heading`, `body` (HTML) | refactor of existing `.astro` to `.tsx` |
-| `ContactSection.tsx` | `title`, `intro`, `formName`, `fields[] { name, label, type, required }` | type enum: `text` / `email` / `tel` / `textarea` |
+| `Hero.tsx` | `eyebrow`, `headline*`, `subheadline`, `cta { label, href }`, `image` | `cta` is a group; `image` resolved by mediaResolver |
+| `FeatureList.tsx` | `title`, `intro`, `features*[] { title*, description, icon }` | `icon` is a lucide-react icon-name string (renderer must allowlist or dynamic-import to avoid balloon — flagged in 3b reviewer scope, not blocking) |
+| `Testimonials.tsx` | `title`, `items*[] { quote*, author*, role, avatar }` | `avatar` resolved by mediaResolver |
+| `FAQ.tsx` | `title`, `items*[] { question*, answer* }` | |
+| `CTA.tsx` | `headline*`, `description`, `primary { label*, href* }`, `secondary { label, href }` | `primary`/`secondary` are groups; primary's label+href both required |
+| `RichText.tsx` | `body*` | `body` is `textarea` (plain-text source). Existing `RichText.astro` renders via `set:html` — operator-trusted content, XSS posture documented in Risks. v2 plans a Tiptap-backed editor per the field's admin comment; renderer swap-only at that point. **No `heading` field** (the existing `.astro` accepted one but the CMS Block doesn't define it — pre-existing scaffold drift; this wave drops it). |
+| `ContactSection.tsx` | `title`, `description`, `formName*`, `fields*[] { name*, label*, type*, required }` | `formName` defaults `"Contact form"`; `type` enum: `text` / `email` / `tel` / `textarea` |
 
 Each component wrapped at usage site by a `<BlockErrorBoundary>` so a single bad block can't crash the whole preview tree.
+
+## Template + orchestrator changes (prerequisite for everything that follows)
+
+The current `sitegen-template` is `output: 'static'` with no Preact integration. The orchestrator's `site-converter` agent (Group 1) already converts each tenant's site to `output: 'server'` + `@astrojs/node` adapter — so SSR is in place by the time a `__preview` route would run. We extend that flow:
+
+1. **`sitegen-template/package.json`** — add `@astrojs/preact` and `preact` as dependencies.
+2. **`sitegen-template/astro.config.mjs`** — register `preact()` integration with `compat: false` and `include: ['**/cms/*.tsx']` to scope it. (Stays `output: 'static'` here; the orchestrator flips to `'server'` per-tenant.)
+3. **`sitegen-cms-orchestrator/.claude/agents/site-converter.md`** — explicitly amend Group 1's "never modify dependencies after Group 1" rule to permit the `@astrojs/preact` install during conversion. Currently Group 1 only installs `@astrojs/node`. The amendment treats `@astrojs/preact` as a Group-1 sibling install, then re-locks dependencies. This is a deliberate carve-out, not a precedent for arbitrary deps.
+4. **`Blocks.astro`** (in site-converter Group 2): rewrite the switch-on-blockType to dispatch all 7 block types (currently only `richText`). Renders each block's `.tsx` component server-only on tenant pages (zero JS), opt-in to `client:load` only on the `__preview` route.
+5. **`src/lib/types.ts`** (in site-converter Group 2): extend the `Block` discriminated union beyond `RichTextBlock` to include all 7 block types. Field shapes mirror `siab-payload/src/blocks/*.ts`.
+
+These changes land as part of Wave 3's sub-waves (3a + 3b for the renderers, with the Preact + middleware + Blocks.astro + types.ts plumbing folded into 3a so 3b ships pure renderer code). The orchestrator agent edits land in lock-step with the template edits — a Wave-3 commit on `sitegen-cms-orchestrator` mirrors the template work.
 
 ## Preview route
 
@@ -101,12 +115,14 @@ if (!ok) return new Response('Unauthorized', { status: 401 })
 
 **Page body:**
 ```astro
-<BaseLayout> {/* same layout the real site uses, so theme/CSS/fonts load */}
+<PreviewLayout> {/* minimal slot-only layout — see below */}
   <PreviewIsland client:load allowedOrigin={import.meta.env.PUBLIC_ADMIN_ORIGIN} />
-</BaseLayout>
+</PreviewLayout>
 ```
 
-`PreviewIsland.tsx` initially renders `null`. Listens for `message` events, validates `e.origin === allowedOrigin`, swaps in `<Blocks blocks={draft.blocks} mediaResolver={previewResolver} />` when a `preview:draft` message arrives. Sends `preview:ready` once after first hydration.
+`PreviewIsland.tsx` initially renders `null` (or a skeleton placeholder — design choice in 3c). Listens for `message` events, validates `e.origin === allowedOrigin`, swaps in `<Blocks blocks={draft.blocks} mediaResolver={previewResolver} />` when a `preview:draft` message arrives. Sends `preview:ready` once after first hydration.
+
+**Why a separate `PreviewLayout`, not the tenant's `BaseLayout`:** real-tenant `BaseLayout` (post-conversion) includes themed `<Header>`, `<Footer>`, analytics, and possibly other site chrome. Reusing it would render the tenant's full chrome around the empty island for ~300-500ms while the island hydrates and waits for the first postMessage — a visible flash of "site frame with no content." `PreviewLayout` is a stripped slot-only wrapper that loads the tenant's CSS bundle (so theme tokens and Tailwind classes still apply) but skips chrome. Pixel-perfect for the *block content*; preview is explicitly scoped to in-progress block edits, not whole-page chrome review. (If chrome review is needed, the operator opens the deployed site in a new tab — out of MVP scope.)
 
 ### HMAC signing
 
@@ -133,10 +149,11 @@ export function signPreviewToken(claims: { tenantId: number; pageId: number | st
 ### Token refresh
 
 `useSignedPreviewToken` hook in admin:
-- Mints token on mount.
+- Mints token on mount, with an initial **safety margin** — `exp` requested by the hook is `now + 30min`, but the iframe URL embedding waits until at least 60s after mint to ensure no race against a slow load that 401s at the boundary. Practically: mint, then `iframe.src = url(token)` immediately; the 60s is tracked as a server-side "min remaining lifetime" check before any iframe re-load.
 - Schedules refresh at `exp - 60s` via `setTimeout`.
-- On refresh, hits the endpoint again. If the iframe is still alive, sends new token via `preview:token-refresh` postMessage (iframe doesn't currently use it, but the message is sent for future-proofing in case we ever add server roundtrips).
-- If `exp` already passed (tab was sleeping): full iframe `src` swap on next user interaction. Rare with 30-min TTL.
+- **Refreshes ALSO on `visibilitychange`** (when the tab becomes visible again) and on `window.focus`. Reason: Chrome and other browsers throttle `setTimeout` to ≥1min in background tabs, so the timer-based refresh can fire late (or after `exp`) when the operator returns from a long absence. The visibility/focus listener catches this: if the stored token's `exp - now < 60s`, hit the endpoint again immediately, then post the new token to the iframe.
+- On refresh, hits `POST /api/preview-tokens` again. If the iframe is alive, sends new token via `preview:token-refresh` postMessage (iframe doesn't currently use it, but the message is sent for future-proofing if we ever add server roundtrips).
+- If `exp` already passed (tab was sleeping past 30min): force iframe `src` swap with the freshly-minted token on next user interaction. Rare with 30-min TTL + visibility/focus refresh, but the swap is the recovery path. Stored in a ref so the swap uses the latest token, not the (possibly stale) one captured at hook closure.
 
 ## postMessage protocol
 
@@ -168,11 +185,33 @@ Iframe sends `preview:heartbeat` every 30s after `preview:ready`. Admin's `<Prev
 - Reconnect succeeds within 30s → status returns to green.
 - Three failed reconnects → status = red, toolbar shows "Reconnect" button for manual recovery.
 
-### Cross-origin / CORS
+### Cross-origin / CORS / framing
 
-- Tenant Astro middleware (`src/middleware.ts` — already scaffolded by the orchestrator's `site-converter`) sets `Access-Control-Allow-Origin: <ADMIN_ORIGIN>` on responses for `__preview` and `__preview/*`. No `X-Frame-Options: DENY` on this route.
-- Admin's `<iframe>` uses `sandbox="allow-scripts allow-same-origin"`.
+The orchestrator's scaffolded `src/middleware.ts` (per `site-converter.md` lines ~200-216) currently sets, on **every** response:
+- `X-Frame-Options: DENY`
+- `Content-Security-Policy: ... frame-ancestors 'none' ...`
+
+Both block iframe embedding. Browsers honor `frame-ancestors` over XFO, so just relaxing XFO is insufficient. Wave 3 amends the middleware (template + lock-step `site-converter.md` edit) to branch on the request path:
+
+```ts
+// Pseudocode
+const isPreview = ctx.url.pathname === '/__preview' || ctx.url.pathname.startsWith('/__preview/')
+if (isPreview) {
+  // Skip XFO entirely; rewrite CSP frame-ancestors to admin origin only.
+  response.headers.delete('X-Frame-Options')
+  response.headers.set('Content-Security-Policy', cspWith({ frameAncestors: [ADMIN_ORIGIN] }))
+  response.headers.set('Access-Control-Allow-Origin', ADMIN_ORIGIN)
+} else {
+  // Existing strict defaults — unchanged.
+}
+```
+
+- Admin's `<iframe>` uses `sandbox="allow-scripts allow-same-origin allow-forms"` (`allow-forms` is needed because `ContactSection` renders `<form>` elements; without it, render warnings/quirks vary by engine).
 - CMS's `/api/media/<id>/file` already serves cross-origin (Payload defaults; verify and extend for the admin origin if needed) so iframe `<img>` tags fetch successfully.
+
+### Sandbox-attr safety invariant
+
+`allow-scripts allow-same-origin` together is [explicitly warned against by MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#sandbox) when the iframe is the same origin as its embedder — it allows the iframe to script-modify the embedder. **Wave 3 invariant: admin origin (e.g. `admin.siteinabox.nl`) MUST differ from the tenant origin** (e.g. `tenant-domain.com`). The CMS `<PreviewPane>` asserts this at runtime — if `tenantOrigin` resolves to the admin's own origin, render an error state and refuse to embed. This is a defensive check; under normal multi-tenant operation the origins are always different.
 
 ## Admin UI — `<PreviewPane>`
 
@@ -222,7 +261,7 @@ function PreviewPane({ pageId, tenantId, draftValues, tenantOrigin }: Props) {
       <iframe
         ref={iframeRef}
         src={`${tenantOrigin}/__preview?t=${token}`}
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-forms"
         style={{ width: widths[viewport], height: '100%' }}
       />
     </div>
@@ -233,14 +272,15 @@ function PreviewPane({ pageId, tenantId, draftValues, tenantOrigin }: Props) {
 ### `draftValues` source
 
 ```tsx
-// PageForm.tsx
-const draftValues = useMemo(
-  () => form.watch(),
-  [JSON.stringify(form.watch())],  // identity-stable across renders
-)
+// Inside <PreviewPane> (NOT PageForm).
+import { useWatch } from 'react-hook-form'
+const draftValues = useWatch({ control })  // RHF subscribes to form state; stable identity per actual change
 ```
 
-`form.watch()` returns live form state on every change. The `useMemo` with stringified identity prevents the debounce from being defeated by reference churn.
+Two important localizations:
+
+1. **`useWatch`, not `form.watch()` + `useMemo`/JSON.stringify.** Calling `form.watch()` at the parent level triggers re-renders for the entire form on every keystroke, fanning out into BlockEditor and every FieldArray child. `useWatch({ control })` subscribes only the component that calls it; PageForm and BlockEditor stay quiet during typing. (The previous spec proposed `useMemo([JSON.stringify(form.watch())])`, which is theatrical — the JSON.stringify runs every render anyway, defeating the memo's purpose.)
+2. **The hook lives in `<PreviewPane>`, which is rendered inside PageForm.** `<PreviewPane>` receives `control` from PageForm via prop; subscription is local. PageForm doesn't subscribe to anything, so its render volume is unaffected by preview being toggled on or off.
 
 ### Viewport switcher
 
@@ -266,13 +306,13 @@ Each sub-wave is gated by a reviewer agent (Opus, given this design doc + the di
 
 | Sub-wave | Scope | Repo | Approx LOC | Reviewer focus |
 |---|---|---|---|---|
-| **3a** | Hero, RichText (refactor), CTA renderers | `sitegen-template` | ~250 | Tailwind conventions, prop-shape parity with CMS Block configs, BlockErrorBoundary integration |
-| **3b** | FeatureList, Testimonials, FAQ, ContactSection renderers | `sitegen-template` | ~350 | Same as 3a + array/group field handling |
-| **3c** | `__preview` Astro page + Preact island shell + HMAC verify | `sitegen-template` | ~200 | Token verification correctness, message validation, sandbox attrs, CORS |
-| **3d** | Admin `<PreviewPane>` + iframe + transport + token mint endpoint + viewport switcher | `siab-payload` | ~400 | Debounce correctness, cross-origin discipline, watchdog/heartbeat, viewport sizing |
+| **3a** | **Foundation + 3 renderers**: `@astrojs/preact` install + `astro.config.mjs` integration + `site-converter.md` Group-1 amendment + middleware route-aware framing relaxation + `Blocks.astro` switch extension + `src/lib/types.ts` Block union extension + `PreviewLayout` slot-only component + Hero, RichText (refactor — drops `heading`), CTA renderers | `sitegen-template` + `sitegen-cms-orchestrator` | ~430 | Foundation correctness, dep-lock amendment shape, middleware branching tested, prop-shape parity with CMS Block configs, BlockErrorBoundary integration |
+| **3b** | **4 renderers**: FeatureList, Testimonials, FAQ, ContactSection (pure renderer code; foundation already landed in 3a) | `sitegen-template` | ~350 | Tailwind conventions, array/group field handling, lucide-icon allowlist for FeatureList |
+| **3c** | `__preview` Astro page + Preact island shell + HMAC verify (`src/lib/preview/verify.ts`) | `sitegen-template` | ~200 | Token verification correctness, message validation, sandbox attrs |
+| **3d** | Admin `<PreviewPane>` + iframe + `useWatch`-based draftValues + transport + token mint endpoint (`POST /api/preview-tokens` + `src/lib/preview/sign.ts`) + `useSignedPreviewToken` hook (visibility/focus refresh) + admin-origin invariant assertion + viewport switcher | `siab-payload` | ~450 | Debounce correctness via `useWatch`, cross-origin discipline, watchdog/heartbeat, viewport sizing, sandbox-origin invariant |
 | **3e** | Polish: scroll preservation across form changes, loading copy refinement, error recovery edge cases | `siab-payload` + `sitegen-template` | ~150 | UX consistency, edge cases |
 
-Total: ~1350 LOC across 5 commits, 5 reviewer passes, 5 deploys. Roughly comparable to Wave 2 in volume.
+Total: ~1580 LOC across 5 commits, 5 reviewer passes, 5 deploys. Slightly heavier than Wave 2; 3a is the largest sub-wave because it includes the foundation work plus the first three renderers.
 
 ### Cross-wave coordination
 
@@ -286,8 +326,8 @@ Total: ~1350 LOC across 5 commits, 5 reviewer passes, 5 deploys. Roughly compara
 | # | Risk | Mitigation |
 |---|---|---|
 | 1 | Preact `.tsx` server-render produces different HTML than `.astro` | Renderers use only standard JSX. Reviewer agent inspects each sub-wave for hydration warnings. |
-| 2 | `form.watch()` returning fresh identity defeats debounce | `useMemo` over stringified values, or RHF's `useWatch` with explicit deps. Verify message rate via dev logging. |
-| 3 | Cross-origin iframe blocked by browser policies | Tenant nginx CORS + no `X-Frame-Options: DENY`. Tested in 3c before admin work. |
+| 2 | `form.watch()` at parent re-renders entire form per keystroke; debounce identity churn | `useWatch({ control })` localized inside `<PreviewPane>`. NOT `useMemo+JSON.stringify` (theatrical). Verify message rate via dev logging. |
+| 3 | Cross-origin iframe blocked by browser policies | Route-aware middleware: skip `X-Frame-Options` on `/__preview*` AND replace CSP `frame-ancestors 'none'` with `frame-ancestors <ADMIN_ORIGIN>` (browser CSP takes precedence over XFO). Tested in 3c before admin work. |
 | 4 | Image refs in draft point at media not yet on tenant disk | Preview-mode `mediaResolver` resolves to CMS origin (see Block renderers section). |
 | 5 | Preact bundle on `__preview` balloons | Reviewer inspects bundle size per renderer sub-wave. Tree-shake; avoid heavy deps. |
 | 6 | HMAC secret leaks | Treated like `PAYLOAD_SECRET`. Documented rotation procedure. |
@@ -295,6 +335,9 @@ Total: ~1350 LOC across 5 commits, 5 reviewer passes, 5 deploys. Roughly compara
 | 8 | Browser asleep, iframe dead | Heartbeat every 30s. 60s timeout → reconnect. |
 | 9 | Fast typing during slow iframe render | React naturally last-wins. Each postMessage replaces draft entirely. |
 | 10 | Renderer throws on malformed draft | `<BlockErrorBoundary>` per block — placeholder + `preview:error` message. |
+| 11 | RichText `body` rendered via `set:html` / `dangerouslySetInnerHTML` is an XSS surface for non-operator-trusted input | Pre-existing posture (RichText.astro already does this). Documented as operator-trusted-content invariant: only authenticated CMS editors can write block content; CMS does not accept untrusted input into RichText.body. If/when public-facing form-driven content is ever added to a Block, dedicated sanitization pass required. |
+| 12 | Preact integration absent in template; orchestrator's Group-1 dep-lock forbids new installs | Sub-wave 3a explicitly amends the contract: `@astrojs/preact` is a Group-1 sibling install of `@astrojs/node`, scoped carve-out only — not a precedent. Lock-step edit to `site-converter.md`. |
+| 13 | Tenant nginx/CDN may add `X-Frame-Options: DENY` independently of Astro middleware | Verify production HTTP headers post-deploy on a test tenant before claiming Sub-wave 3c green; document in 3c reviewer focus. |
 
 ## Open issues (flag-and-defer)
 
@@ -309,9 +352,9 @@ Wave 3 is complete when:
 1. **All 7 block types render correctly** on a deployed tenant Astro site (verified: each tenant Page renders all blocks in the seeded JSON; no `console.warn` on unknown `blockType`).
 2. **Live preview opens within 1s** of toggling Side mode (initial iframe load + first hydration).
 3. **postMessage updates render in <100ms** of the trailing-edge debounce settling (verified by dev-mode timing).
-4. **No iframe reloads** during a sustained editing session (verified by counting `iframe.onload` fires — should be 1 per session).
-5. **Token refresh transparent**: refreshes during a session don't visibly affect preview (no flicker, no reconnect status flash).
-6. **Cross-origin secured**: signed-URL gate rejects unsigned requests with 401; iframe rejects postMessage from non-admin origins.
+4. **Minimal iframe reloads**: exactly **1 `iframe.onload` per editing session for a single page**, excluding manual ↻ Refresh and reconnect after a watchdog timeout. Verified by counting fires in dev tools.
+5. **Token refresh transparent**: refreshes during a session don't visibly affect preview (no flicker, no reconnect status flash). Refresh triggers via timer AND visibilitychange/focus.
+6. **Cross-origin secured**: signed-URL gate rejects unsigned requests with 401; iframe rejects postMessage from non-admin origins; **admin origin differs from tenant origin** (sandbox-attr safety invariant); CSP `frame-ancestors` permits the admin origin only on `__preview` and `/__preview/*` routes.
 7. **Viewport switcher functional**: 📱 / 💻 / 🖥️ buttons resize the preview without reloading the iframe.
 8. **Reviewer agent green-light** on each of 3a-3e before merge.
 9. **Operator verification** on prod for each sub-wave.
@@ -320,7 +363,7 @@ Wave 3 is complete when:
 
 | Variable | Set on | Purpose |
 |---|---|---|
-| `PREVIEW_HMAC_SECRET` | CMS + each tenant | Token signing/verification |
+| `PREVIEW_HMAC_SECRET` | CMS + each tenant | Token signing/verification. Both sides MUST `.trim()` the value on read (defensive against trailing whitespace from `.env` files written via `echo`, which would silently mismatch the HMAC and 401 on every iframe load). |
 | `PUBLIC_ADMIN_ORIGIN` | Each tenant build | Origin validation for postMessage |
 | `PUBLIC_CMS_ORIGIN` | Each tenant build | Media-resolver target during preview |
 
