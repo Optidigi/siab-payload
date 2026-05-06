@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { Loader2, AlertCircle, CheckCircle2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils"
  * Visual states:
  *   idle              -> hidden
  *   dirty             -> amber pill, "{n} unsaved" + inline Save button
- *                        (briefly pulses on the idle->dirty transition)
  *   saving            -> muted pill, spinner + "Saving..."
  *   saved             -> green pill, "Saved" — fades out after 4s
  *   error             -> red pill, either "Save blocked: N issues"
@@ -65,21 +64,6 @@ export function SaveStatusBar({
     }
     setShowSaved(false)
     setSavedFading(false)
-  }, [status])
-
-  // Pulse on the idle -> dirty transition only. Watching every status
-  // change with a ref keeps us from pulsing on every keystroke (RHF
-  // re-renders frequently while staying in "dirty").
-  const prevStatus = useRef<SaveStatus>(status)
-  const [pulsing, setPulsing] = useState(false)
-  useEffect(() => {
-    if (prevStatus.current !== "dirty" && status === "dirty") {
-      setPulsing(true)
-      const t = setTimeout(() => setPulsing(false), 3000)
-      prevStatus.current = status
-      return () => clearTimeout(t)
-    }
-    prevStatus.current = status
   }, [status])
 
   if (status === "idle") return null
@@ -174,10 +158,6 @@ export function SaveStatusBar({
   const baseClasses =
     "flex items-center gap-2 rounded-md px-3 py-2 text-sm shadow-md backdrop-blur"
 
-  // animate-pulse modulates opacity which can fight the saved-fade
-  // logic. Restrict it to dirty status, where there's no fade.
-  const pulseClass = pulsing && status === "dirty" ? "animate-pulse" : ""
-
   // Saved-fade: keep the element mounted while opacity transitions.
   const fadeClass =
     status === "saved"
@@ -196,7 +176,6 @@ export function SaveStatusBar({
           positionClasses,
           baseClasses,
           tone,
-          pulseClass,
           fadeClass,
           "cursor-pointer hover:opacity-90"
         )}
@@ -211,7 +190,7 @@ export function SaveStatusBar({
       role="status"
       aria-live="polite"
       aria-label={label}
-      className={cn(positionClasses, baseClasses, tone, pulseClass, fadeClass)}
+      className={cn(positionClasses, baseClasses, tone, fadeClass)}
     >
       {body}
     </div>
