@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
     const userTenantIds = (user.tenants ?? []).map((t) =>
       typeof t.tenant === "object" ? t.tenant.id : t.tenant,
     )
-    if (!userTenantIds.some((id) => id == tenantId)) {  // == on purpose: number/string compare
+    if (!userTenantIds.some((id) => Number(id) === Number(tenantId))) {
       return NextResponse.json({ message: "Forbidden" }, { status: 403 })
     }
   }
