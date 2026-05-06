@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,7 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
-import { SaveStatusBar, type SaveStatus } from "@/components/editor/SaveStatusBar"
+import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/editor/SaveStatusBar"
+import { PreviewPane } from "@/components/editor/PreviewPane"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
@@ -73,12 +74,31 @@ const seoFields = [
   { name: "ogImage", type: "upload", relationTo: "media", label: "Open Graph image" }
 ]
 
-export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tenantId: number | string; baseHref: string }) {
+export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initial?: Page; tenantId: number | string; baseHref: string; tenantOrigin: string }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const [previewMode, setPreviewMode] = useState<PreviewMode>(() => {
+    if (typeof window === "undefined") return "hidden"
+    const stored = window.localStorage.getItem("page-editor:preview-mode")
+    return stored === "side" || stored === "fullscreen" ? stored : "hidden"
+  })
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("page-editor:preview-mode", previewMode)
+    }
+  }, [previewMode])
+
+  // Stable draft session id for unsaved Pages (no real id yet).
+  const draftSessionId = useMemo(() => {
+    if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+      return crypto.randomUUID()
+    }
+    return Math.random().toString(36).slice(2)
+  }, [])
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: initial
@@ -256,7 +276,26 @@ export function PageForm({ initial, tenantId, baseHref }: { initial?: Page; tena
         onSave={triggerSave}
         onRetry={retry}
         onJumpToError={jumpToError}
+        previewMode={previewMode}
+        setPreviewMode={setPreviewMode}
       />
+      {previewMode !== "hidden" && (
+        <div
+          className={
+            previewMode === "side"
+              ? "fixed inset-y-0 right-0 w-[600px] border-l bg-background z-30 shadow-lg"
+              : "fixed inset-0 bg-background z-40"
+          }
+        >
+          <PreviewPane
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            control={form.control as unknown as import("react-hook-form").Control<any>}
+            tenantId={tenantId}
+            tenantOrigin={tenantOrigin}
+            pageId={initial?.id ?? `draft-${draftSessionId}`}
+          />
+        </div>
+      )}
       <UnsavedChangesDialog
         open={guard.pending !== null}
         onCancel={guard.cancel}
