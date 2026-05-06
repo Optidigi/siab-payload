@@ -190,6 +190,7 @@ export function PreviewPane({ control, tenantId, tenantOrigin, pageId }: Props) 
           style={{ width: widths[viewport] }}
         >
           <iframe
+            key={token} // remount on token rotation so manual refresh definitely reloads
             ref={iframeRef}
             src={previewUrl}
             sandbox="allow-scripts allow-same-origin allow-forms"
