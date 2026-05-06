@@ -1,5 +1,5 @@
 "use client"
-import { Smartphone, Monitor, Maximize2, Minimize2, ExternalLink, RotateCw, X } from "lucide-react"
+import { Smartphone, Monitor, Maximize2, Expand, Shrink, ExternalLink, RotateCw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { PreviewMode } from "./SaveStatusBar"
@@ -63,6 +63,9 @@ export function PreviewToolbar({
           <Maximize2 className="h-3.5 w-3.5" />
         </Button>
         <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+        {/* Fullscreen-mode toggle — uses Expand/Shrink (distinct from the
+            Maximize2 used by the viewport "full" button just above, so the
+            two don't visually collide). */}
         {previewMode === "side" ? (
           <Button
             variant="ghost"
@@ -72,7 +75,7 @@ export function PreviewToolbar({
             aria-label="Fullscreen preview"
             title="Fullscreen preview"
           >
-            <Maximize2 className="h-3.5 w-3.5" />
+            <Expand className="h-3.5 w-3.5" />
           </Button>
         ) : (
           <Button
@@ -83,7 +86,7 @@ export function PreviewToolbar({
             aria-label="Exit fullscreen (side mode)"
             title="Exit fullscreen (side mode)"
           >
-            <Minimize2 className="h-3.5 w-3.5" />
+            <Shrink className="h-3.5 w-3.5" />
           </Button>
         )}
         <Button

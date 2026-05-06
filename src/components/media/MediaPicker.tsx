@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useState, useCallback } from "react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
+import { X } from "lucide-react"
 import { MediaGrid } from "./MediaGrid"
 import { MediaUploader } from "./MediaUploader"
 import type { Media } from "@/payload-types"
@@ -92,9 +93,22 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
           </SheetTrigger>
           <SheetContent side="right" className="w-[640px] sm:max-w-[640px]" showCloseButton={false}>
             <SheetHeader>
-              <SheetTitle className="flex items-center justify-between">
+              <SheetTitle className="flex items-center justify-between gap-2">
                 <span>Choose media</span>
-                {resolvedTenantId != null && <MediaUploader tenantId={resolvedTenantId} onUploaded={() => reload()} />}
+                <div className="flex items-center gap-1.5">
+                  {resolvedTenantId != null && <MediaUploader tenantId={resolvedTenantId} onUploaded={() => reload()} />}
+                  {/*
+                    Close button positioned next to the uploader rather than
+                    the absolute top-right (the default Sheet close X used to
+                    sit there and overlap the uploader). Grouped here so both
+                    affordances live in the title row.
+                  */}
+                  <SheetClose asChild>
+                    <Button variant="ghost" size="icon" type="button" aria-label="Close" className="h-8 w-8">
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </SheetClose>
+                </div>
               </SheetTitle>
             </SheetHeader>
             <div className="mt-4">
