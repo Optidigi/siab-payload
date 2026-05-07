@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ChevronDown, ChevronRight, GripVertical, BookmarkPlus, Trash2, MoreVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,11 @@ import { useBlockKeyboardNav } from "./useBlockKeyboardNav"
 import { useWatch, useFormContext } from "react-hook-form"
 import { blockBySlug } from "@/blocks/registry"
 import type { BlockWithMeta } from "@/blocks/_summary"
+import { tinyVibrate } from "@/lib/haptics"
+
+// Must match TouchSensor activationConstraint in BlockEditor.tsx exactly.
+const PRESS_DELAY_MS = 200
+const PRESS_TOLERANCE_PX = 5
 
 function getSessionKey(pageId: string | number, blockFieldId: string) {
   return `block-open:${pageId}:${blockFieldId}`
@@ -91,6 +96,62 @@ export function BlockListItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const kbd = useBlockKeyboardNav({ index, total, move: onMove })
 
+  // Pre-drag "pressed" state for touch — fires after PRESS_DELAY_MS hold
+  // on the drag handle, matching the TouchSensor activationConstraint.
+  const [isPressed, setIsPressed] = useState(false)
+  const pressTimerRef = useRef<number | null>(null)
+  const pressStartRef = useRef<{ x: number; y: number } | null>(null)
+
+  const cancelPress = () => {
+    if (pressTimerRef.current !== null) {
+      window.clearTimeout(pressTimerRef.current)
+      pressTimerRef.current = null
+    }
+    pressStartRef.current = null
+    setIsPressed(false)
+  }
+
+  const onHandlePointerDown = (e: React.PointerEvent) => {
+    // Only touch needs the long-press visual. Mouse uses distance:4 (no delay).
+    if (e.pointerType !== "touch") return
+    pressStartRef.current = { x: e.clientX, y: e.clientY }
+    pressTimerRef.current = window.setTimeout(() => {
+      setIsPressed(true)
+      tinyVibrate(5)
+    }, PRESS_DELAY_MS)
+  }
+
+  const onHandlePointerMove = (e: React.PointerEvent) => {
+    const start = pressStartRef.current
+    if (!start) return
+    if (
+      Math.abs(e.clientX - start.x) > PRESS_TOLERANCE_PX ||
+      Math.abs(e.clientY - start.y) > PRESS_TOLERANCE_PX
+    ) {
+      cancelPress()
+    }
+  }
+
+  // Clear pressed state when actual drag begins (dnd-kit takes over the visual).
+  useEffect(() => {
+    if (isDragging) setIsPressed(false)
+  }, [isDragging])
+
+  // Clean up on unmount.
+  useEffect(() => {
+    return () => {
+      if (pressTimerRef.current !== null) window.clearTimeout(pressTimerRef.current)
+    }
+  }, [])
+
+  // Extract onPointerDown from dnd-kit listeners so we can chain our handler
+  // first (start our timer) and then hand off to dnd-kit's tracker.
+  const { onPointerDown: dndPointerDown, ...restListeners } = listeners ?? {}
+  const combinedPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    onHandlePointerDown(e)
+    dndPointerDown?.(e)
+  }
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -102,10 +163,12 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring transition-transform",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-muted/40",
+        "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
       data-dragging={isDragging || undefined}
+      data-pressed={isPressed || undefined}
       {...attributes}
       onKeyDown={kbd.onKeyDown}
       tabIndex={kbd.tabIndex}
@@ -117,7 +180,11 @@ export function BlockListItem({
             type="button"
             className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label="Drag to reorder block"
-            {...listeners}
+            {...restListeners}
+            onPointerDown={combinedPointerDown}
+            onPointerUp={cancelPress}
+            onPointerCancel={cancelPress}
+            onPointerMove={onHandlePointerMove}
           >
             <GripVertical className="h-4 w-4"/>
           </button>
