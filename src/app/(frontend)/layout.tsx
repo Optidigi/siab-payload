@@ -12,7 +12,11 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
-          <Toaster richColors />
+          <Toaster
+            richColors
+            position="bottom-center"
+            offset={"calc(var(--mini-strip-h, 0px) + env(safe-area-inset-bottom) + 12px)"}
+          />
         </ThemeProvider>
       </body>
     </html>
