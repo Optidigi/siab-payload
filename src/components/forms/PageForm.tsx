@@ -590,7 +590,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 already in TopBar), no Publish card (PublishControls in
                 TopBar). gap-4 handles spacing so no mt-8 needed on Danger.
               */
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-4 p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
                 <Card>
                   <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
                   <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
@@ -609,7 +609,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 Page card + Blocks (col-span-2), Publish + SEO column,
                 Danger Zone below.
               */
-              <div className="@container/editor p-4">
+              <div className="@container/editor p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
                 <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
                   <div className="@[800px]/editor:col-span-2 space-y-4">
                     <Card>
