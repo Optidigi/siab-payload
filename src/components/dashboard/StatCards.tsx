@@ -16,9 +16,9 @@ export function StatCards({ stats }: { stats: Stat[] }) {
         const Icon = s.icon
         return (
           <Card key={s.label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
+            <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2 p-4">
+              {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />}
               <CardDescription>{s.label}</CardDescription>
-              {Icon && <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />}
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <CardTitle className="text-xl sm:text-2xl">{s.value}</CardTitle>
