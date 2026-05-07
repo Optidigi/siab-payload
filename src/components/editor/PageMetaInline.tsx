@@ -34,7 +34,18 @@ export function PageMetaInline({ control }: Props) {
         render={({ field }) => (
           <FormItem className="w-48 shrink-0">
             <FormControl>
-              <Input placeholder="slug" {...field} value={field.value ?? ""} />
+              <div
+                className="flex items-center h-9 rounded-md border border-input bg-transparent shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
+                title="URL path. Lowercase, digits, hyphens."
+              >
+                <span className="pl-3 pr-1 text-sm text-muted-foreground select-none">/</span>
+                <input
+                  placeholder="slug"
+                  {...field}
+                  value={field.value ?? ""}
+                  className="flex-1 min-w-0 bg-transparent py-1 pr-3 text-base md:text-sm outline-none placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+              </div>
             </FormControl>
             <FormMessage />
           </FormItem>
