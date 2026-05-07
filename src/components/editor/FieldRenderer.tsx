@@ -16,6 +16,8 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
   switch (field.type) {
     case "text":
     case "email":
+    case "url":
+    case "tel":
       return (
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
@@ -29,6 +31,22 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}
+                  {...f}
+                  value={f.value ?? ""}
+                />
+              ) : field.type === "url" ? (
+                <Input
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  {...f}
+                  value={f.value ?? ""}
+                />
+              ) : field.type === "tel" ? (
+                <Input
+                  type="tel"
+                  autoComplete="tel"
                   {...f}
                   value={f.value ?? ""}
                 />

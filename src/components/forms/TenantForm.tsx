@@ -48,10 +48,35 @@ export function TenantForm() {
           <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
         )} />
         <FormField name="slug" control={form.control} render={({ field }) => (
-          <FormItem><FormLabel>Slug</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          <FormItem>
+            <FormLabel>Slug</FormLabel>
+            <FormControl>
+              <Input
+                inputMode="url"
+                autoCapitalize="off"
+                autoCorrect="off"
+                spellCheck={false}
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )} />
         <FormField name="domain" control={form.control} render={({ field }) => (
-          <FormItem><FormLabel>Domain</FormLabel><FormControl><Input placeholder="clientasite.nl" {...field} /></FormControl><FormMessage /></FormItem>
+          <FormItem>
+            <FormLabel>Domain</FormLabel>
+            <FormControl>
+              <Input
+                type="url"
+                inputMode="url"
+                autoCapitalize="off"
+                autoCorrect="off"
+                placeholder="clientasite.nl"
+                {...field}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )} />
         <FormField name="siteRepo" control={form.control} render={({ field }) => (
           <FormItem><FormLabel>Site repo (optional)</FormLabel><FormControl><Input placeholder="optidigi/site-clientasite" {...field} /></FormControl><FormMessage /></FormItem>

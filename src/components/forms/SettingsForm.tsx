@@ -10,7 +10,7 @@ import { toast } from "sonner"
 
 const generalFields = [
   { name: "siteName", type: "text", label: "Site name", required: true },
-  { name: "siteUrl", type: "text", label: "Site URL", required: true,
+  { name: "siteUrl", type: "url", label: "Site URL", required: true,
     admin: { description: "Public URL of the SSR site (e.g. https://clientasite.nl)" } },
   { name: "contactEmail", type: "email", label: "Contact email" }
 ]
@@ -24,11 +24,11 @@ const brandingFields = [
 
 const contactFields = [
   { type: "group", name: "contact", label: "Contact", fields: [
-    { name: "phone", type: "text", label: "Phone" },
+    { name: "phone", type: "tel", label: "Phone" },
     { name: "address", type: "textarea", label: "Address" },
     { type: "array", name: "social", label: "Social links", singularLabel: "link", fields: [
       { name: "platform", type: "text", label: "Platform", required: true },
-      { name: "url", type: "text", label: "URL", required: true }
+      { name: "url", type: "url", label: "URL", required: true }
     ]}
   ]}
 ]

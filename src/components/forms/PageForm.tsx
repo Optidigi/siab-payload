@@ -611,7 +611,15 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Slug*</FormLabel>
-                              <FormControl><Input {...field} /></FormControl>
+                              <FormControl>
+                                <Input
+                                  inputMode="url"
+                                  autoCapitalize="off"
+                                  autoCorrect="off"
+                                  spellCheck={false}
+                                  {...field}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -638,7 +646,19 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                             <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
                           )}/>
                           <FormField control={form.control} name="slug" render={({ field }) => (
-                            <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                            <FormItem>
+                              <FormLabel>Slug*</FormLabel>
+                              <FormControl>
+                                <Input
+                                  inputMode="url"
+                                  autoCapitalize="off"
+                                  autoCorrect="off"
+                                  spellCheck={false}
+                                  {...field}
+                                />
+                              </FormControl>
+                              <FormMessage/>
+                            </FormItem>
                           )}/>
                         </CardContent>
                       </Card>

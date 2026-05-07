@@ -106,7 +106,15 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
           <FormField name="slug" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Slug</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
+              <FormControl>
+                <Input
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  {...field}
+                />
+              </FormControl>
               <p className="text-xs text-muted-foreground">Used in admin URLs (<code className="text-[11px]">/sites/&lt;slug&gt;</code>). Changing this rewrites the URL.</p>
               <FormMessage />
             </FormItem>
@@ -114,7 +122,16 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
           <FormField name="domain" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Domain</FormLabel>
-              <FormControl><Input placeholder="clientasite.nl" {...field} /></FormControl>
+              <FormControl>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  placeholder="clientasite.nl"
+                  {...field}
+                />
+              </FormControl>
               <p className="text-xs text-muted-foreground">Bare apex without <code className="text-[11px]">admin.</code> prefix; the middleware adds it.</p>
               <FormMessage />
             </FormItem>
