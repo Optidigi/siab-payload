@@ -324,54 +324,162 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   else if (isDirty) saveStatus = "dirty"
   else if (lastSavedAt) saveStatus = "saved"
 
+  // Desktop side mode renders the preview as an in-flow flex column
+  // sibling of the editor; in any other mode the preview wrapper is
+  // either hidden or absolutely positioned, so it doesn't take a
+  // flex-basis slot.
+  const showSideInFlow = isDesktop && previewMode === "side"
+
+  // Wrapper className/style for the single PreviewPane mount. Computed
+  // once so the JSX below stays readable and so the same wrapper
+  // re-renders across mode changes (which is the whole point — never
+  // remount the iframe).
+  const previewWrapperClass = cn(
+    "flex flex-col",
+    isDesktop && previewMode === "hidden" && "hidden",
+    showSideInFlow && "self-stretch min-w-0 border-l bg-background",
+    isDesktop && previewMode === "fullscreen" &&
+      "fixed inset-0 bg-background z-40",
+    !isDesktop && previewSheetState === "closed" && "hidden",
+    // Phone peek/full styling lives mostly on the sheet wrapper added in
+    // Step 8 — for now treat phone-open as fullscreen so the iframe is
+    // visible while the rest of the sheet UI is wired.
+    !isDesktop && previewSheetState !== "closed" &&
+      "fixed inset-x-0 bottom-0 z-40 bg-background border-t shadow-2xl rounded-t-2xl overflow-hidden",
+  )
+  const previewWrapperStyle: React.CSSProperties | undefined = showSideInFlow
+    ? {
+        flex: `0 0 ${splitPct}%`,
+        transition: isDragging ? "none" : "flex-basis 80ms ease-out",
+      }
+    : undefined
+
+  const previewPane = (
+    <PreviewPane
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      control={form.control as unknown as import("react-hook-form").Control<any>}
+      tenantId={tenantId}
+      tenantOrigin={tenantOrigin}
+      pageId={initial?.id ?? `draft-${draftSessionId}`}
+      previewMode={previewMode}
+      setPreviewMode={setPreviewMode}
+      focusedBlockIndex={focusedBlockIndex}
+      focusSeq={focusSeq}
+      onClickBlock={handleClickBlock}
+      status={previewStatus}
+      setStatus={setPreviewStatus}
+      errorMessage={previewErrorMessage}
+      setErrorMessage={setPreviewErrorMessage}
+      isSlowLoad={previewIsSlowLoad}
+      setIsSlowLoad={setPreviewIsSlowLoad}
+    />
+  )
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
-            <Card>
-              <CardHeader><CardTitle>Page</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <FormField control={form.control} name="title" render={({ field }) => (
-                  <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                )}/>
-                <FormField control={form.control} name="slug" render={({ field }) => (
-                  <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                )}/>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-              <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
-            </Card>
+      <div ref={formContainerRef} className="flex w-full">
+        <form
+          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+          className="flex-1 min-w-0"
+        >
+          {/*
+            Container queries on the editor area so the inner Page +
+            Publish/SEO grid stacks based on its OWN width, not the
+            viewport. When the side preview takes 50% of a 1280px
+            viewport the editor area shrinks to 640px — at that width
+            we want the inner cards stacked, even though the global
+            viewport is still well past `lg`. lg-breakpoint media queries
+            can't see container width.
+          */}
+          <div className="@container/editor">
+            <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
+              <div className="@[800px]/editor:col-span-2 space-y-4">
+                <Card>
+                  <CardHeader><CardTitle>Page</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField control={form.control} name="title" render={({ field }) => (
+                      <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )}/>
+                    <FormField control={form.control} name="slug" render={({ field }) => (
+                      <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                    )}/>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
+                  <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                </Card>
+              </div>
+              {/*
+                Stacked-mode separator. Only shows when the editor area
+                is below 800px (single-column inner grid) — adds a
+                visual divider + "Settings" heading so Publish/SEO
+                doesn't run straight into Blocks. Hidden once the inner
+                grid switches back to 3-col side-by-side.
+              */}
+              <div className="@[800px]/editor:hidden border-t pt-4">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Settings</h3>
+              </div>
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <FormField control={form.control} name="status" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage/>
+                      </FormItem>
+                    )}/>
+                    <Button type="submit" disabled={pending} className="w-full">{pending ? "Saving..." : "Save"}</Button>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </div>
-          <div className="space-y-4">
-            <Card>
-              <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <FormField control={form.control} name="status" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage/>
-                  </FormItem>
-                )}/>
-                <Button type="submit" disabled={pending} className="w-full">{pending ? "Saving..." : "Save"}</Button>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
-              </CardContent>
-            </Card>
-          </div>
-      </form>
+        </form>
+        {showSideInFlow && (
+          <SplitDivider
+            pct={splitPct}
+            setPct={setSplitPct}
+            iframeWrapperRef={previewWrapperRef}
+            containerRef={formContainerRef}
+            isDragging={isDragging}
+            setIsDragging={setIsDragging}
+          />
+        )}
+        {/*
+          Single PreviewPane mount. The wrapper class/style swaps based
+          on breakpoint × mode but the wrapper element itself stays at
+          the SAME position in the React tree across all modes — that's
+          load-bearing because each remount loses heartbeat state,
+          signed-token age, scroll position, and mid-typing debounce
+          timers. When not in side mode the wrapper is positioned
+          `fixed` (or `display:none`), so it visually escapes this flex
+          row but keeps its identity in React reconciliation. Token
+          rotation (forceRefresh) still remounts via
+          `key={tokenState.token}` inside PreviewPane.
+        */}
+        <div
+          ref={previewWrapperRef}
+          className={previewWrapperClass}
+          style={previewWrapperStyle}
+        >
+          {previewPane}
+        </div>
+      </div>
       <SaveStatusBar
         status={saveStatus}
         dirtyCount={dirtyCount}
@@ -382,71 +490,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
       />
-      {/*
-        Single PreviewPane mount. The wrapper class/style swaps based on
-        breakpoint × mode so we never remount the iframe on a mode flip
-        — that's load-bearing because each remount loses heartbeat
-        state, signed-token age, scroll position, and mid-typing
-        debounce timers. Token rotation (forceRefresh) still remounts
-        via `key={tokenState.token}` inside PreviewPane.
-
-        Visibility matrix:
-          Desktop hidden       -> wrapper display:none (iframe kept warm)
-          Desktop side         -> fixed right overlay (Step 4 makes in-flow)
-          Desktop fullscreen   -> fixed inset-0 z-40
-          Phone closed         -> wrapper display:none
-          Phone peek/full      -> sheet wrapper (Step 8 wires drag/anim)
-      */}
-      {isDesktop && previewMode === "side" && (
-        <SplitDivider
-          pct={splitPct}
-          setPct={setSplitPct}
-          iframeWrapperRef={previewWrapperRef}
-          containerRef={formContainerRef}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-        />
-      )}
-      <div
-        ref={previewWrapperRef}
-        className={cn(
-          isDesktop && previewMode === "hidden" && "hidden",
-          isDesktop && previewMode === "side" &&
-            "fixed inset-y-0 right-0 border-l bg-background z-30 shadow-lg",
-          isDesktop && previewMode === "fullscreen" &&
-            "fixed inset-0 bg-background z-40",
-          !isDesktop && previewSheetState === "closed" && "hidden",
-          !isDesktop && previewSheetState !== "closed" &&
-            "fixed inset-x-0 bottom-0 z-40 bg-background border-t shadow-2xl rounded-t-2xl overflow-hidden flex flex-col",
-        )}
-        style={
-          isDesktop && previewMode === "side"
-            ? {
-                width: `${splitPct}%`,
-                transition: isDragging ? "none" : "width 80ms ease-out",
-              }
-            : undefined
-        }
-      >
-        <PreviewPane
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          control={form.control as unknown as import("react-hook-form").Control<any>}
-          tenantId={tenantId}
-          tenantOrigin={tenantOrigin}
-          pageId={initial?.id ?? `draft-${draftSessionId}`}
-          previewMode={previewMode}
-          setPreviewMode={setPreviewMode}
-          focusedBlockIndex={focusedBlockIndex}
-          focusSeq={focusSeq}
-          onClickBlock={handleClickBlock}
-          status={previewStatus}
-          setStatus={setPreviewStatus}
-          errorMessage={previewErrorMessage}
-          setErrorMessage={setPreviewErrorMessage}
-          isSlowLoad={previewIsSlowLoad}
-          setIsSlowLoad={setPreviewIsSlowLoad}
-        />
-      </div>
       <UnsavedChangesDialog
         open={guard.pending !== null}
         onCancel={guard.cancel}
