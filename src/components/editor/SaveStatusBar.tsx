@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Loader2, AlertCircle, CheckCircle2, Save, Eye, EyeOff, Maximize } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { useRelativeTime } from "@/lib/useRelativeTime"
 
 export type PreviewMode = "hidden" | "side" | "fullscreen"
 
@@ -35,6 +36,7 @@ type Props = {
   status: SaveStatus
   dirtyCount?: number
   errorCount?: number
+  lastSavedAt?: number | null
   onSave: () => void
   onRetry?: () => void
   onJumpToError?: () => void
@@ -46,12 +48,14 @@ export function SaveStatusBar({
   status,
   dirtyCount,
   errorCount = 0,
+  lastSavedAt,
   onSave,
   onRetry,
   onJumpToError,
   previewMode,
   setPreviewMode
 }: Props) {
+  const relativeTime = useRelativeTime(lastSavedAt)
   // Hide the "saved" tick after a delay so the pill doesn't linger.
   // We keep the element mounted during the fade for a cleaner
   // transition.
@@ -61,8 +65,8 @@ export function SaveStatusBar({
     if (status === "saved") {
       setShowSaved(true)
       setSavedFading(false)
-      const fade = setTimeout(() => setSavedFading(true), 3500)
-      const hide = setTimeout(() => setShowSaved(false), 4000)
+      const fade = setTimeout(() => setSavedFading(true), 60_000)
+      const hide = setTimeout(() => setShowSaved(false), 65_000)
       return () => {
         clearTimeout(fade)
         clearTimeout(hide)
@@ -183,7 +187,7 @@ export function SaveStatusBar({
     body = (
       <>
         <CheckCircle2 className="h-4 w-4" aria-hidden />
-        <span>{label}</span>
+        <span>{label}{relativeTime && relativeTime !== "just now" ? ` · ${relativeTime}` : ""}</span>
       </>
     )
   } else if (status === "error") {

@@ -816,6 +816,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         status={saveStatus}
         dirtyCount={dirtyCount}
         errorCount={errorCount}
+        lastSavedAt={lastSavedAt}
         onSave={triggerSave}
         onRetry={retry}
         onJumpToError={jumpToError}
