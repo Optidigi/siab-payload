@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AppSidebar mode={ctx.mode} role={user.role} />
       <SidebarInset>
         <SiteHeader user={user} />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 max-md:p-2 md:p-6">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   )
