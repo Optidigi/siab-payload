@@ -593,7 +593,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
               <div className="flex flex-col gap-4 p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
                 <Card>
                   <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-                  <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                  <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                 </Card>
                 <Card>
                   <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
@@ -625,7 +625,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                     </Card>
                     <Card>
                       <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-                      <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                      <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                     </Card>
                   </div>
                   {/*

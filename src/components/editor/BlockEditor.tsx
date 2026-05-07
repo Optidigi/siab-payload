@@ -17,6 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
+import { Button } from "@/components/ui/button"
 import { blockBySlug } from "@/blocks/registry"
 import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
@@ -27,7 +28,15 @@ import { InsertSlot } from "./InsertSlot"
 // and BlockTypePicker (list-fetch filter). The multi-tenant plugin requires
 // tenant on creates and only auto-scopes reads/writes for non-super-admin
 // users — passing it explicitly works for both roles, so we always do.
-export function BlockEditor({ tenantId }: { tenantId: number | string }) {
+export function BlockEditor({
+  tenantId,
+  isPhone,
+  pageId,
+}: {
+  tenantId: number | string
+  isPhone: boolean
+  pageId: string | number
+}) {
   const { control, getValues } = useFormContext()
   const { fields, append, insert, remove, move } = useFieldArray({ control, name: "blocks" })
 
@@ -64,6 +73,17 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
     document.addEventListener("editor:open-add-block", onOpen)
     return () => document.removeEventListener("editor:open-add-block", onOpen)
   }, [fields.length])
+
+  // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
+  // mounted BlockListItems can respond without prop-drilling.
+  const [allCollapsed, setAllCollapsed] = useState(false)
+  const onToggleAll = () => {
+    const nextCollapsed = !allCollapsed
+    setAllCollapsed(nextCollapsed)
+    document.dispatchEvent(
+      new CustomEvent("editor:set-blocks-open", { detail: { open: !nextCollapsed } })
+    )
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -111,6 +131,13 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
 
   return (
     <div className="space-y-3">
+      {fields.length > 0 && (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" type="button" onClick={onToggleAll}>
+            {allCollapsed ? "Expand all" : "Collapse all"}
+          </Button>
+        </div>
+      )}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
@@ -141,6 +168,9 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
                       tenantId={tenantId}
                       onRemove={() => handleRemove(i)}
                       onMove={(from, to) => move(from, to)}
+                      isPhone={isPhone}
+                      pageId={pageId}
+                      blockFieldId={f.id}
                     />
                   </Fragment>
                 )
