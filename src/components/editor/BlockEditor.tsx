@@ -65,17 +65,6 @@ export function BlockEditor({
     setPickerOpen(true)
   }
 
-  // Listen for TopBar's "Add block" button via a custom event so we
-  // don't need to lift state all the way up to PageForm.
-  useEffect(() => {
-    const onOpen = () => {
-      setPickerIndex(fields.length)
-      setPickerOpen(true)
-    }
-    document.addEventListener("editor:open-add-block", onOpen)
-    return () => document.removeEventListener("editor:open-add-block", onOpen)
-  }, [fields.length])
-
   // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
   // mounted BlockListItems can respond without prop-drilling.
   const [allCollapsed, setAllCollapsed] = useState(false)
