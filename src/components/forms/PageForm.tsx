@@ -424,20 +424,36 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 <Card>
                   <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
-                    <FormField control={form.control} name="status" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
-                          <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="published">Published</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage/>
-                      </FormItem>
-                    )}/>
-                    <Button type="submit" disabled={pending} className="w-full">{pending ? "Saving..." : "Save"}</Button>
+                    {/*
+                      Inline Status select + Save button so the primary
+                      action sits next to the state it commits. DOM
+                      order is Select → Button so keyboard tab order
+                      matches reading order; we deliberately don't use
+                      `flex-row-reverse` for that reason. `items-end`
+                      bottom-aligns the Button against the Select's
+                      input row (its label sits above), avoiding the
+                      taller Select feeling unbalanced.
+                    */}
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 min-w-0">
+                        <FormField control={form.control} name="status" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Status</FormLabel>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <FormControl><SelectTrigger className="w-full"><SelectValue/></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="published">Published</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage/>
+                          </FormItem>
+                        )}/>
+                      </div>
+                      <Button type="submit" disabled={pending}>
+                        {pending ? "Saving..." : "Save"}
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
                 <Card>
