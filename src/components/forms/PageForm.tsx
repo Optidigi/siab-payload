@@ -636,11 +636,16 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         */}
         <div ref={formContainerRef} className="flex flex-1 min-h-0 w-full">
           {/*
-            Editor column. `min-w-[480px]` protects against preview greed
-            when splitPct=60 on large viewports.
+            Editor column. `min-w-0` is mandatory to break the flex
+            min-content chain — without it, intrinsic widths of nested
+            inputs/cards propagate up through <main>/<SidebarInset> and
+            cause horizontal body scroll at narrow desktop widths. The
+            previous `min-w-[480px]` floor was theoretical (splitter range
+            [20,60] already prevents silly-narrow editor); it caused real
+            horizontal overflow on live.
           */}
           <div className={cn(
-            "flex-1 min-w-[480px]",
+            "flex-1 min-w-0",
             showSideInFlow && "min-h-0 overflow-y-auto",
           )}>
             {showSideInFlow ? (
