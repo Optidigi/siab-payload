@@ -132,7 +132,7 @@ export function BlockEditor({
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-12 px-4 text-center border border-dashed rounded-lg">
+            <div className="flex flex-col items-center justify-center gap-4 py-12 px-4 max-md:px-2 text-center border border-dashed rounded-lg">
               <LayoutTemplate className="h-10 w-10 text-muted-foreground" aria-hidden />
               <div className="space-y-1">
                 <p className="text-base font-medium">No blocks yet</p>
