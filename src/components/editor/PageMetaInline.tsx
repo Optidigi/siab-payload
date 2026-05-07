@@ -8,6 +8,22 @@ import { cn } from "@/lib/utils"
 type Props = { control: Control<any> }
 
 /**
+ * Tailwind classes for the floating error pill in the TopBar variant.
+ * Anchored to the FormItem (which is `relative`), positioned just below
+ * the input with `top-full mt-1.5`. Uses destructive styling so it reads
+ * as an inline tooltip rather than a layout block. `pointer-events-none`
+ * keeps it from intercepting clicks on the columns row beneath; the
+ * border-b under the input is overlaid intentionally so the error
+ * visually associates with the field rather than the columns area.
+ *
+ * Does NOT push layout: an absolutely-positioned grid child contributes
+ * zero rows/cells in CSS Grid, so FormItem's `grid gap-2` collapses to
+ * the input row only — header height stays constant.
+ */
+const FLOATING_ERROR_CLASS =
+  "absolute top-full left-0 mt-1.5 z-20 max-w-xs px-2 py-1 rounded-md bg-destructive text-destructive-foreground !text-xs shadow-md whitespace-normal pointer-events-none"
+
+/**
  * Card-less Title + Slug fields for the sticky TopBar in side-preview mode.
  * Omits FormLabel so the TopBar stays compact. FormMessage is included so
  * validation errors (e.g. slug regex failure) are still visible inline.
@@ -22,11 +38,11 @@ export function PageMetaInline({ control }: Props) {
         control={control}
         name="title"
         render={({ field }) => (
-          <FormItem className="flex-1 min-w-0">
+          <FormItem className="relative flex-1 min-w-0">
             <FormControl>
               <Input placeholder="Page title" {...field} value={field.value ?? ""} />
             </FormControl>
-            <FormMessage />
+            <FormMessage className={FLOATING_ERROR_CLASS} />
           </FormItem>
         )}
       />
@@ -41,7 +57,7 @@ export function PageMetaInline({ control }: Props) {
           // Wrapper-level mousedown forwards click-on-`/` to the input.
           const inputRef = useRef<HTMLInputElement | null>(null)
           return (
-            <FormItem className="w-48 shrink-0">
+            <FormItem className="relative w-48 shrink-0">
               <FormControl>
                 <div
                   className="relative"
@@ -72,7 +88,10 @@ export function PageMetaInline({ control }: Props) {
                   />
                 </div>
               </FormControl>
-              <FormMessage />
+              {/* Anchored to the slug FormItem (right-aligned so a long
+                  message doesn't escape past the TopBar's right edge into
+                  the splitter/preview area). */}
+              <FormMessage className={cn(FLOATING_ERROR_CLASS, "left-auto right-0")} />
             </FormItem>
           )
         }}
