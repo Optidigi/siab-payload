@@ -65,14 +65,14 @@ export function BlockListItem({
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="text-muted-foreground"
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center"
             aria-label={open ? "Collapse block" : "Expand block"}
           >
             {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
           </button>
           <button
             type="button"
-            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing"
+            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center"
             aria-label="Drag to reorder block"
             {...listeners}
           >
@@ -99,10 +99,18 @@ export function BlockListItem({
             type="button"
             onClick={() => setSaveAsPresetOpen(true)}
             aria-label="Save block as preset"
+            className="h-11 w-11 md:h-8 md:w-8"
           >
             <BookmarkPlus className="h-4 w-4"/>
           </Button>
-          <Button variant="ghost" size="icon" type="button" onClick={onRemove} aria-label="Remove block">
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove block"
+            className="h-11 w-11 md:h-8 md:w-8"
+          >
             <Trash2 className="h-4 w-4"/>
           </Button>
         </div>

@@ -59,7 +59,7 @@ export function PreviewToolbar({
           <Button
             variant={viewport === "mobile" ? "secondary" : "ghost"}
             size="icon"
-            className={cn("h-7 w-7", viewport === "mobile" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            className={cn("h-11 w-11 md:h-7 md:w-7", viewport === "mobile" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
             onClick={() => setViewport("mobile")}
             aria-label="Mobile viewport (375px)"
             title="Mobile viewport (375px)"
@@ -69,7 +69,7 @@ export function PreviewToolbar({
           <Button
             variant={viewport === "laptop" ? "secondary" : "ghost"}
             size="icon"
-            className={cn("h-7 w-7", viewport === "laptop" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            className={cn("h-11 w-11 md:h-7 md:w-7", viewport === "laptop" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
             onClick={() => setViewport("laptop")}
             aria-label="Laptop viewport (1024px)"
             title="Laptop viewport (1024px)"
@@ -79,7 +79,7 @@ export function PreviewToolbar({
           <Button
             variant={viewport === "full" ? "secondary" : "ghost"}
             size="icon"
-            className={cn("h-7 w-7", viewport === "full" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            className={cn("h-11 w-11 md:h-7 md:w-7", viewport === "full" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
             onClick={() => setViewport("full")}
             aria-label="Full viewport (no max-width)"
             title="Full viewport (no max-width)"
@@ -95,7 +95,7 @@ export function PreviewToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-11 w-11 md:h-7 md:w-7"
             onClick={() => setPreviewMode("fullscreen")}
             aria-label="Hide editor — fullscreen preview"
             title="Hide editor — fullscreen preview"
@@ -106,7 +106,7 @@ export function PreviewToolbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-11 w-11 md:h-7 md:w-7"
             onClick={() => setPreviewMode("side")}
             aria-label="Exit fullscreen"
             title="Exit fullscreen"
@@ -117,7 +117,7 @@ export function PreviewToolbar({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
+          className="h-11 w-11 md:h-7 md:w-7"
           onClick={() => setPreviewMode("hidden")}
           aria-label="Hide preview"
           title="Hide preview"
@@ -125,10 +125,10 @@ export function PreviewToolbar({
           <X className="h-3.5 w-3.5" />
         </Button>
         <span className="mx-1 h-4 w-px bg-border" aria-hidden />
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onRefresh} aria-label="Refresh preview">
+        <Button variant="ghost" size="icon" className="h-11 w-11 md:h-7 md:w-7" onClick={onRefresh} aria-label="Refresh preview">
           <RotateCw className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-7 w-7" onClick={onOpenInNewTab} aria-label="Open preview in new tab">
+        <Button variant="ghost" size="icon" className="hidden md:inline-flex h-11 w-11 md:h-7 md:w-7" onClick={onOpenInNewTab} aria-label="Open preview in new tab">
           <ExternalLink className="h-3.5 w-3.5" />
         </Button>
       </div>
