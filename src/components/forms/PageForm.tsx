@@ -23,7 +23,26 @@ import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
 import { Trash2 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
+
+/**
+ * SSR-safe `(min-width: 768px)` media query hook. Defaults to `false` on
+ * the first render so the mobile-only layout renders identically on
+ * server and client (no hydration mismatch). Once mounted, listens for
+ * matchMedia changes so a DevTools resize flips state without a refresh.
+ */
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)")
+    setIsDesktop(mq.matches)
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+  return isDesktop
+}
 
 /**
  * Payload upload fields accept either a numeric id or null. The form may
@@ -118,6 +137,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading")
   const [previewErrorMessage, setPreviewErrorMessage] = useState<string | undefined>()
   const [previewIsSlowLoad, setPreviewIsSlowLoad] = useState(false)
+
+  // Phone bottom-sheet state. NOT persisted in localStorage — the
+  // operator decision is per-session. Defaults to closed so a phone
+  // user lands on a clean editor.
+  const [previewSheetState, setPreviewSheetState] = useState<"closed" | "peek" | "full">("closed")
+
+  const isDesktop = useIsDesktop()
 
   // Cross-pane focus state. focusin in PageForm's <form> sets the focused
   // block index; PreviewPane forwards it to the iframe via postMessage.
@@ -353,69 +379,70 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
       />
-      {previewMode === "side" && (
-        <>
-          <SplitDivider
-            pct={splitPct}
-            setPct={setSplitPct}
-            iframeWrapperRef={previewWrapperRef}
-            isDragging={isDragging}
-            setIsDragging={setIsDragging}
-          />
-          <div
-            ref={previewWrapperRef}
-            className="fixed inset-y-0 right-0 border-l bg-background z-30 shadow-lg"
-            style={{
-              width: `${splitPct}%`,
-              // Skip the smoothing transition while dragging so pointer
-              // moves track frame-perfect; restore it for keyboard
-              // nudges and snap-on-release so those feel less jumpy.
-              transition: isDragging ? "none" : "width 80ms ease-out",
-            }}
-          >
-            <PreviewPane
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              control={form.control as unknown as import("react-hook-form").Control<any>}
-              tenantId={tenantId}
-              tenantOrigin={tenantOrigin}
-              pageId={initial?.id ?? `draft-${draftSessionId}`}
-              previewMode={previewMode}
-              setPreviewMode={setPreviewMode}
-              focusedBlockIndex={focusedBlockIndex}
-              focusSeq={focusSeq}
-              onClickBlock={handleClickBlock}
-              status={previewStatus}
-              setStatus={setPreviewStatus}
-              errorMessage={previewErrorMessage}
-              setErrorMessage={setPreviewErrorMessage}
-              isSlowLoad={previewIsSlowLoad}
-              setIsSlowLoad={setPreviewIsSlowLoad}
-            />
-          </div>
-        </>
+      {/*
+        Single PreviewPane mount. The wrapper class/style swaps based on
+        breakpoint × mode so we never remount the iframe on a mode flip
+        — that's load-bearing because each remount loses heartbeat
+        state, signed-token age, scroll position, and mid-typing
+        debounce timers. Token rotation (forceRefresh) still remounts
+        via `key={tokenState.token}` inside PreviewPane.
+
+        Visibility matrix:
+          Desktop hidden       -> wrapper display:none (iframe kept warm)
+          Desktop side         -> fixed right overlay (Step 4 makes in-flow)
+          Desktop fullscreen   -> fixed inset-0 z-40
+          Phone closed         -> wrapper display:none
+          Phone peek/full      -> sheet wrapper (Step 8 wires drag/anim)
+      */}
+      {isDesktop && previewMode === "side" && (
+        <SplitDivider
+          pct={splitPct}
+          setPct={setSplitPct}
+          iframeWrapperRef={previewWrapperRef}
+          isDragging={isDragging}
+          setIsDragging={setIsDragging}
+        />
       )}
-      {previewMode === "fullscreen" && (
-        <div className="fixed inset-0 bg-background z-40">
-          <PreviewPane
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            control={form.control as unknown as import("react-hook-form").Control<any>}
-            tenantId={tenantId}
-            tenantOrigin={tenantOrigin}
-            pageId={initial?.id ?? `draft-${draftSessionId}`}
-            previewMode={previewMode}
-            setPreviewMode={setPreviewMode}
-            focusedBlockIndex={focusedBlockIndex}
-            focusSeq={focusSeq}
-            onClickBlock={handleClickBlock}
-            status={previewStatus}
-            setStatus={setPreviewStatus}
-            errorMessage={previewErrorMessage}
-            setErrorMessage={setPreviewErrorMessage}
-            isSlowLoad={previewIsSlowLoad}
-            setIsSlowLoad={setPreviewIsSlowLoad}
-          />
-        </div>
-      )}
+      <div
+        ref={previewWrapperRef}
+        className={cn(
+          isDesktop && previewMode === "hidden" && "hidden",
+          isDesktop && previewMode === "side" &&
+            "fixed inset-y-0 right-0 border-l bg-background z-30 shadow-lg",
+          isDesktop && previewMode === "fullscreen" &&
+            "fixed inset-0 bg-background z-40",
+          !isDesktop && previewSheetState === "closed" && "hidden",
+          !isDesktop && previewSheetState !== "closed" &&
+            "fixed inset-x-0 bottom-0 z-40 bg-background border-t shadow-2xl rounded-t-2xl overflow-hidden flex flex-col",
+        )}
+        style={
+          isDesktop && previewMode === "side"
+            ? {
+                width: `${splitPct}%`,
+                transition: isDragging ? "none" : "width 80ms ease-out",
+              }
+            : undefined
+        }
+      >
+        <PreviewPane
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          control={form.control as unknown as import("react-hook-form").Control<any>}
+          tenantId={tenantId}
+          tenantOrigin={tenantOrigin}
+          pageId={initial?.id ?? `draft-${draftSessionId}`}
+          previewMode={previewMode}
+          setPreviewMode={setPreviewMode}
+          focusedBlockIndex={focusedBlockIndex}
+          focusSeq={focusSeq}
+          onClickBlock={handleClickBlock}
+          status={previewStatus}
+          setStatus={setPreviewStatus}
+          errorMessage={previewErrorMessage}
+          setErrorMessage={setPreviewErrorMessage}
+          isSlowLoad={previewIsSlowLoad}
+          setIsSlowLoad={setPreviewIsSlowLoad}
+        />
+      </div>
       <UnsavedChangesDialog
         open={guard.pending !== null}
         onCancel={guard.cancel}
