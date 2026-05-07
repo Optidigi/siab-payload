@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { Quote } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const Testimonials: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const Testimonials: BlockWithMeta = {
   slug: "testimonials",
+  icon: Quote,
+  description: "Customer testimonials",
   interfaceName: "TestimonialsBlock",
   fields: [
     { name: "title", type: "text" },

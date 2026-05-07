@@ -8,6 +8,8 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useBlockKeyboardNav } from "./useBlockKeyboardNav"
 import { useWatch, useFormContext } from "react-hook-form"
+import { blockBySlug } from "@/blocks/registry"
+import type { BlockWithMeta } from "@/blocks/_summary"
 
 export function BlockListItem({
   id,
@@ -23,7 +25,7 @@ export function BlockListItem({
   index: number
   total: number
   blockSlug: string
-  blockConfig: any
+  blockConfig: BlockWithMeta
   // Forwarded to SaveAsPresetDialog so the POST body carries the tenant
   // (the multi-tenant plugin requires it on creates for super-admin users).
   tenantId: number | string
@@ -36,8 +38,8 @@ export function BlockListItem({
 
   const { control } = useFormContext()
   const values = useWatch({ control, name: `blocks.${index}` }) as Record<string, unknown> | undefined
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const summaryText = (blockConfig as any)?.summary?.(values ?? {}) as string | undefined
+  const typedConfig = blockBySlug[blockSlug] as BlockWithMeta | undefined
+  const summaryText = typedConfig?.summary?.(values ?? {}) as string | undefined
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const kbd = useBlockKeyboardNav({ index, total, move: onMove })
@@ -58,7 +60,7 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-t-md">
+      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background rounded-t-md">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -76,9 +78,13 @@ export function BlockListItem({
           >
             <GripVertical className="h-4 w-4"/>
           </button>
+          {typedConfig?.icon && (
+            <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
+          )}
           <span className="font-medium">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {(blockConfig as any)?.labels?.singular ?? blockSlug}
+            {typeof typedConfig?.labels?.singular === "string"
+              ? typedConfig.labels.singular
+              : blockSlug}
           </span>
           {summaryText && (
             <span className="ml-2 text-xs text-muted-foreground truncate min-w-0">
@@ -103,8 +109,8 @@ export function BlockListItem({
       </div>
       {open && (
         <div className="border-t p-3 space-y-3">
-          {blockConfig.fields.map((f: any, i: number) => (
-            <FieldRenderer key={i} field={f} namePrefix={namePrefix} />
+          {(typedConfig?.fields ?? []).map((f, i) => (
+            <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}
         </div>
       )}

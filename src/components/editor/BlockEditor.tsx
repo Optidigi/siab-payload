@@ -72,11 +72,20 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
   // synthetic `.id` to the new row regardless of what we pass.
   const onAdd = (slug: string, atIndex: number, seed?: Record<string, unknown>) => {
     const row = { blockType: slug, ...(seed ?? {}) }
+    // Capture the BEFORE-insert length to know the new block's index.
+    const newIndex = atIndex >= fields.length ? fields.length : atIndex
     if (atIndex >= fields.length) {
       append(row)
     } else {
       insert(atIndex, row)
     }
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[name^="blocks.${newIndex}."]`) as HTMLElement | null
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" })
+        el.focus({ preventScroll: true })
+      }
+    })
   }
 
   return (

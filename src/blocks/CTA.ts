@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { MousePointerClick } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const CTA: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const CTA: BlockWithMeta = {
   slug: "cta",
+  icon: MousePointerClick,
+  description: "Call-to-action with button",
   interfaceName: "CTABlock",
   fields: [
     { name: "headline", type: "text", required: true },

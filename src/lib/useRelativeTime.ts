@@ -1,11 +1,11 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useReducer } from "react"
 
 export function useRelativeTime(timestamp: number | null | undefined): string | null {
-  const [, tick] = useState(0)
+  const [, tick] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
     if (timestamp == null) return
-    const id = setInterval(() => tick((n) => n + 1), 30_000)
+    const id = setInterval(() => tick(), 30_000)
     return () => clearInterval(id)
   }, [timestamp])
   if (timestamp == null) return null
