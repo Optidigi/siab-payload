@@ -6,6 +6,8 @@ import {
 import { useState } from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { ChevronLeft, ChevronRight } from "lucide-react"
 
 type Props<T> = {
   columns: ColumnDef<T, any>[]
@@ -62,6 +64,41 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder }:
           </TableBody>
         </Table>
       </div>
+      {table.getPageCount() > 1 && (
+        <div className="sticky bottom-0 flex items-center justify-between gap-2 border-t bg-background/95 backdrop-blur px-3 py-2 text-sm">
+          <span className="text-muted-foreground">
+            {`Showing ${table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}–${Math.min(
+              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
+              table.getFilteredRowModel().rows.length
+            )} of ${table.getFilteredRowModel().rows.length}`}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="px-2 text-xs text-muted-foreground">
+              {table.getState().pagination.pageIndex + 1} / {table.getPageCount()}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
