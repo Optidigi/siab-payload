@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
-import { Trash2, ChevronUp, ChevronDown } from "lucide-react"
+import { Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
 
@@ -614,6 +614,18 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         {showSideInFlow && (
           <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
             <PageMetaInline control={controlAny} />
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                document.dispatchEvent(new CustomEvent("editor:open-add-block"))
+              }}
+              aria-label="Add block"
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden />
+              <span className="hidden lg:inline">Add block</span>
+            </Button>
             <PublishControls control={controlAny} pending={pending} variant="bare" />
           </header>
         )}

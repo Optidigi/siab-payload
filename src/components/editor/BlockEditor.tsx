@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import {
   DndContext,
@@ -37,6 +37,17 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
     setPickerIndex(idx)
     setPickerOpen(true)
   }
+
+  // Listen for TopBar's "Add block" button via a custom event so we
+  // don't need to lift state all the way up to PageForm.
+  useEffect(() => {
+    const onOpen = () => {
+      setPickerIndex(fields.length)
+      setPickerOpen(true)
+    }
+    document.addEventListener("editor:open-add-block", onOpen)
+    return () => document.removeEventListener("editor:open-add-block", onOpen)
+  }, [fields.length])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
