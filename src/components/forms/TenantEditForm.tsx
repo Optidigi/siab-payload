@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { Tenant } from "@/payload-types"
@@ -46,6 +48,12 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
       notes: tenant.notes ?? ""
     }
   })
+
+  // Block accidental nav loss when the form has unsaved edits or a save
+  // is in flight. Hook installs a native beforeunload prompt (tab close /
+  // refresh / address-bar nav) plus a click + popstate guard for in-app
+  // navigation. pending/confirm/cancel surface the custom dialog below.
+  const guard = useNavigationGuard(form.formState.isDirty || savePending)
 
   const onSubmit = async (values: Values) => {
     setSavePending(true)
@@ -99,14 +107,22 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <FormField name="name" control={form.control} render={({ field }) => (
             <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
           )} />
           <FormField name="slug" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Slug</FormLabel>
-              <FormControl><Input {...field} /></FormControl>
+              <FormControl>
+                <Input
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  {...field}
+                />
+              </FormControl>
               <p className="text-xs text-muted-foreground">Used in admin URLs (<code className="text-[11px]">/sites/&lt;slug&gt;</code>). Changing this rewrites the URL.</p>
               <FormMessage />
             </FormItem>
@@ -114,7 +130,16 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
           <FormField name="domain" control={form.control} render={({ field }) => (
             <FormItem>
               <FormLabel>Domain</FormLabel>
-              <FormControl><Input placeholder="clientasite.nl" {...field} /></FormControl>
+              <FormControl>
+                <Input
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  placeholder="clientasite.nl"
+                  {...field}
+                />
+              </FormControl>
               <p className="text-xs text-muted-foreground">Bare apex without <code className="text-[11px]">admin.</code> prefix; the middleware adds it.</p>
               <FormMessage />
             </FormItem>
@@ -189,6 +214,11 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
         confirmPhrase={tenant.slug}
         confirmLabel="Delete tenant"
         onConfirm={onDelete}
+      />
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
       />
     </div>
   )

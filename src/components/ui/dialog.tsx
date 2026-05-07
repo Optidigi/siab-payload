@@ -66,7 +66,9 @@ function DialogContent({
         )}
         {...props}
       >
-        {children}
+        <div className="max-h-[min(calc(100vh-2rem),calc(100dvh-2rem))] overflow-y-auto overscroll-contain">
+          {children}
+        </div>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
@@ -103,7 +105,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        "flex flex-col gap-2 sm:flex-row sm:justify-end",
         className
       )}
       {...props}

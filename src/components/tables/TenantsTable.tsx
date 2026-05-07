@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
+import { relativeTime } from "@/lib/relativeTime"
 import type { Tenant } from "@/payload-types"
 
-export function TenantsTable({ data }: { data: Tenant[] }) {
+export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?: React.ReactNode }) {
   const router = useRouter()
   const [target, setTarget] = useState<Tenant | null>(null)
 
@@ -41,27 +42,36 @@ export function TenantsTable({ data }: { data: Tenant[] }) {
         <Link href={`/sites/${row.original.slug}`} className="font-medium hover:underline">
           {row.getValue("name") as string}
         </Link>
-      )
+      ),
+      meta: { mobilePriority: "primary" }
     },
-    { accessorKey: "domain", header: "Domain" },
+    {
+      accessorKey: "domain",
+      header: "Domain",
+      meta: { mobilePriority: "secondary" }
+    },
     {
       accessorKey: "slug",
       header: "Slug",
-      cell: ({ getValue }) => <code className="text-xs">{getValue() as string}</code>
+      cell: ({ getValue }) => <code className="text-xs">{getValue() as string}</code>,
+      meta: { mobilePriority: "hidden" }
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => <StatusPill status={getValue() as string} />
+      cell: ({ getValue }) => <StatusPill status={getValue() as string} />,
+      meta: { mobilePriority: "secondary" }
     },
     {
       accessorKey: "updatedAt",
       header: "Updated",
-      cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString()
+      cell: ({ getValue }) => relativeTime(getValue() as string),
+      meta: { mobilePriority: "secondary" }
     },
     {
       id: "actions",
       header: "",
+      meta: { mobilePriority: "action" },
       cell: ({ row }) => {
         const t = row.original
         return (
@@ -104,7 +114,7 @@ export function TenantsTable({ data }: { data: Tenant[] }) {
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="name" filterPlaceholder="Filter tenants..." />
+      <DataTable columns={cols} data={data} filterColumn="name" filterPlaceholder="Filter tenants..." emptyState={emptyState} />
       {target && (
         <TypedConfirmDialog
           open={!!target}

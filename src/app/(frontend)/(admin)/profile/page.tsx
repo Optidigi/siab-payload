@@ -1,11 +1,12 @@
 import { requireAuth } from "@/lib/authGate"
 import { ProfileForm } from "@/components/forms/ProfileForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 
 export default async function ProfilePage() {
   const { user } = await requireAuth()
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Profile</h1>
+      <PageHeader title="Profile" />
       <ProfileForm user={user} />
     </div>
   )

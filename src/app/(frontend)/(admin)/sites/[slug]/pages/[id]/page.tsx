@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getPageById } from "@/lib/queries/pages"
 import { PageForm } from "@/components/forms/PageForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
 
 export default async function EditPage({ params }: { params: Promise<{ slug: string; id: string }> }) {
@@ -14,7 +15,10 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   if (!page || pageTenantId !== tenant.id) notFound()
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{page.title}</h1>
+      <PageHeader
+        title={page.title}
+        tenant={{ name: tenant.name, slug: tenant.slug }}
+      />
       <PageForm
         initial={page as any}
         tenantId={tenant.id}

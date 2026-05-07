@@ -9,6 +9,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
+import { cn } from "@/lib/utils"
 
 /**
  * Three-state theme toggle: Light / Dark / System.
@@ -52,5 +53,33 @@ export function ThemeToggle() {
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/**
+ * Compact inline theme switcher (Light / Dark / System) suitable for embedding
+ * inside a dropdown row — used in UserMenu on phone where the standalone
+ * ThemeToggle button is hidden in the header to reclaim space.
+ */
+export function ThemeSwitcher() {
+  const { theme, setTheme } = useTheme()
+  return (
+    <div className="flex w-full items-center gap-2 px-2 py-1.5">
+      <span className="text-xs text-muted-foreground mr-auto">Theme</span>
+      {(["light", "dark", "system"] as const).map((t) => (
+        <button
+          key={t}
+          type="button"
+          onClick={() => setTheme(t)}
+          className={cn(
+            "rounded-md px-2 py-1 text-xs capitalize hover:bg-accent",
+            theme === t && "bg-accent"
+          )}
+          aria-pressed={theme === t}
+        >
+          {t}
+        </button>
+      ))}
+    </div>
   )
 }

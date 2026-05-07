@@ -5,6 +5,7 @@ import { EditsChart } from "@/components/dashboard/EditsChart"
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed"
 import { StatusPill } from "@/components/shared/StatusPill"
 import { Button } from "@/components/ui/button"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { Pencil } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -25,17 +26,19 @@ export default async function TenantOverviewPage({ params }: { params: Promise<{
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold">{tenant.name}</h1>
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
+      <PageHeader
+        title={tenant.name}
+        subtitle={
+          <span className="inline-flex items-center gap-2">
             <span>{tenant.domain}</span> · <StatusPill status={tenant.status as string} />
-          </div>
-        </div>
-        <Button asChild variant="outline">
-          <Link href={`/sites/${tenant.slug}/edit`}><Pencil className="mr-1 h-4 w-4"/> Edit tenant</Link>
-        </Button>
-      </div>
+          </span>
+        }
+        action={
+          <Button asChild variant="outline">
+            <Link href={`/sites/${tenant.slug}/edit`}><Pencil className="mr-1 h-4 w-4"/> Edit tenant</Link>
+          </Button>
+        }
+      />
       <StatCards stats={[
         { label: "Published pages", value: stats.publishedPages },
         { label: "Edits this week", value: stats.editsThisWeek },

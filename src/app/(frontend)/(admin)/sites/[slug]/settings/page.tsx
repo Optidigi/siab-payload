@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { SettingsForm } from "@/components/forms/SettingsForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
 
 export default async function SettingsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -13,7 +14,10 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   const canEdit = user.role === "super-admin" || user.role === "owner"
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Settings — {tenant.name}</h1>
+      <PageHeader
+        title="Settings"
+        tenant={{ name: tenant.name, slug: tenant.slug }}
+      />
       <SettingsForm initial={settings} canEdit={canEdit} />
     </div>
   )

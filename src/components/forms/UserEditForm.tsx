@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
@@ -55,6 +57,12 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
   })
 
   const role = form.watch("role")
+
+  // Block accidental nav loss when the form has unsaved edits or a save
+  // is in flight. Hook installs a native beforeunload prompt (tab close /
+  // refresh / address-bar nav) plus a click + popstate guard for in-app
+  // navigation. pending/confirm/cancel surface the custom dialog below.
+  const guard = useNavigationGuard(form.formState.isDirty || savePending)
 
   const onSubmit = async (values: Values) => {
     setSavePending(true)
@@ -104,7 +112,7 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <FormItem>
             <FormLabel>Email</FormLabel>
             <FormControl>
@@ -195,6 +203,11 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
         confirmPhrase={user.email}
         confirmLabel="Remove user"
         onConfirm={onDelete}
+      />
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
       />
     </div>
   )

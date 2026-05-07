@@ -84,6 +84,10 @@ export function PageMetaInline({ control }: Props) {
                     placeholder="slug"
                     value={field.value ?? ""}
                     aria-invalid={fieldState.invalid || undefined}
+                    inputMode="url"
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    spellCheck={false}
                     className={cn("pl-6")}
                   />
                 </div>

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { SettingsForm } from "@/components/forms/SettingsForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 
 export default async function TenantSettingsPage() {
   const { user, ctx } = await requireAuth()
@@ -10,7 +11,7 @@ export default async function TenantSettingsPage() {
   const canEdit = user.role === "owner"
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Settings</h1>
+      <PageHeader title="Settings" />
       <SettingsForm initial={settings} canEdit={canEdit}/>
     </div>
   )

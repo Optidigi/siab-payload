@@ -10,7 +10,7 @@ import { toast } from "sonner"
 
 const generalFields = [
   { name: "siteName", type: "text", label: "Site name", required: true },
-  { name: "siteUrl", type: "text", label: "Site URL", required: true,
+  { name: "siteUrl", type: "url", label: "Site URL", required: true,
     admin: { description: "Public URL of the SSR site (e.g. https://clientasite.nl)" } },
   { name: "contactEmail", type: "email", label: "Contact email" }
 ]
@@ -24,11 +24,11 @@ const brandingFields = [
 
 const contactFields = [
   { type: "group", name: "contact", label: "Contact", fields: [
-    { name: "phone", type: "text", label: "Phone" },
+    { name: "phone", type: "tel", label: "Phone" },
     { name: "address", type: "textarea", label: "Address" },
     { type: "array", name: "social", label: "Social links", singularLabel: "link", fields: [
       { name: "platform", type: "text", label: "Platform", required: true },
-      { name: "url", type: "text", label: "URL", required: true }
+      { name: "url", type: "url", label: "URL", required: true }
     ]}
   ]}
 ]
@@ -69,13 +69,23 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} className="space-y-4 max-w-3xl">
+      <form onSubmit={onSubmit} noValidate className="space-y-4 max-w-3xl">
         <Tabs defaultValue="general">
-          <TabsList>
-            {tabs.map(([k]) => (
-              <TabsTrigger key={k} value={k} className="capitalize">{k}</TabsTrigger>
-            ))}
-          </TabsList>
+          {/*
+            Phone (under md): bleed the scroll-area to the viewport edges with
+            -mx-4 + px-4 so it feels like a native horizontal scroller. w-max
+            on TabsList lets it size to its content; shrink-0 on each Trigger
+            prevents collapse. Desktop reverts to default layout. The
+            ::-webkit-scrollbar:hidden hides the macOS/Chrome scroll bar
+            without losing scroll behavior.
+          */}
+          <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+            <TabsList className="w-max">
+              {tabs.map(([k]) => (
+                <TabsTrigger key={k} value={k} className="capitalize shrink-0">{k}</TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
           {tabs.map(([k, fs]) => (
             <TabsContent key={k} value={k}>
               <Card>

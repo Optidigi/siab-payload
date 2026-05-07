@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { RoleBadge } from "@/components/shared/RoleBadge"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -35,6 +37,17 @@ export function ProfileForm({ user }: { user: User }) {
     resolver: zodResolver(passwordSchema),
     defaultValues: { currentPassword: "", newPassword: "", confirm: "" }
   })
+
+  // Block accidental nav loss when either form has unsaved edits or a
+  // save is in flight. Hook installs a native beforeunload prompt (tab
+  // close / refresh / address-bar nav) plus a click + popstate guard for
+  // in-app navigation. pending/confirm/cancel surface the custom dialog below.
+  const guard = useNavigationGuard(
+    nameForm.formState.isDirty ||
+      passwordForm.formState.isDirty ||
+      namePending ||
+      passwordPending,
+  )
 
   const onUpdateName = async (v: z.infer<typeof nameSchema>) => {
     setNamePending(true)
@@ -103,7 +116,7 @@ export function ProfileForm({ user }: { user: User }) {
         <CardHeader><CardTitle>Name</CardTitle></CardHeader>
         <CardContent>
           <Form {...nameForm}>
-            <form onSubmit={nameForm.handleSubmit(onUpdateName)} className="space-y-3">
+            <form onSubmit={nameForm.handleSubmit(onUpdateName)} noValidate className="space-y-3">
               <FormField name="name" control={nameForm.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Display name</FormLabel>
@@ -123,7 +136,7 @@ export function ProfileForm({ user }: { user: User }) {
         <CardHeader><CardTitle>Change password</CardTitle></CardHeader>
         <CardContent>
           <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(onUpdatePassword)} className="space-y-3">
+            <form onSubmit={passwordForm.handleSubmit(onUpdatePassword)} noValidate className="space-y-3">
               <FormField name="currentPassword" control={passwordForm.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Current password</FormLabel>
@@ -152,6 +165,11 @@ export function ProfileForm({ user }: { user: User }) {
           </Form>
         </CardContent>
       </Card>
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+      />
     </div>
   )
 }

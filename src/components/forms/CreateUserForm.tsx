@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -122,6 +122,11 @@ export function CreateUserForm() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{createdKey ? "User created" : "Create user"}</DialogTitle>
+          <DialogDescription>
+            {createdKey
+              ? "User is created. Copy the API key below now — it won't be shown again after this dialog closes."
+              : "Provision a new user with a password set by you. Optionally generate a one-time API key, shown once after save."}
+          </DialogDescription>
         </DialogHeader>
 
         {createdKey ? (
@@ -140,15 +145,30 @@ export function CreateUserForm() {
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-3">
               <FormField name="email" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="next"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage/>
+                </FormItem>
               )}/>
               <FormField name="name" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem><FormLabel>Name</FormLabel><FormControl><Input autoComplete="name" enterKeyHint="next" {...field}/></FormControl><FormMessage/></FormItem>
               )}/>
               <FormField name="password" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" autoComplete="new-password" enterKeyHint="next" {...field}/></FormControl><FormMessage/></FormItem>
               )}/>
               <FormField name="role" control={form.control} render={({ field }) => (
                 <FormItem>
