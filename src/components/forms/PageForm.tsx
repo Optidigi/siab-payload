@@ -15,6 +15,7 @@ import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/e
 import { PreviewPane } from "@/components/editor/PreviewPane"
 import type { PreviewStatus } from "@/components/editor/PreviewToolbar"
 import { SplitDivider } from "@/components/editor/SplitDivider"
+import { MobileTabbar } from "@/components/editor/MobileTabbar"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
@@ -324,6 +325,38 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   else if (isDirty) saveStatus = "dirty"
   else if (lastSavedAt) saveStatus = "saved"
 
+  // Map the SaveStatus union → MobileTabbar's narrower dot status.
+  // "idle" maps to "saved" so a never-edited form shows the neutral
+  // muted dot rather than implying anything.
+  const tabbarSaveStatus: "saved" | "unsaved" | "saving" | "error" =
+    saveStatus === "saving"
+      ? "saving"
+      : saveStatus === "error"
+      ? "error"
+      : saveStatus === "dirty"
+      ? "unsaved"
+      : "saved"
+
+  // Map the PreviewStatus union → MobileTabbar's dot status. The
+  // tabbar's "not-loaded" reads as a passive grey when the operator
+  // hasn't opened the sheet yet — we surface it as "live" once
+  // PreviewPane reports `ready`, and pulse amber while loading or
+  // reconnecting.
+  const tabbarPreviewStatus: "live" | "loading" | "reconnecting" | "error" | "not-loaded" =
+    previewSheetState === "closed" && previewStatus === "loading"
+      ? "not-loaded"
+      : previewStatus === "ready"
+      ? "live"
+      : previewStatus === "loading"
+      ? "loading"
+      : previewStatus === "reconnecting"
+      ? "reconnecting"
+      : "error"
+
+  const onTapEdit = () => setPreviewSheetState("closed")
+  const onTapPreview = () =>
+    setPreviewSheetState((s) => (s === "closed" ? "peek" : s === "peek" ? "full" : "closed"))
+
   // Desktop side mode renders the preview as an in-flow flex column
   // sibling of the editor; in any other mode the preview wrapper is
   // either hidden or absolutely positioned, so it doesn't take a
@@ -505,6 +538,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         onJumpToError={jumpToError}
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
+      />
+      <MobileTabbar
+        saveStatus={tabbarSaveStatus}
+        previewStatus={tabbarPreviewStatus}
+        sheetState={previewSheetState}
+        onTapEdit={onTapEdit}
+        onTapPreview={onTapPreview}
       />
       <UnsavedChangesDialog
         open={guard.pending !== null}
