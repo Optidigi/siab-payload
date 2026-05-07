@@ -91,7 +91,14 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
           <SheetTrigger asChild>
             <Button variant="outline" size="sm" type="button">Choose</Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-[640px] sm:max-w-[640px]" showCloseButton={false}>
+          <SheetContent
+            side="right"
+            // Phone: full width so the sheet doesn't overflow viewport
+            // (375px screens were getting clipped at 640px). Desktop:
+            // 640px panel as before.
+            className="w-full sm:w-[640px] sm:max-w-[640px] overflow-y-auto"
+            showCloseButton={false}
+          >
             <SheetHeader>
               <SheetTitle className="flex items-center justify-between gap-2">
                 <span>Choose media</span>
