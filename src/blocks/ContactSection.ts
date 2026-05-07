@@ -1,6 +1,7 @@
 import type { Block } from "payload"
+import { truncate } from "./_summary"
 
-export const ContactSection: Block = {
+export const ContactSection: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
   slug: "contactSection",
   interfaceName: "ContactSectionBlock",
   fields: [
@@ -20,5 +21,9 @@ export const ContactSection: Block = {
         ]},
       { name: "required", type: "checkbox", defaultValue: false }
     ]}
-  ]
+  ],
+  summary: (v) => {
+    const title = typeof v.title === "string" ? v.title.trim() : ""
+    return title ? truncate(title, 40) : undefined
+  },
 }
