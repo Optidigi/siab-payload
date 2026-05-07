@@ -24,7 +24,7 @@ export default async function SitesPage() {
         data={tenants as any}
         emptyState={
           <EmptyState
-            icon={Globe}
+            icon={<Globe className="h-10 w-10 text-muted-foreground" aria-hidden />}
             title="No tenants"
             description="Create your first tenant to get started."
             action={

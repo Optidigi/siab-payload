@@ -17,7 +17,7 @@ export default async function TenantFormsPage() {
         data={forms.docs as any}
         emptyState={
           <EmptyState
-            icon={Inbox}
+            icon={<Inbox className="h-10 w-10 text-muted-foreground" aria-hidden />}
             title="No submissions yet"
             description="When your forms receive submissions, they appear here."
           />

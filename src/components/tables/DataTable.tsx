@@ -74,14 +74,14 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
       {isEmpty ? (
         isFilterNarrowed ? (
           <EmptyState
-            icon={FileQuestion}
+            icon={<FileQuestion className="h-10 w-10 text-muted-foreground" aria-hidden />}
             title="No results"
             description="Try adjusting your search or filter."
           />
         ) : (
           emptyState ?? (
             <EmptyState
-              icon={FileQuestion}
+              icon={<FileQuestion className="h-10 w-10 text-muted-foreground" aria-hidden />}
               title="No results"
               description="Try adjusting your search or filter."
             />

@@ -1,9 +1,14 @@
-"use client"
-import type { LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Props = {
-  icon: LucideIcon
+  /**
+   * Pre-rendered icon JSX (e.g. `<FileText className="h-10 w-10 text-muted-foreground" />`).
+   * NOT a component reference — passing a Lucide component reference like
+   * `icon={FileText}` from a server page to a client component breaks at
+   * build time because function references can't cross the RSC boundary.
+   * Pass rendered JSX instead.
+   */
+  icon: React.ReactNode
   title: string
   description?: string
   action?: React.ReactNode
@@ -16,7 +21,7 @@ type Props = {
  * BlockEditor (already uses this pattern inline), or any "no items"
  * surface across the admin.
  */
-export function EmptyState({ icon: Icon, title, description, action, className }: Props) {
+export function EmptyState({ icon, title, description, action, className }: Props) {
   return (
     <div
       className={cn(
@@ -24,7 +29,7 @@ export function EmptyState({ icon: Icon, title, description, action, className }
         className,
       )}
     >
-      <Icon className="h-10 w-10 text-muted-foreground" aria-hidden />
+      {icon}
       <div className="space-y-1">
         <p className="text-base font-medium">{title}</p>
         {description && (

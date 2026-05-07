@@ -27,7 +27,7 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ sl
         canManage={canManage}
         emptyState={
           <EmptyState
-            icon={Users}
+            icon={<Users className="h-10 w-10 text-muted-foreground" aria-hidden />}
             title="No team members yet"
             description="Invite your first team member to collaborate on this site."
             action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}

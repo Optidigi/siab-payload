@@ -24,7 +24,7 @@ export default async function TenantPagesIndex() {
         base="/pages"
         emptyState={
           <EmptyState
-            icon={FileText}
+            icon={<FileText className="h-10 w-10 text-muted-foreground" aria-hidden />}
             title="No pages yet"
             description="Create your first page to start building this site."
             action={

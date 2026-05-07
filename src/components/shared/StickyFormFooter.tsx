@@ -1,4 +1,6 @@
-"use client"
+// Server-component-safe: no hooks, just presentational chrome. If a future
+// consumer needs interactivity here (e.g. dynamic visibility based on
+// scroll), promote to "use client" then.
 import { cn } from "@/lib/utils"
 
 type Props = {
