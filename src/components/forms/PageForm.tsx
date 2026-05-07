@@ -724,6 +724,22 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             </div>
           </div>
         </div>
+        {/*
+          Phone-only floating Add Block button. Sits above the mini-strip.
+          Hidden when preview overlay is open (FAB doesn't make sense there).
+        */}
+        {!isDesktop && !isPreviewOpen && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => document.dispatchEvent(new CustomEvent("editor:open-add-block"))}
+            className="md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center"
+            style={{ bottom: `calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem)` }}
+            aria-label="Add block"
+          >
+            <Plus className="h-6 w-6" aria-hidden />
+          </button>
+        )}
       </form>
       <SaveStatusBar
         status={saveStatus}
