@@ -42,7 +42,10 @@ export function UserMenu({ user }: Props) {
           {user.name && <span className="text-xs text-muted-foreground truncate">{user.email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem className="md:hidden p-0 focus:bg-transparent">
+        <DropdownMenuItem
+          className="md:hidden p-0 focus:bg-transparent"
+          onSelect={(e) => e.preventDefault()}
+        >
           <ThemeSwitcher />
         </DropdownMenuItem>
         <DropdownMenuSeparator className="md:hidden" />
