@@ -20,7 +20,22 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
         <FormField control={control} name={fieldName} render={({ field: f }) => (
           <FormItem>
             <FormLabel>{field.label ?? field.name}{field.required && "*"}</FormLabel>
-            <FormControl><Input type={field.type === "email" ? "email" : "text"} {...f} value={f.value ?? ""} /></FormControl>
+            <FormControl>
+              {field.type === "email" ? (
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  {...f}
+                  value={f.value ?? ""}
+                />
+              ) : (
+                <Input type="text" {...f} value={f.value ?? ""} />
+              )}
+            </FormControl>
             {field.admin?.description && <FormDescription>{field.admin.description}</FormDescription>}
             <FormMessage />
           </FormItem>

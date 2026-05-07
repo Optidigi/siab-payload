@@ -103,7 +103,7 @@ export function ProfileForm({ user }: { user: User }) {
         <CardHeader><CardTitle>Name</CardTitle></CardHeader>
         <CardContent>
           <Form {...nameForm}>
-            <form onSubmit={nameForm.handleSubmit(onUpdateName)} className="space-y-3">
+            <form onSubmit={nameForm.handleSubmit(onUpdateName)} noValidate className="space-y-3">
               <FormField name="name" control={nameForm.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Display name</FormLabel>
@@ -123,7 +123,7 @@ export function ProfileForm({ user }: { user: User }) {
         <CardHeader><CardTitle>Change password</CardTitle></CardHeader>
         <CardContent>
           <Form {...passwordForm}>
-            <form onSubmit={passwordForm.handleSubmit(onUpdatePassword)} className="space-y-3">
+            <form onSubmit={passwordForm.handleSubmit(onUpdatePassword)} noValidate className="space-y-3">
               <FormField name="currentPassword" control={passwordForm.control} render={({ field }) => (
                 <FormItem>
                   <FormLabel>Current password</FormLabel>

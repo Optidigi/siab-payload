@@ -43,7 +43,7 @@ export function TenantForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-w-md">
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4 max-w-md">
         <FormField name="name" control={form.control} render={({ field }) => (
           <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
         )} />

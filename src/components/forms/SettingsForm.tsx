@@ -69,7 +69,7 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} className="space-y-4 max-w-3xl">
+      <form onSubmit={onSubmit} noValidate className="space-y-4 max-w-3xl">
         <Tabs defaultValue="general">
           <TabsList>
             {tabs.map(([k]) => (

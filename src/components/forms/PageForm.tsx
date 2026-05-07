@@ -484,6 +484,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+        noValidate
         className="flex flex-col w-full"
       >
         {/*

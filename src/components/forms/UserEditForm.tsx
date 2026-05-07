@@ -104,7 +104,7 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <FormItem>
             <FormLabel>Email</FormLabel>
             <FormControl>

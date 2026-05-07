@@ -99,7 +99,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
   return (
     <div className="flex flex-col gap-8 max-w-2xl">
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
           <FormField name="name" control={form.control} render={({ field }) => (
             <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
           )} />

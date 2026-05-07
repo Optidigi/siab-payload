@@ -140,15 +140,30 @@ export function CreateUserForm() {
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+            <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-3">
               <FormField name="email" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      inputMode="email"
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="next"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage/>
+                </FormItem>
               )}/>
               <FormField name="name" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem><FormLabel>Name</FormLabel><FormControl><Input autoComplete="name" enterKeyHint="next" {...field}/></FormControl><FormMessage/></FormItem>
               )}/>
               <FormField name="password" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field}/></FormControl><FormMessage/></FormItem>
+                <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" autoComplete="new-password" enterKeyHint="next" {...field}/></FormControl><FormMessage/></FormItem>
               )}/>
               <FormField name="role" control={form.control} render={({ field }) => (
                 <FormItem>

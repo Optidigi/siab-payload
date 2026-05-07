@@ -36,7 +36,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="space-y-4">
         <FormField name="password" control={form.control} render={({ field }) => (
           <FormItem><FormLabel>New password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
         )}/>
