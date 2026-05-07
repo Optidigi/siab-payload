@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 type Props = {
   control: Control<any>
   pending: boolean
+  isDirty?: boolean
   variant?: "card" | "bare"
 }
 
@@ -19,7 +20,7 @@ type Props = {
  * Field name "status" and option values "draft"/"published" mirror the zod
  * schema and existing inline JSX in PageForm.
  */
-export function PublishControls({ control, pending, variant = "card" }: Props) {
+export function PublishControls({ control, pending, isDirty, variant = "card" }: Props) {
   return (
     <div className={cn(
       "flex items-end gap-2",
@@ -46,7 +47,7 @@ export function PublishControls({ control, pending, variant = "card" }: Props) {
           </FormItem>
         )}
       />
-      <Button type="submit" disabled={pending}>
+      <Button type="submit" disabled={pending || !isDirty}>
         {pending ? "Saving..." : "Save"}
       </Button>
     </div>
