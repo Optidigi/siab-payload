@@ -3,6 +3,7 @@ import { useEffect, useRef } from "react"
 import { Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { tinyVibrate } from "@/lib/haptics"
+import { usePhoneKeyboard } from "@/lib/usePhoneKeyboard"
 import type { PreviewStatus } from "./PreviewToolbar"
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 }
 
 export function PhonePreviewStrip({ status, errorMessage, pageTitle, onOpen }: Props) {
+  usePhoneKeyboard()
   const ref = useRef<HTMLDivElement>(null)
   // Publish strip height as `--mini-strip-h` so editor content padding-bottom can clear it.
   useEffect(() => {
