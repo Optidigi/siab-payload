@@ -36,7 +36,7 @@ export function UserMenu({ user }: Props) {
           <AvatarFallback className="text-xs">{initial}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
+      <DropdownMenuContent align="end" className="w-52 max-md:w-60">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="font-medium truncate">{user.name || user.email}</span>
           {user.name && <span className="text-xs text-muted-foreground truncate">{user.email}</span>}
@@ -46,16 +46,16 @@ export function UserMenu({ user }: Props) {
           <ThemeSwitcher />
         </DropdownMenuItem>
         <DropdownMenuSeparator className="md:hidden" />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild className="max-md:py-2.5 max-md:text-base">
           <a href="/profile"><User className="mr-2 h-4 w-4" /> Profile</a>
         </DropdownMenuItem>
         {user.role === "super-admin" && (
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="max-md:py-2.5 max-md:text-base">
             <a href="/api-key"><Key className="mr-2 h-4 w-4" /> API key</a>
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={pending} onClick={onLogout}>
+        <DropdownMenuItem disabled={pending} onClick={onLogout} className="max-md:py-2.5 max-md:text-base">
           <LogOut className="mr-2 h-4 w-4" /> {pending ? "Signing out..." : "Sign out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
