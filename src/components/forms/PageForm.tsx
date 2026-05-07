@@ -14,7 +14,6 @@ import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/e
 import { PreviewPane } from "@/components/editor/PreviewPane"
 import type { PreviewStatus } from "@/components/editor/PreviewToolbar"
 import { SplitDivider } from "@/components/editor/SplitDivider"
-import { PhoneTopBanner } from "@/components/editor/PhoneTopBanner"
 import { PhonePreviewStrip } from "@/components/editor/PhonePreviewStrip"
 import { PublishControls } from "@/components/editor/PublishControls"
 import { PageMetaInline } from "@/components/editor/PageMetaInline"
@@ -25,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
-import { Trash2, Plus, ExternalLink, Copy, X } from "lucide-react"
+import { Trash2, ExternalLink, Copy, X, Save, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
 
@@ -491,21 +490,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         )}
       >
         {/*
-          Phone-only sticky top banner. Shown on <md only (md:hidden
-          inside PhoneTopBanner). Contains Edit/Preview toggle, title,
-          Save button, and save status chip.
-        */}
-        {!isDesktop && (
-          <PhoneTopBanner
-            pending={pending}
-            isDirty={isDirty}
-            errorCount={errorCount}
-            saveStatus={saveStatus}
-            lastSavedAt={lastSavedAt}
-            onSave={triggerSave}
-          />
-        )}
-        {/*
           Sticky TopBar — desktop side-preview mode only. Contains the
           card-less Title + Slug fields and the bare PublishControls so
           the primary actions are always reachable without scrolling.
@@ -594,21 +578,70 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 Hidden mode (and fullscreen): existing 3-col @container grid.
                 Page card + Blocks (col-span-2), Publish + SEO column,
                 Danger Zone below.
+                Phone-only combined Page+Publish card prepended above the grid.
               */
               <div className="@container/editor p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
-                <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
-                  <div className="@[800px]/editor:col-span-2 space-y-4">
+                {/*
+                  Phone-only combined Page+Publish card. Rendered only on <md
+                  so the operator sees title/slug/publish controls at the top
+                  without having to scroll past the blocks list. The
+                  corresponding grid cards are hidden on phone via `hidden md:block`
+                  below — only ONE set of Controllers is active per breakpoint.
+                */}
+                {!isDesktop && (
+                  <div className="md:hidden mb-4">
                     <Card>
                       <CardHeader><CardTitle>Page</CardTitle></CardHeader>
                       <CardContent className="space-y-4">
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                          <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                        )}/>
-                        <FormField control={form.control} name="slug" render={({ field }) => (
-                          <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                        )}/>
+                        <FormField
+                          control={form.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Title*</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="slug"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Slug*</FormLabel>
+                              <FormControl><Input {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <PublishControls
+                          control={controlAny}
+                          pending={pending}
+                          isDirty={isDirty}
+                          errorCount={errorCount}
+                          variant="card"
+                        />
                       </CardContent>
                     </Card>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
+                  <div className="@[800px]/editor:col-span-2 space-y-4">
+                    {/* Page card: hidden on phone (combined card above handles it). */}
+                    <div className="hidden md:block">
+                      <Card>
+                        <CardHeader><CardTitle>Page</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                          <FormField control={form.control} name="title" render={({ field }) => (
+                            <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                          )}/>
+                          <FormField control={form.control} name="slug" render={({ field }) => (
+                            <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                          )}/>
+                        </CardContent>
+                      </Card>
+                    </div>
                     <Card>
                       <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
                       <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
@@ -625,12 +658,15 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Settings</h3>
                   </div>
                   <div className="space-y-4">
-                    <Card>
-                      <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
-                      <CardContent className="space-y-3">
-                        <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} variant="card" />
-                      </CardContent>
-                    </Card>
+                    {/* Publish card: hidden on phone (combined card above handles it). */}
+                    <div className="hidden md:block">
+                      <Card>
+                        <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
+                        <CardContent className="space-y-3">
+                          <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} variant="card" />
+                        </CardContent>
+                      </Card>
+                    </div>
                     <Card>
                       <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
                       <CardContent className="space-y-3">
@@ -711,22 +747,29 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           </div>
         </div>
         {/*
-          Phone-only floating Add Block button. Sits above the mini-strip.
-          Hidden when preview overlay is open (FAB doesn't make sense there).
+          Phone-only Save FAB. Sits above the mini-strip. Visible only when
+          there is unsaved work (dirty), validation errors, or a save is
+          in-flight. Hidden when preview overlay is open.
         */}
-        {!isDesktop && !isPreviewOpen && (
+        {!isDesktop && !isPreviewOpen && (isDirty || errorCount > 0 || pending) && (
           <button
             type="button"
+            disabled={pending}
             onPointerDown={(e) => {
               const tag = document.activeElement?.tagName
               if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
             }}
-            onClick={() => document.dispatchEvent(new CustomEvent("editor:open-add-block"))}
-            className="phone-fab md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center"
+            onClick={triggerSave}
+            className="phone-fab relative md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center disabled:opacity-60"
             style={{ bottom: `calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem)` }}
-            aria-label="Add block"
+            aria-label="Save page"
           >
-            <Plus className="h-6 w-6" aria-hidden />
+            {pending ? <Loader2 className="h-6 w-6 animate-spin" aria-hidden /> : <Save className="h-6 w-6" aria-hidden />}
+            {errorCount > 0 && (
+              <span className="absolute -top-1 -right-1 rounded-full bg-destructive text-destructive-foreground text-[10px] h-5 w-5 flex items-center justify-center">
+                {errorCount}
+              </span>
+            )}
           </button>
         )}
       </form>
