@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useEffect, useState } from "react"
+import { Fragment, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { toast } from "sonner"
 import {
@@ -19,6 +19,7 @@ import {
 } from "@dnd-kit/sortable"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { LayoutTemplate, Plus } from "lucide-react"
 import { blockBySlug } from "@/blocks/registry"
 import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
@@ -63,17 +64,6 @@ export function BlockEditor({
     setPickerIndex(idx)
     setPickerOpen(true)
   }
-
-  // Listen for TopBar's "Add block" button via a custom event so we
-  // don't need to lift state all the way up to PageForm.
-  useEffect(() => {
-    const onOpen = () => {
-      setPickerIndex(fields.length)
-      setPickerOpen(true)
-    }
-    document.addEventListener("editor:open-add-block", onOpen)
-    return () => document.removeEventListener("editor:open-add-block", onOpen)
-  }, [fields.length])
 
   // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
   // mounted BlockListItems can respond without prop-drilling.
@@ -142,14 +132,22 @@ export function BlockEditor({
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center">
-              <div className="text-2xl">📄</div>
+            <div className="flex flex-col items-center justify-center gap-4 py-12 px-4 text-center border border-dashed rounded-lg">
+              <LayoutTemplate className="h-10 w-10 text-muted-foreground" aria-hidden />
               <div className="space-y-1">
                 <p className="text-base font-medium">No blocks yet</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground max-w-sm">
                   Add your first block to start building this page.
                 </p>
               </div>
+              <Button
+                type="button"
+                size="lg"
+                onClick={() => openPickerAt(0)}
+                className="w-full md:w-auto max-w-xs"
+              >
+                <Plus className="h-5 w-5" /> Add first block
+              </Button>
             </div>
           ) : (
             <div className="space-y-1 max-md:space-y-2.5">
@@ -207,6 +205,7 @@ export function BlockEditor({
         className={cn(
           "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent",
           fields.length > 0 && "hidden md:inline-flex",
+          fields.length === 0 && "hidden",
         )}
         onClick={() => openPickerAt(fields.length)}
         aria-label="Add block at end"

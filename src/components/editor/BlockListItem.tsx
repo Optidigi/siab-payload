@@ -1,6 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { ChevronDown, ChevronRight, GripVertical, BookmarkPlus, Trash2, MoreVertical } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { FieldRenderer } from "./FieldRenderer"
@@ -100,22 +101,18 @@ export function BlockListItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className={cn(
+        "rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-muted/40",
+      )}
+      data-dragging={isDragging || undefined}
       {...attributes}
       onKeyDown={kbd.onKeyDown}
       tabIndex={kbd.tabIndex}
-      aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
+      aria-label={`Block ${index + 1}: ${typeof typedConfig?.labels?.singular === "string" ? typedConfig.labels.singular : blockSlug}`}
     >
       <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <button
-            type="button"
-            onClick={() => setOpenPersist(!open)}
-            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
-            aria-label={open ? "Collapse block" : "Expand block"}
-          >
-            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
-          </button>
           <button
             type="button"
             className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
@@ -124,13 +121,22 @@ export function BlockListItem({
           >
             <GripVertical className="h-4 w-4"/>
           </button>
+          <button
+            type="button"
+            onClick={() => setOpenPersist(!open)}
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
+            aria-label={open ? "Collapse block" : "Expand block"}
+          >
+            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
+          </button>
           {typedConfig?.icon && (
             <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
           )}
-          <span className="font-medium truncate">
-            {typeof typedConfig?.labels?.singular === "string"
-              ? typedConfig.labels.singular
-              : blockSlug}
+          <span className={cn(
+            "font-medium truncate",
+            summaryText && "max-md:hidden",
+          )}>
+            {typeof typedConfig?.labels?.singular === "string" ? typedConfig.labels.singular : blockSlug}
           </span>
           {summaryText && (
             <span className="text-xs text-muted-foreground truncate min-w-0">
