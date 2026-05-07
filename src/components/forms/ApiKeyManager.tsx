@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { Copy, Key } from "lucide-react"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
@@ -12,6 +13,7 @@ export function ApiKeyManager({ user }: { user: User }) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
   const [revealedKey, setRevealedKey] = useState<string | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const enabled = user.enableAPIKey ?? false
 
   const generate = async (alsoEnable: boolean) => {
@@ -35,7 +37,6 @@ export function ApiKeyManager({ user }: { user: User }) {
   }
 
   const disable = async () => {
-    if (!confirm("Disable API key? Any active integrations using this key will fail until re-enabled.")) return
     setPending(true)
     const res = await fetch(`/api/users/${user.id}`, {
       method: "PATCH",
@@ -45,8 +46,9 @@ export function ApiKeyManager({ user }: { user: User }) {
     setPending(false)
     if (!res.ok) {
       const txt = await res.text()
-      toast.error("Failed: " + txt.slice(0, 100))
-      return
+      const msg = "Failed: " + txt.slice(0, 100)
+      toast.error(msg)
+      throw new Error(msg)
     }
     toast.success("API key disabled")
     router.refresh()
@@ -97,7 +99,7 @@ export function ApiKeyManager({ user }: { user: User }) {
                 : "No active API key. Generate one to enable machine access."}
             </span>
           </div>
-          <Switch checked={enabled} disabled={pending} onCheckedChange={(v) => v ? generate(true) : disable()} />
+          <Switch checked={enabled} disabled={pending} onCheckedChange={(v) => v ? generate(true) : setConfirmOpen(true)} />
         </div>
 
         {enabled && (
@@ -112,6 +114,21 @@ export function ApiKeyManager({ user }: { user: User }) {
           </p>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Disable API key?"
+        description={
+          <>
+            This stops the key from authenticating new requests. Any integrations
+            currently using it will start receiving 401 errors immediately.
+            You can issue a new key afterward.
+          </>
+        }
+        confirmLabel="Disable key"
+        variant="destructive"
+        onConfirm={disable}
+      />
     </Card>
   )
 }
