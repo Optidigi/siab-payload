@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/editor/SaveStatusBar"
@@ -16,6 +15,8 @@ import { PreviewPane } from "@/components/editor/PreviewPane"
 import type { PreviewStatus } from "@/components/editor/PreviewToolbar"
 import { SplitDivider } from "@/components/editor/SplitDivider"
 import { MobileTabbar } from "@/components/editor/MobileTabbar"
+import { PublishControls } from "@/components/editor/PublishControls"
+import { PageMetaInline } from "@/components/editor/PageMetaInline"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
@@ -500,6 +501,9 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
       }
     : undefined
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const controlAny = form.control as unknown as import("react-hook-form").Control<any>
+
   const previewPane = (
     <PreviewPane
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -521,86 +525,96 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     />
   )
 
+  // Danger zone section — reused in both side-mode column and hidden-mode grid.
+  const dangerZone = (
+    <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
+      <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {initial ? (
+          <>
+            Deleting page <strong>{initial.title}</strong> removes the page and any
+            block content. Cannot be undone.
+          </>
+        ) : (
+          <>Once saved, you can permanently delete this page from here.</>
+        )}
+      </p>
+      {initial ? (
+        <Button
+          type="button"
+          variant="destructive"
+          className="mt-3"
+          onClick={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete page
+        </Button>
+      ) : (
+        <TooltipProvider>
+          <Tooltip>
+            {/* A disabled <Button> swallows pointer events, so wrap in a
+                span trigger so the tooltip still surfaces on hover/focus. */}
+            <TooltipTrigger asChild>
+              <span tabIndex={0} className="mt-3 inline-block">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled
+                  aria-disabled="true"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete page
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Save the page first to enable delete.</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </section>
+  )
+
   return (
     <Form {...form}>
-      <div ref={formContainerRef} className="flex w-full">
-        <form
-          onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-          className="flex-1 min-w-0"
-        >
+      <form
+        onSubmit={form.handleSubmit(onSubmit, onInvalid)}
+        className="flex flex-col w-full"
+      >
+        {/*
+          Sticky TopBar — desktop side-preview mode only. Contains the
+          card-less Title + Slug fields and the bare PublishControls so
+          the primary actions are always reachable without scrolling.
+          `hidden md:flex` ensures it never renders on phone (MobileTabbar
+          owns phone Save). TopBar lives inside <form> so the Save button
+          remains type="submit".
+        */}
+        {showSideInFlow && (
+          <header className="hidden md:flex sticky top-0 z-10 items-end gap-4 border-b bg-background px-4 py-3">
+            <PageMetaInline control={controlAny} />
+            <PublishControls control={controlAny} pending={pending} variant="bare" />
+          </header>
+        )}
+        {/*
+          Inner columns row. `formContainerRef` is on THIS div (not the
+          outer flex-col) so SplitDivider's getBoundingClientRect().width
+          reads the correct editor-area width and not the full viewport.
+        */}
+        <div ref={formContainerRef} className="flex flex-1 min-h-0 w-full">
           {/*
-            Container queries on the editor area so the inner Page +
-            Publish/SEO grid stacks based on its OWN width, not the
-            viewport. When the side preview takes 50% of a 1280px
-            viewport the editor area shrinks to 640px — at that width
-            we want the inner cards stacked, even though the global
-            viewport is still well past `lg`. lg-breakpoint media queries
-            can't see container width.
+            Editor column. `min-w-[480px]` protects against preview greed
+            when splitPct=60 on large viewports.
           */}
-          <div className="@container/editor">
-            <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
-              <div className="@[800px]/editor:col-span-2 space-y-4">
-                <Card>
-                  <CardHeader><CardTitle>Page</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField control={form.control} name="title" render={({ field }) => (
-                      <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                    )}/>
-                    <FormField control={form.control} name="slug" render={({ field }) => (
-                      <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
-                    )}/>
-                  </CardContent>
-                </Card>
+          <div className="flex-1 min-w-[480px] overflow-y-auto">
+            {showSideInFlow ? (
+              /*
+                Side mode: single stacked column — no Page card (Title/Slug
+                already in TopBar), no Publish card (PublishControls in
+                TopBar). gap-4 handles spacing so no mt-8 needed on Danger.
+              */
+              <div className="flex flex-col gap-4 p-4">
                 <Card>
                   <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
                   <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
-                </Card>
-              </div>
-              {/*
-                Stacked-mode separator. Only shows when the editor area
-                is below 800px (single-column inner grid) — adds a
-                visual divider + "Settings" heading so Publish/SEO
-                doesn't run straight into Blocks. Hidden once the inner
-                grid switches back to 3-col side-by-side.
-              */}
-              <div className="@[800px]/editor:hidden border-t pt-4">
-                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Settings</h3>
-              </div>
-              <div className="space-y-4">
-                <Card>
-                  <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {/*
-                      Inline Status select + Save button so the primary
-                      action sits next to the state it commits. DOM
-                      order is Select → Button so keyboard tab order
-                      matches reading order; we deliberately don't use
-                      `flex-row-reverse` for that reason. `items-end`
-                      bottom-aligns the Button against the Select's
-                      input row (its label sits above), avoiding the
-                      taller Select feeling unbalanced.
-                    */}
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1 min-w-0">
-                        <FormField control={form.control} name="status" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Status</FormLabel>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <FormControl><SelectTrigger className="w-full"><SelectValue/></SelectTrigger></FormControl>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="published">Published</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage/>
-                          </FormItem>
-                        )}/>
-                      </div>
-                      <Button type="submit" disabled={pending}>
-                        {pending ? "Saving..." : "Save"}
-                      </Button>
-                    </div>
-                  </CardContent>
                 </Card>
                 <Card>
                   <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
@@ -608,117 +622,175 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                     {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
                   </CardContent>
                 </Card>
+                {dangerZone}
               </div>
-            </div>
+            ) : (
+              /*
+                Hidden mode (and fullscreen): existing 3-col @container grid.
+                Page card + Blocks (col-span-2), Publish + SEO column,
+                Danger Zone below.
+              */
+              <div className="@container/editor p-4">
+                <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
+                  <div className="@[800px]/editor:col-span-2 space-y-4">
+                    <Card>
+                      <CardHeader><CardTitle>Page</CardTitle></CardHeader>
+                      <CardContent className="space-y-4">
+                        <FormField control={form.control} name="title" render={({ field }) => (
+                          <FormItem><FormLabel>Title*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                        )}/>
+                        <FormField control={form.control} name="slug" render={({ field }) => (
+                          <FormItem><FormLabel>Slug*</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>
+                        )}/>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
+                      <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                    </Card>
+                  </div>
+                  {/*
+                    Stacked-mode separator. Only shows when the editor area
+                    is below 800px (single-column inner grid) — adds a
+                    visual divider + "Settings" heading so Publish/SEO
+                    doesn't run straight into Blocks. Hidden once the inner
+                    grid switches back to 3-col side-by-side.
+                  */}
+                  <div className="@[800px]/editor:hidden border-t pt-4">
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Settings</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <Card>
+                      <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
+                      <CardContent className="space-y-3">
+                        <PublishControls control={controlAny} pending={pending} variant="card" />
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+                      <CardContent className="space-y-3">
+                        {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
+                      </CardContent>
+                    </Card>
+                  </div>
+                  {/* Danger Zone spans full width below the grid. mt-8 matches
+                      the original visual separation since grid's gap-4 only
+                      applies between same-level grid children. */}
+                  <div className="@[800px]/editor:col-span-3 mt-8">
+                    {dangerZone}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        </form>
-        {showSideInFlow && (
-          <SplitDivider
-            pct={splitPct}
-            setPct={setSplitPct}
-            iframeWrapperRef={previewWrapperRef}
-            containerRef={formContainerRef}
-            isDragging={isDragging}
-            setIsDragging={setIsDragging}
-          />
-        )}
-        {/*
-          Phone-sheet backdrop. Sibling of the sheet so a tap can close
-          it without intercepting events on the iframe. `inert` keeps
-          form fields behind the peek sheet unfocusable, so a stray
-          tap on (visible-but-occluded) editor controls doesn't yank
-          focus while the sheet is up.
-        */}
-        {isPhoneSheetOpen && (
-          <div
-            // `isPhoneSheetOpen` already implies the sheet is open, so
-            // `inert` is unconditional here. We use ts-ignore (not
-            // ts-expect-error) so React 19 type updates that add `inert`
-            // to HTMLAttributes don't turn this comment into an "unused
-            // directive" error.
-            // @ts-ignore inert is a valid HTMLAttribute in React 19+
-            inert=""
-            className="fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 md:hidden"
-            onClick={() => setPreviewSheetState("closed")}
-            aria-hidden
-          />
-        )}
-        {/*
-          Single PreviewPane mount. The wrapper class/style swaps based
-          on breakpoint × mode but the wrapper element itself stays at
-          the SAME position in the React tree across all modes — that's
-          load-bearing because each remount loses heartbeat state,
-          signed-token age, scroll position, and mid-typing debounce
-          timers. When not in side mode the wrapper is positioned
-          `fixed` (or `display:none`), so it visually escapes this flex
-          row but keeps its identity in React reconciliation. Token
-          rotation (forceRefresh) still remounts via
-          `key={tokenState.token}` inside PreviewPane.
-        */}
-        <div
-          ref={previewWrapperRef}
-          className={previewWrapperClass}
-          style={previewWrapperStyle}
-        >
-          {isPhoneSheetOpen && (
-            <>
-              {/* Drag handle (the visible "pill" at the top of the sheet). */}
-              <button
-                type="button"
-                onPointerDown={onSheetDragStart}
-                onPointerMove={onSheetDragMove}
-                onPointerUp={onSheetDragEnd}
-                onPointerCancel={onSheetDragEnd}
-                className="flex justify-center py-2 cursor-grab active:cursor-grabbing touch-none"
-                aria-label="Drag to resize preview"
-              >
-                <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
-              </button>
-              {/* Sheet header — chevron toggles between peek and full. */}
-              <div className="flex items-center justify-end gap-1 px-3 pb-2">
-                {previewSheetState === "peek" ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewSheetState("full")}
-                    aria-label="Expand preview to full"
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewSheetState("peek")}
-                    aria-label="Collapse preview to peek"
-                    className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-            </>
+          {showSideInFlow && (
+            <SplitDivider
+              pct={splitPct}
+              setPct={setSplitPct}
+              iframeWrapperRef={previewWrapperRef}
+              containerRef={formContainerRef}
+              isDragging={isDragging}
+              setIsDragging={setIsDragging}
+            />
           )}
           {/*
-            Inner pane container. Always rendered (so PreviewPane's
-            position in the React tree is stable across breakpoint
-            flips and never remounts) — its className just no-ops on
-            non-phone modes. On phone, `flex-1 min-h-0` shares the
-            sheet's height with the drag handle and header. On
-            desktop the wrapper above sizes the pane directly so this
-            container effectively `display: contents`.
+            Phone-sheet backdrop. Sibling of the sheet so a tap can close
+            it without intercepting events on the iframe. `inert` keeps
+            form fields behind the peek sheet unfocusable, so a stray
+            tap on (visible-but-occluded) editor controls doesn't yank
+            focus while the sheet is up.
+          */}
+          {isPhoneSheetOpen && (
+            <div
+              // `isPhoneSheetOpen` already implies the sheet is open, so
+              // `inert` is unconditional here. We use ts-ignore (not
+              // ts-expect-error) so React 19 type updates that add `inert`
+              // to HTMLAttributes don't turn this comment into an "unused
+              // directive" error.
+              // @ts-ignore inert is a valid HTMLAttribute in React 19+
+              inert=""
+              className="fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 md:hidden"
+              onClick={() => setPreviewSheetState("closed")}
+              aria-hidden
+            />
+          )}
+          {/*
+            Single PreviewPane mount. The wrapper class/style swaps based
+            on breakpoint × mode but the wrapper element itself stays at
+            the SAME position in the React tree across all modes — that's
+            load-bearing because each remount loses heartbeat state,
+            signed-token age, scroll position, and mid-typing debounce
+            timers. When not in side mode the wrapper is positioned
+            `fixed` (or `display:none`), so it visually escapes this flex
+            row but keeps its identity in React reconciliation. Token
+            rotation (forceRefresh) still remounts via
+            `key={tokenState.token}` inside PreviewPane.
           */}
           <div
-            className={cn(
-              "flex flex-col",
-              isPhoneSheetOpen
-                ? "flex-1 min-h-0 overflow-hidden"
-                : "h-full",
-            )}
+            ref={previewWrapperRef}
+            className={previewWrapperClass}
+            style={previewWrapperStyle}
           >
-            {previewPane}
+            {isPhoneSheetOpen && (
+              <>
+                {/* Drag handle (the visible "pill" at the top of the sheet). */}
+                <button
+                  type="button"
+                  onPointerDown={onSheetDragStart}
+                  onPointerMove={onSheetDragMove}
+                  onPointerUp={onSheetDragEnd}
+                  onPointerCancel={onSheetDragEnd}
+                  className="flex justify-center py-2 cursor-grab active:cursor-grabbing touch-none"
+                  aria-label="Drag to resize preview"
+                >
+                  <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+                </button>
+                {/* Sheet header — chevron toggles between peek and full. */}
+                <div className="flex items-center justify-end gap-1 px-3 pb-2">
+                  {previewSheetState === "peek" ? (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSheetState("full")}
+                      aria-label="Expand preview to full"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSheetState("peek")}
+                      aria-label="Collapse preview to peek"
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+            {/*
+              Inner pane container. Always rendered (so PreviewPane's
+              position in the React tree is stable across breakpoint
+              flips and never remounts) — its className just no-ops on
+              non-phone modes. On phone, `flex-1 min-h-0` shares the
+              sheet's height with the drag handle and header. On
+              desktop the wrapper above sizes the pane directly so this
+              container effectively `display: contents`.
+            */}
+            <div
+              className={cn(
+                "flex flex-col",
+                isPhoneSheetOpen
+                  ? "flex-1 min-h-0 overflow-hidden"
+                  : "h-full",
+              )}
+            >
+              {previewPane}
+            </div>
           </div>
         </div>
-      </div>
+      </form>
       <SaveStatusBar
         status={saveStatus}
         dirtyCount={dirtyCount}
@@ -741,51 +813,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         onCancel={guard.cancel}
         onConfirm={guard.confirm}
       />
-      <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4 mt-8">
-        <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {initial ? (
-            <>
-              Deleting page <strong>{initial.title}</strong> removes the page and any
-              block content. Cannot be undone.
-            </>
-          ) : (
-            <>Once saved, you can permanently delete this page from here.</>
-          )}
-        </p>
-        {initial ? (
-          <Button
-            type="button"
-            variant="destructive"
-            className="mt-3"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete page
-          </Button>
-        ) : (
-          <TooltipProvider>
-            <Tooltip>
-              {/* A disabled <Button> swallows pointer events, so wrap in a
-                  span trigger so the tooltip still surfaces on hover/focus. */}
-              <TooltipTrigger asChild>
-                <span tabIndex={0} className="mt-3 inline-block">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled
-                    aria-disabled="true"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete page
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>Save the page first to enable delete.</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-      </section>
       {initial && (
         <TypedConfirmDialog
           open={deleteOpen}
