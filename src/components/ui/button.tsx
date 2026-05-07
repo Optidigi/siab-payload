@@ -59,6 +59,7 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  type,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -66,11 +67,23 @@ function Button({
   }) {
   const Comp = asChild ? Slot.Root : "button"
 
+  // Default `type` to "button" so a Button rendered inside a <form> doesn't
+  // submit it on click. The HTML default for <button> inside a form is
+  // "submit", which has bitten this codebase repeatedly: any toolbar/icon
+  // button (PreviewToolbar mode toggles, etc.) accidentally submits on
+  // click. Real submit buttons (PublishControls Save, Login Sign-in, etc.)
+  // explicitly set `type="submit"` so they're unaffected by this default.
+  // When `asChild` is true the Slot is rendered as a non-button element
+  // (often <a>) — the type attribute is meaningless there, so omit it to
+  // avoid leaking a noisy DOM attribute onto anchor tags.
+  const resolvedType = type ?? (asChild ? undefined : "button")
+
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      type={resolvedType}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
