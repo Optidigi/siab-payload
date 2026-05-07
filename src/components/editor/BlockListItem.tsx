@@ -7,6 +7,7 @@ import { SaveAsPresetDialog } from "./SaveAsPresetDialog"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useBlockKeyboardNav } from "./useBlockKeyboardNav"
+import { useWatch, useFormContext } from "react-hook-form"
 
 export function BlockListItem({
   id,
@@ -33,6 +34,11 @@ export function BlockListItem({
   const [saveAsPresetOpen, setSaveAsPresetOpen] = useState(false)
   const namePrefix = `blocks.${index}`
 
+  const { control } = useFormContext()
+  const values = useWatch({ control, name: `blocks.${index}` }) as Record<string, unknown> | undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const summaryText = (blockConfig as any)?.summary?.(values ?? {}) as string | undefined
+
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const kbd = useBlockKeyboardNav({ index, total, move: onMove })
 
@@ -52,7 +58,7 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2">
+      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-t-md">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -70,7 +76,15 @@ export function BlockListItem({
           >
             <GripVertical className="h-4 w-4"/>
           </button>
-          <span className="font-medium">{blockSlug}</span>
+          <span className="font-medium">
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+            {(blockConfig as any)?.labels?.singular ?? blockSlug}
+          </span>
+          {summaryText && (
+            <span className="ml-2 text-xs text-muted-foreground truncate min-w-0">
+              · {summaryText}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-0.5">
           <Button

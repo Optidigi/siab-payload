@@ -1,6 +1,7 @@
 import type { Block } from "payload"
+import { truncate } from "./_summary"
 
-export const Hero: Block = {
+export const Hero: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
   slug: "hero",
   interfaceName: "HeroBlock",
   fields: [
@@ -12,5 +13,9 @@ export const Hero: Block = {
       { name: "href", type: "text" }
     ]},
     { name: "image", type: "upload", relationTo: "media" }
-  ]
+  ],
+  summary: (v) => {
+    const headline = typeof v.headline === "string" ? v.headline.trim() : ""
+    return headline ? truncate(headline, 40) : undefined
+  },
 }

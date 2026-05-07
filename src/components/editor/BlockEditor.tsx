@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useState } from "react"
+import { Fragment, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import {
   DndContext,
@@ -38,6 +38,17 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
     setPickerOpen(true)
   }
 
+  // Listen for TopBar's "Add block" button via a custom event so we
+  // don't need to lift state all the way up to PageForm.
+  useEffect(() => {
+    const onOpen = () => {
+      setPickerIndex(fields.length)
+      setPickerOpen(true)
+    }
+    document.addEventListener("editor:open-add-block", onOpen)
+    return () => document.removeEventListener("editor:open-add-block", onOpen)
+  }, [fields.length])
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -72,29 +83,41 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
     <div className="space-y-3">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-1">
-            {fields.map((f, i) => {
-              const slug = (f as any).blockType
-              const cfg = blockBySlug[slug]
-              if (!cfg) return null
-              return (
-                <Fragment key={f.id}>
-                  <InsertSlot onClick={() => openPickerAt(i)} />
-                  <BlockListItem
-                    id={f.id}
-                    index={i}
-                    total={fields.length}
-                    blockSlug={slug}
-                    blockConfig={cfg}
-                    tenantId={tenantId}
-                    onRemove={() => remove(i)}
-                    onMove={(from, to) => move(from, to)}
-                  />
-                </Fragment>
-              )
-            })}
-            {fields.length > 0 && <InsertSlot onClick={() => openPickerAt(fields.length)} />}
-          </div>
+          {fields.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center">
+              <div className="text-2xl">📄</div>
+              <div className="space-y-1">
+                <p className="text-base font-medium">No blocks yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Add your first block to start building this page.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              {fields.map((f, i) => {
+                const slug = (f as any).blockType
+                const cfg = blockBySlug[slug]
+                if (!cfg) return null
+                return (
+                  <Fragment key={f.id}>
+                    <InsertSlot onClick={() => openPickerAt(i)} />
+                    <BlockListItem
+                      id={f.id}
+                      index={i}
+                      total={fields.length}
+                      blockSlug={slug}
+                      blockConfig={cfg}
+                      tenantId={tenantId}
+                      onRemove={() => remove(i)}
+                      onMove={(from, to) => move(from, to)}
+                    />
+                  </Fragment>
+                )
+              })}
+              <InsertSlot onClick={() => openPickerAt(fields.length)} />
+            </div>
+          )}
         </SortableContext>
       </DndContext>
       {/*

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
-import { Trash2, ChevronUp, ChevronDown } from "lucide-react"
+import { Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
 
@@ -116,22 +116,27 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }, [previewMode])
 
   // Split percentage: how much of the editor-area width the preview
-  // occupies in side mode. Lazy initializer mirrors `previewMode`
-  // above — read localStorage once on mount; clamp to [20, 60] so a
-  // corrupted value (or one persisted from the old [20,80] range)
-  // can never wedge the layout. 40 is the default split — leans the
-  // editor a bit wider than the preview so form fields stay readable.
+  // occupies in side mode. Stored per-page so different pages can have
+  // different splits; global key acts as a fallback for unsaved pages.
+  // Clamp to [20, 60] — 40 is the default.
+  const splitStorageKey = `page-editor:preview-split:${initial?.id ?? "new"}`
   const [splitPct, setSplitPct] = useState<number>(() => {
     if (typeof window === "undefined") return 40
-    const stored = window.localStorage.getItem("page-editor:preview-split")
-    const n = stored ? Number(stored) : NaN
+    const perPage = window.localStorage.getItem(splitStorageKey)
+    const global = window.localStorage.getItem("page-editor:preview-split")
+    const raw = perPage ?? global
+    if (!raw) return 40
+    const n = parseInt(raw, 10)
     return Number.isFinite(n) && n >= 20 && n <= 60 ? n : 40
   })
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Write per-page key for precise memory; also update the global key
+      // so new pages inherit the last-used split as a sensible default.
+      window.localStorage.setItem(splitStorageKey, String(splitPct))
       window.localStorage.setItem("page-editor:preview-split", String(splitPct))
     }
-  }, [splitPct])
+  }, [splitPct, splitStorageKey])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
   const formContainerRef = useRef<HTMLDivElement>(null)
@@ -319,7 +324,23 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }
 
   const retry = () => form.handleSubmit(onSubmit, onInvalid)()
-  const triggerSave = () => form.handleSubmit(onSubmit, onInvalid)()
+  const triggerSave = useCallback(() => form.handleSubmit(onSubmit, onInvalid)(), [form, onSubmit, onInvalid])
+
+  // Cmd+S / Ctrl+S global save shortcut. Skip when focus is inside an
+  // open dialog so confirmation dialogs handle their own key events.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
+        const active = document.activeElement
+        if (active && active.closest("[role='dialog']")) return
+        e.preventDefault()
+        triggerSave()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [triggerSave])
+
   const jumpToError = () =>
     scrollToFirstError(form.formState.errors as Record<string, unknown>)
 
@@ -577,7 +598,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-        className="flex flex-col w-full"
+        className={cn(
+          "flex flex-col w-full",
+          showSideInFlow && "md:h-[calc(100dvh-6rem)] md:overflow-hidden",
+        )}
       >
         {/*
           Sticky TopBar — desktop side-preview mode only. Contains the
@@ -588,8 +612,20 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           remains type="submit".
         */}
         {showSideInFlow && (
-          <header className="hidden md:flex sticky top-0 z-10 items-end gap-4 border-b bg-background px-4 py-3">
+          <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
             <PageMetaInline control={controlAny} />
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => {
+                document.dispatchEvent(new CustomEvent("editor:open-add-block"))
+              }}
+              aria-label="Add block"
+            >
+              <Plus className="h-4 w-4 mr-1" aria-hidden />
+              <span className="hidden lg:inline">Add block</span>
+            </Button>
             <PublishControls control={controlAny} pending={pending} variant="bare" />
           </header>
         )}
@@ -603,7 +639,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             Editor column. `min-w-[480px]` protects against preview greed
             when splitPct=60 on large viewports.
           */}
-          <div className="flex-1 min-w-[480px] overflow-y-auto">
+          <div className={cn(
+            "flex-1 min-w-[480px]",
+            showSideInFlow && "min-h-0 overflow-y-auto",
+          )}>
             {showSideInFlow ? (
               /*
                 Side mode: single stacked column — no Page card (Title/Slug
@@ -794,6 +833,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         status={saveStatus}
         dirtyCount={dirtyCount}
         errorCount={errorCount}
+        lastSavedAt={lastSavedAt}
         onSave={triggerSave}
         onRetry={retry}
         onJumpToError={jumpToError}
