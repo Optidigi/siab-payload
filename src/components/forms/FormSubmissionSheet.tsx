@@ -26,7 +26,7 @@ export function FormSubmissionSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[560px] sm:max-w-[560px]">
+      <SheetContent className="w-full sm:w-[560px] sm:max-w-[560px] overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{form.email ?? "Submission"}</SheetTitle>
         </SheetHeader>
