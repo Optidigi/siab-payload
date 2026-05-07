@@ -106,7 +106,7 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 bg-background rounded-t-md">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
