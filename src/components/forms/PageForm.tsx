@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -319,7 +319,23 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }
 
   const retry = () => form.handleSubmit(onSubmit, onInvalid)()
-  const triggerSave = () => form.handleSubmit(onSubmit, onInvalid)()
+  const triggerSave = useCallback(() => form.handleSubmit(onSubmit, onInvalid)(), [form, onSubmit, onInvalid])
+
+  // Cmd+S / Ctrl+S global save shortcut. Skip when focus is inside an
+  // open dialog so confirmation dialogs handle their own key events.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === "s" || e.key === "S")) {
+        const active = document.activeElement
+        if (active && active.closest("[role='dialog']")) return
+        e.preventDefault()
+        triggerSave()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [triggerSave])
+
   const jumpToError = () =>
     scrollToFirstError(form.formState.errors as Record<string, unknown>)
 
