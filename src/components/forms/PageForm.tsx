@@ -116,7 +116,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
 
   // Split percentage: how much of the editor-area width the preview
   // occupies in side mode. Lazy initializer mirrors `previewMode`
-  // above — read localStorage once on mount; clamp to [20, 50] so a
+  // above — read localStorage once on mount; clamp to [20, 60] so a
   // corrupted value (or one persisted from the old [20,80] range)
   // can never wedge the layout. 40 is the default split — leans the
   // editor a bit wider than the preview so form fields stay readable.
@@ -124,7 +124,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     if (typeof window === "undefined") return 40
     const stored = window.localStorage.getItem("page-editor:preview-split")
     const n = stored ? Number(stored) : NaN
-    return Number.isFinite(n) && n >= 20 && n <= 50 ? n : 40
+    return Number.isFinite(n) && n >= 20 && n <= 60 ? n : 40
   })
   useEffect(() => {
     if (typeof window !== "undefined") {
