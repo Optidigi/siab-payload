@@ -11,20 +11,42 @@ export function FormsTable({ data }: { data: FormDoc[] }) {
   const [active, setActive] = useState<FormDoc | null>(null)
 
   const cols: ColumnDef<FormDoc, any>[] = [
-    { accessorKey: "createdAt", header: "When", cell: ({ getValue }) => relativeTime(getValue() as string) },
-    { accessorKey: "email", header: "From" },
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "formName", header: "Form" },
-    { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusPill status={getValue() as string} /> }
+    {
+      accessorKey: "createdAt",
+      header: "When",
+      cell: ({ getValue }) => relativeTime(getValue() as string),
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "email",
+      header: "From",
+      meta: { mobilePriority: "primary" }
+    },
+    {
+      accessorKey: "name",
+      header: "Name",
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "formName",
+      header: "Form",
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => <StatusPill status={getValue() as string} />,
+      meta: { mobilePriority: "secondary" }
+    }
   ]
 
   return (
     <>
       {/* DataTable rows already have data-id attributes; we capture row clicks to open the sheet */}
       <div onClick={(e) => {
-        const tr = (e.target as HTMLElement).closest("tr[data-id]") as HTMLElement | null
-        if (!tr) return
-        const id = tr.dataset.id
+        const el = (e.target as HTMLElement).closest("[data-id]") as HTMLElement | null
+        if (!el) return
+        const id = el.dataset.id
         if (!id) return
         const found = data.find((d) => String(d.id) === id)
         if (found) setActive(found)

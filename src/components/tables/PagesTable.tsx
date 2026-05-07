@@ -44,14 +44,31 @@ export function PagesTable({ data, base }: { data: Page[]; base: string }) {
         <Link href={`${base}/${row.original.id}`} className="font-medium hover:underline">
           {row.getValue("title") as string}
         </Link>
-      )
+      ),
+      meta: { mobilePriority: "primary" }
     },
-    { accessorKey: "slug", header: "Slug", cell: ({ getValue }) => <code className="text-xs">{getValue() as string}</code> },
-    { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusPill status={getValue() as string}/> },
-    { accessorKey: "updatedAt", header: "Updated", cell: ({ getValue }) => relativeTime(getValue() as string) },
+    {
+      accessorKey: "slug",
+      header: "Slug",
+      cell: ({ getValue }) => <code className="text-xs">{getValue() as string}</code>,
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => <StatusPill status={getValue() as string}/>,
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "updatedAt",
+      header: "Updated",
+      cell: ({ getValue }) => relativeTime(getValue() as string),
+      meta: { mobilePriority: "secondary" }
+    },
     {
       id: "actions",
       header: "",
+      meta: { mobilePriority: "action" },
       cell: ({ row }) => {
         const p = row.original
         return (

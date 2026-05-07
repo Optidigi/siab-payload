@@ -36,13 +36,39 @@ export function UsersTable({ data, canManage }: { data: User[]; canManage: boole
   }
 
   const cols: ColumnDef<User, any>[] = [
-    { accessorKey: "name", header: "Name" },
-    { accessorKey: "email", header: "Email" },
-    { accessorKey: "role", header: "Role", cell: ({ getValue }) => <RoleBadge role={getValue() as string} /> },
+    {
+      accessorKey: "name",
+      header: "Name",
+      cell: ({ row }) => row.original.name || row.original.email,
+      meta: { mobilePriority: "primary" }
+    },
+    {
+      accessorKey: "email",
+      header: "Email",
+      cell: ({ row }) => (
+        <a
+          href={`mailto:${row.original.email}`}
+          className="hover:underline truncate"
+          dir="ltr"
+          title={row.original.email}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {row.original.email}
+        </a>
+      ),
+      meta: { mobilePriority: "secondary" }
+    },
+    {
+      accessorKey: "role",
+      header: "Role",
+      cell: ({ getValue }) => <RoleBadge role={getValue() as string} />,
+      meta: { mobilePriority: "secondary" }
+    },
     ...(canManage
       ? ([{
           id: "actions",
           header: "",
+          meta: { mobilePriority: "action" },
           cell: ({ row }: any) => {
             const u = row.original as User
             return (
