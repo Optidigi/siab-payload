@@ -110,7 +110,7 @@ function ArrayFieldRenderer({ field, namePrefix }: { field: any; namePrefix: str
     <div className="space-y-3">
       <div className="text-sm font-medium">{field.label ?? field.name}</div>
       {items.map((_, i) => (
-        <div key={i} className="rounded-md border p-3 space-y-3 relative">
+        <div key={i} className="rounded-md border p-3 max-md:p-2 max-md:space-y-2 space-y-3 relative">
           <button type="button" className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-foreground" onClick={() => removeAt(i)}>Remove</button>
           {field.fields.map((sub: any, j: number) => (
             <FieldRenderer key={j} field={sub} namePrefix={`${namePrefix}.${i}`} />

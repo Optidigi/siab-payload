@@ -240,7 +240,7 @@ export function BlockListItem({
         </DropdownMenu>
       </div>
       {open && (
-        <div className="border-t p-3 space-y-3 max-md:p-4 max-md:space-y-4">
+        <div className="border-t p-3 space-y-3">
           {(typedConfig?.fields ?? []).map((f, i) => (
             <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}

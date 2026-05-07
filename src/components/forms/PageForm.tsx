@@ -643,8 +643,8 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                       </Card>
                     </div>
                     <Card>
-                      <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-                      <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
+                      <CardHeader className="max-md:px-3 max-md:py-3"><CardTitle>Blocks</CardTitle></CardHeader>
+                      <CardContent className="max-md:px-2 max-md:py-3"><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                     </Card>
                   </div>
                   {/*
@@ -668,8 +668,8 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                       </Card>
                     </div>
                     <Card>
-                      <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
-                      <CardContent className="space-y-3">
+                      <CardHeader className="max-md:px-3 max-md:py-3"><CardTitle>SEO</CardTitle></CardHeader>
+                      <CardContent className="space-y-3 max-md:px-2 max-md:py-3">
                         {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
                       </CardContent>
                     </Card>
