@@ -111,7 +111,14 @@ export function PagesTable({ data, base, emptyState }: { data: Page[]; base: str
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="title" filterPlaceholder="Filter pages..." emptyState={emptyState} />
+      <DataTable
+        columns={cols}
+        data={data}
+        filterColumn="title"
+        filterPlaceholder="Filter pages..."
+        emptyState={emptyState}
+        getRowHref={(p) => `${base}/${p.id}`}
+      />
       {target && (
         <TypedConfirmDialog
           open={!!target}

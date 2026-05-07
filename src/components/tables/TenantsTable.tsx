@@ -114,7 +114,14 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="name" filterPlaceholder="Filter tenants..." emptyState={emptyState} />
+      <DataTable
+        columns={cols}
+        data={data}
+        filterColumn="name"
+        filterPlaceholder="Filter tenants..."
+        emptyState={emptyState}
+        getRowHref={(t) => `/sites/${t.slug}`}
+      />
       {target && (
         <TypedConfirmDialog
           open={!!target}

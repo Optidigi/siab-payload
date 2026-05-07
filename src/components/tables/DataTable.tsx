@@ -4,12 +4,14 @@ import {
   getPaginationRowModel, getSortedRowModel, type SortingState, useReactTable
 } from "@tanstack/react-table"
 import { useState } from "react"
+import Link from "next/link"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, FileQuestion, Search, X } from "lucide-react"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { cn } from "@/lib/utils"
 
 type Props<T> = {
   columns: ColumnDef<T, any>[]
@@ -17,9 +19,10 @@ type Props<T> = {
   filterColumn?: string
   filterPlaceholder?: string
   emptyState?: React.ReactNode
+  getRowHref?: (row: T) => string
 }
 
-export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, emptyState }: Props<T>) {
+export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, emptyState, getRowHref }: Props<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [filter, setFilter] = useState("")
 
@@ -99,11 +102,36 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 const p = c.column.columnDef.meta?.mobilePriority
                 return p !== "primary" && p !== "action" && p !== "hidden"
               })
+              const href = getRowHref?.(row.original)
               return (
-                <Card key={row.id} data-id={(row.original as any).id} className="p-3 flex items-start gap-2">
-                  <div className="flex-1 min-w-0 space-y-1">
+                <Card
+                  key={row.id}
+                  data-id={(row.original as any).id}
+                  className={cn(
+                    "p-3 flex items-start gap-2 transition-shadow",
+                    href && "relative hover:shadow-md active:scale-[0.99]",
+                  )}
+                >
+                  {href && (
+                    <Link
+                      href={href}
+                      className="absolute inset-0 z-0 rounded-[inherit]"
+                      aria-label="Open"
+                    />
+                  )}
+                  <div
+                    className={cn(
+                      "flex-1 min-w-0 space-y-1",
+                      href && "relative z-[1] pointer-events-none",
+                    )}
+                  >
                     {primary && (
-                      <div className="font-medium truncate">
+                      <div
+                        className={cn(
+                          "font-medium truncate",
+                          href && "[&_a]:pointer-events-none [&_a]:text-inherit [&_a]:no-underline",
+                        )}
+                      >
                         {flexRender(primary.column.columnDef.cell, primary.getContext())}
                       </div>
                     )}
@@ -119,7 +147,13 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                     )}
                   </div>
                   {action && (
-                    <div className="shrink-0">
+                    <div
+                      className={cn(
+                        "shrink-0",
+                        href && "relative z-[2]",
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {flexRender(action.column.columnDef.cell, action.getContext())}
                     </div>
                   )}
