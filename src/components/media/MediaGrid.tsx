@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { MediaUsageDialog } from "./MediaUsageDialog"
 import { parsePayloadError } from "@/lib/api"
 import type { Media } from "@/payload-types"
@@ -118,7 +118,7 @@ export function MediaGrid({
       )}
 
       {confirmFor && (
-        <TypedConfirmDialog
+        <ConfirmDialog
           open={!!confirmFor}
           onOpenChange={(o) => !o && setConfirmFor(null)}
           title="Delete media"
@@ -146,8 +146,7 @@ export function MediaGrid({
               })()}
             </>
           }
-          confirmPhrase={confirmFor.filename ?? ""}
-          confirmLabel="Delete media"
+          confirmLabel="Delete"
           onConfirm={() => onConfirmDelete(confirmFor)}
         />
       )}
