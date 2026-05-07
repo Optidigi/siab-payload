@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { getPageById } from "@/lib/queries/pages"
 import { PageForm } from "@/components/forms/PageForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 
 export default async function EditTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { ctx } = await requireAuth()
@@ -12,7 +13,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
   if (!page || pageTenantId !== ctx.tenant.id) notFound()
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">{page.title}</h1>
+      <PageHeader title={page.title} />
       <PageForm
         initial={page as any}
         tenantId={ctx.tenant.id}

@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/authGate"
 import { listTenants } from "@/lib/queries/tenants"
 import { UserEditForm } from "@/components/forms/UserEditForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
@@ -40,10 +41,10 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Edit user</h1>
-        <p className="text-sm text-muted-foreground">{user.email}</p>
-      </div>
+      <PageHeader
+        title="Edit user"
+        subtitle={user.email}
+      />
       <UserEditForm
         // Force a fresh form mount when navigating between user IDs (defense
         // in depth — the route segment unmounts on its own today).
