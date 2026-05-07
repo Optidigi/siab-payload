@@ -1,10 +1,12 @@
 "use client"
+import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Globe, Users, Inbox, ListChecks, Settings, FileText, Image as ImageIcon } from "lucide-react"
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent,
-  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem
+  SidebarGroupLabel, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem,
+  useSidebar
 } from "@/components/ui/sidebar"
 
 type Mode = "super-admin" | "tenant"
@@ -12,6 +14,14 @@ type Role = "super-admin" | "owner" | "editor" | "viewer"
 
 export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   const pathname = usePathname() ?? "/"
+  const { isMobile, setOpenMobile } = useSidebar()
+  const lastPathRef = useRef(pathname)
+  useEffect(() => {
+    if (isMobile && lastPathRef.current !== pathname) {
+      setOpenMobile(false)
+    }
+    lastPathRef.current = pathname
+  }, [pathname, isMobile, setOpenMobile])
   const slugMatch = pathname.match(/^\/sites\/([^/]+)/)
   const tenantSlug = slugMatch?.[1]
   const inTenantView = mode === "super-admin" && !!tenantSlug
