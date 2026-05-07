@@ -722,11 +722,11 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                   type="button"
                   onPointerDown={(e) => e.preventDefault()}
                   onClick={() => setIsPreviewOpen(false)}
-                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium hover:bg-accent"
-                  aria-label="Back to edit"
+                  className="inline-flex items-center justify-center h-9 w-9 rounded-md hover:bg-accent"
+                  aria-label="Close preview"
+                  title="Close preview"
                 >
-                  <X className="h-4 w-4" aria-hidden />
-                  Done
+                  <X className="h-5 w-5" aria-hidden />
                 </button>
                 {/*
                   Inline preview status — replaces the now-desktop-only
