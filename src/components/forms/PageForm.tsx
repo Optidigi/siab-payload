@@ -391,7 +391,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // because each remount loses heartbeat state, signed-token age,
   // scroll position, and mid-typing debounce timers.
   // Phone: closed = hidden (iframe not visible); open = fixed inset-0
-  // fullscreen overlay (z-50 above PhoneTopBanner z-30).
+  // fullscreen overlay (z-50).
   const previewWrapperClass = cn(
     "flex flex-col",
     isDesktop && previewMode === "hidden" && "hidden",
