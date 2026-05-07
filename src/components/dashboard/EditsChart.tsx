@@ -21,8 +21,8 @@ export function EditsChart({ data }: { data: { date: string; count: number }[] }
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
-            <XAxis dataKey="date" tickLine={false} axisLine={false} tickFormatter={(v) => v.slice(5)} />
-            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <XAxis dataKey="date" tickLine={false} axisLine={false} interval={4} tickFormatter={(v) => v.slice(5)} />
+            <ChartTooltip cursor={true} content={<ChartTooltipContent />} />
             <Area type="monotone" dataKey="count" stroke="var(--chart-1)" fill="url(#fillEdits)" strokeWidth={1.5} />
           </AreaChart>
         </ChartContainer>
