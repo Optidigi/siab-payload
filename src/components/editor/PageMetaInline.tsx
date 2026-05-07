@@ -1,7 +1,9 @@
 "use client"
+import { useRef } from "react"
 import type { Control } from "react-hook-form"
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 type Props = { control: Control<any> }
 
@@ -31,25 +33,49 @@ export function PageMetaInline({ control }: Props) {
       <FormField
         control={control}
         name="slug"
-        render={({ field }) => (
-          <FormItem className="w-48 shrink-0">
-            <FormControl>
-              <div
-                className="flex items-center h-9 rounded-md border border-input bg-transparent shadow-xs focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50"
-                title="URL path. Lowercase, digits, hyphens."
-              >
-                <span className="pl-3 pr-1 text-sm text-muted-foreground select-none">/</span>
-                <input
-                  placeholder="slug"
-                  {...field}
-                  value={field.value ?? ""}
-                  className="flex-1 min-w-0 bg-transparent py-1 pr-3 text-base md:text-sm outline-none placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
-                />
-              </div>
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        render={({ field, fieldState }) => {
+          // Wrap a real shadcn <Input> so we keep aria-invalid styling,
+          // dark-mode bg, data-slot hooks etc. The leading `/` is rendered
+          // as an absolutely-positioned overlay so the underlying input
+          // owns all interaction (focus ring, selection, placeholder).
+          // Wrapper-level mousedown forwards click-on-`/` to the input.
+          const inputRef = useRef<HTMLInputElement | null>(null)
+          return (
+            <FormItem className="w-48 shrink-0">
+              <FormControl>
+                <div
+                  className="relative"
+                  title="URL path. Lowercase, digits, hyphens."
+                  onMouseDown={(e) => {
+                    if (e.target === e.currentTarget) {
+                      e.preventDefault()
+                      inputRef.current?.focus()
+                    }
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm text-muted-foreground"
+                  >
+                    /
+                  </span>
+                  <Input
+                    {...field}
+                    ref={(el) => {
+                      inputRef.current = el
+                      if (typeof field.ref === "function") field.ref(el)
+                    }}
+                    placeholder="slug"
+                    value={field.value ?? ""}
+                    aria-invalid={fieldState.invalid || undefined}
+                    className={cn("pl-6")}
+                  />
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )
+        }}
       />
     </div>
   )

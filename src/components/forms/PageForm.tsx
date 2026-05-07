@@ -68,6 +68,28 @@ const normalizeUploadId = (v: unknown): number | string | null => {
   return null
 }
 
+/**
+ * Recursively count "leaf" errors (objects that carry a `message` or
+ * `type` field) in a react-hook-form errors tree. Top-level
+ * `Object.keys(errors).length` collapses all `blocks[*].field` errors
+ * into a single key — useless once forms have nested arrays. Treat
+ * arrays and plain objects as branches; everything else as a leaf.
+ */
+function countLeafErrors(node: unknown): number {
+  if (!node || typeof node !== "object") return 0
+  const obj = node as Record<string, unknown>
+  if (typeof obj.message === "string" || typeof obj.type === "string") return 1
+  let total = 0
+  for (const v of Object.values(obj)) {
+    if (Array.isArray(v)) {
+      for (const item of v) total += countLeafErrors(item)
+    } else if (v && typeof v === "object") {
+      total += countLeafErrors(v)
+    }
+  }
+  return total
+}
+
 const schema = z.object({
   title: z.string().min(1),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
@@ -367,7 +389,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // Validation errors take precedence over dirty so the operator sees
   // why their save was blocked.
   const isDirty = form.formState.isDirty
-  const errorCount = Object.keys(form.formState.errors).length
+  // Recursively count leaf error nodes — RHF nests errors as
+  // { blocks: [{ headline: { message } }, ...] }, so a top-level
+  // Object.keys() count would collapse all block errors to 1.
+  const errorCount = countLeafErrors(form.formState.errors)
   const dirtyCount = Object.keys(form.formState.dirtyFields).length
   let saveStatus: SaveStatus = "idle"
   if (pending) saveStatus = "saving"
