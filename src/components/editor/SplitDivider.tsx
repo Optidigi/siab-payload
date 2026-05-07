@@ -3,7 +3,7 @@ import { useRef } from "react"
 import { cn } from "@/lib/utils"
 
 type Props = {
-  pct: number  // 20-50
+  pct: number  // 20-60
   setPct: (p: number) => void
   iframeWrapperRef: React.RefObject<HTMLDivElement | null>
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -11,23 +11,18 @@ type Props = {
   setIsDragging: (b: boolean) => void
 }
 
-const SNAP_POINTS = [30, 40, 50]
+const SNAP_POINTS = [30, 40, 50, 60]
 
 /**
- * Snap-on-release. The 42-58 deadband always pulls to 50 — the most common
- * "just give me even halves" gesture. Outside the deadband we still snap to
- * the nearest of {30,40,50} when within 6 percentage points; further out we
- * round to the nearest 5% so coarse drags still land on tidy values.
+ * Snap-on-release. Each of the four snap points has a uniform ±2pp deadband:
+ *   [28,32] → 30, [38,42] → 40, [48,52] → 50, [58,62] → 60.
+ * Outside any deadband: round to nearest integer.
  */
 function snapTo(pct: number): number {
-  if (pct >= 42 && pct <= 58) return 50
-  let best = SNAP_POINTS[0]!
-  let bestDist = Math.abs(pct - best)
   for (const p of SNAP_POINTS) {
-    const d = Math.abs(pct - p)
-    if (d < bestDist) { best = p; bestDist = d }
+    if (pct >= p - 2 && pct <= p + 2) return p
   }
-  return Math.abs(pct - best) <= 6 ? best : Math.round(pct / 5) * 5
+  return Math.round(pct)
 }
 
 /**
@@ -45,7 +40,7 @@ function snapTo(pct: number): number {
  * window.innerWidth) so a fixed-width sidebar or future zoom doesn't
  * skew the percent math.
  *
- * Keyboard a11y: Arrow keys nudge ±5% within the [20, 50] clamp.
+ * Keyboard a11y: Arrow keys nudge ±5% within the [20, 60] clamp.
  */
 export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDragging, setIsDragging }: Props) {
   const dragStateRef = useRef<{ startX: number; startPct: number; lastPct: number } | null>(null)
@@ -66,7 +61,7 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     // means a higher pct.
     const containerWidth = containerRef.current?.getBoundingClientRect().width ?? window.innerWidth
     const deltaPct = (deltaX / containerWidth) * -100
-    const next = Math.max(20, Math.min(50, dragStateRef.current.startPct + deltaPct))
+    const next = Math.max(20, Math.min(60, dragStateRef.current.startPct + deltaPct))
     dragStateRef.current.lastPct = next
     setPct(next)
   }
@@ -75,9 +70,9 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     if (!dragStateRef.current) return
     const finalPct = dragStateRef.current.lastPct
     ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
-    // Clamp the snapped result too so a snap target outside [20,50]
+    // Clamp the snapped result too so a snap target outside [20,60]
     // never escapes the new range.
-    setPct(Math.max(20, Math.min(50, snapTo(finalPct))))
+    setPct(Math.max(20, Math.min(60, snapTo(finalPct))))
     dragStateRef.current = null
     setIsDragging(false)
     if (iframeWrapperRef.current) iframeWrapperRef.current.style.pointerEvents = ""
@@ -87,7 +82,7 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       e.preventDefault()
       const delta = e.key === "ArrowLeft" ? 5 : -5
-      setPct(Math.max(20, Math.min(50, pct + delta)))
+      setPct(Math.max(20, Math.min(60, pct + delta)))
     }
   }
 
@@ -97,7 +92,7 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
       aria-orientation="vertical"
       aria-valuenow={Math.round(pct)}
       aria-valuemin={20}
-      aria-valuemax={50}
+      aria-valuemax={60}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
