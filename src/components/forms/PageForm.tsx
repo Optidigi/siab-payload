@@ -577,7 +577,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-        className="flex flex-col w-full"
+        className={cn(
+          "flex flex-col w-full",
+          showSideInFlow && "md:h-[calc(100dvh-6rem)] md:overflow-hidden",
+        )}
       >
         {/*
           Sticky TopBar — desktop side-preview mode only. Contains the
@@ -588,7 +591,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           remains type="submit".
         */}
         {showSideInFlow && (
-          <header className="hidden md:flex sticky top-0 z-10 items-end gap-4 border-b bg-background px-4 py-3">
+          <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
             <PageMetaInline control={controlAny} />
             <PublishControls control={controlAny} pending={pending} variant="bare" />
           </header>
@@ -603,7 +606,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             Editor column. `min-w-[480px]` protects against preview greed
             when splitPct=60 on large viewports.
           */}
-          <div className="flex-1 min-w-[480px] overflow-y-auto">
+          <div className={cn(
+            "flex-1 min-w-[480px]",
+            showSideInFlow && "min-h-0 overflow-y-auto",
+          )}>
             {showSideInFlow ? (
               /*
                 Side mode: single stacked column — no Page card (Title/Slug
