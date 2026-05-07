@@ -497,8 +497,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         */}
         {!isDesktop && (
           <PhoneTopBanner
-            mode={isPreviewOpen ? "preview" : "edit"}
-            onModeChange={(m) => setIsPreviewOpen(m === "preview")}
             pending={pending}
             isDirty={isDirty}
             errorCount={errorCount}
