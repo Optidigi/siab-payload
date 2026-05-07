@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
-import { Trash2, ChevronUp, ChevronDown, Plus } from "lucide-react"
+import { Trash2, ChevronUp, ChevronDown, Plus, ExternalLink, Copy } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
 
@@ -614,6 +614,23 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         {showSideInFlow && (
           <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
             <PageMetaInline control={controlAny} />
+            {form.watch("status") === "published" && form.watch("slug") && (
+              <>
+                <Button variant="ghost" size="icon" type="button" asChild title="View live">
+                  <a href={`${tenantOrigin}/${form.watch("slug")}`} target="_blank" rel="noopener noreferrer" aria-label="View live page">
+                    <ExternalLink className="h-4 w-4" />
+                  </a>
+                </Button>
+                <Button variant="ghost" size="icon" type="button" title="Copy URL"
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${tenantOrigin}/${form.watch("slug")}`)
+                    toast.success("URL copied")
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               size="sm"
