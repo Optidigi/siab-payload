@@ -1,6 +1,7 @@
 "use client"
 import { Fragment, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
+import { toast } from "sonner"
 import {
   DndContext,
   KeyboardSensor,
@@ -27,8 +28,21 @@ import { InsertSlot } from "./InsertSlot"
 // tenant on creates and only auto-scopes reads/writes for non-super-admin
 // users — passing it explicitly works for both roles, so we always do.
 export function BlockEditor({ tenantId }: { tenantId: number | string }) {
-  const { control } = useFormContext()
+  const { control, getValues } = useFormContext()
   const { fields, append, insert, remove, move } = useFieldArray({ control, name: "blocks" })
+
+  const handleRemove = (index: number) => {
+    // Deep clone to avoid stale ref to nested asset IDs.
+    const removed = JSON.parse(JSON.stringify(getValues(`blocks.${index}`)))
+    remove(index)
+    toast.success("Block deleted", {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => insert(index, removed),
+      },
+    })
+  }
 
   // Track which slot the picker should target. Open state lives here so
   // the InsertSlot buttons (and the trailing "+ Add block") can all share
@@ -125,7 +139,7 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
                       blockSlug={slug}
                       blockConfig={cfg}
                       tenantId={tenantId}
-                      onRemove={() => remove(i)}
+                      onRemove={() => handleRemove(i)}
                       onMove={(from, to) => move(from, to)}
                     />
                   </Fragment>
