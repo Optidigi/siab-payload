@@ -5,7 +5,8 @@ import { FAQ } from "./FAQ"
 import { CTA } from "./CTA"
 import { RichText } from "./RichText"
 import { ContactSection } from "./ContactSection"
+import type { BlockWithMeta } from "./_summary"
 
 export const BLOCKS = [Hero, FeatureList, Testimonials, FAQ, CTA, RichText, ContactSection] as const
 
-export const blockBySlug = Object.fromEntries(BLOCKS.map((b) => [b.slug, b])) as Record<string, (typeof BLOCKS)[number]>
+export const blockBySlug = Object.fromEntries(BLOCKS.map((b) => [b.slug, b])) as Record<string, BlockWithMeta>

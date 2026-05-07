@@ -142,11 +142,18 @@ export function BlockTypePicker({
                     }
                   }}
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{b.slug}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {b.fields.length} fields
-                      {hasPresets && ` · ${tilePresets.length} preset${tilePresets.length === 1 ? "" : "s"}`}
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    {b.icon && (
+                      <b.icon className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium">
+                        {typeof b.labels?.singular === "string" ? b.labels.singular : b.slug}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {b.description ?? `${b.fields.length} fields`}
+                        {hasPresets && ` · ${tilePresets.length} preset${tilePresets.length === 1 ? "" : "s"}`}
+                      </div>
                     </div>
                   </div>
                   {hasPresets && (

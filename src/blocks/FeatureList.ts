@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { ListChecks } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const FeatureList: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const FeatureList: BlockWithMeta = {
   slug: "featureList",
+  icon: ListChecks,
+  description: "Feature highlights with icons",
   interfaceName: "FeatureListBlock",
   fields: [
     { name: "title", type: "text" },

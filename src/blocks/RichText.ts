@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { Type } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const RichText: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const RichText: BlockWithMeta = {
   slug: "richText",
+  icon: Type,
+  description: "Long-form text content",
   interfaceName: "RichTextBlock",
   fields: [
     { name: "body", type: "textarea", required: true,

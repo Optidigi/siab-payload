@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { HelpCircle } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const FAQ: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const FAQ: BlockWithMeta = {
   slug: "faq",
+  icon: HelpCircle,
+  description: "Question/answer accordion",
   interfaceName: "FAQBlock",
   fields: [
     { name: "title", type: "text" },

@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { Sparkles } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const Hero: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const Hero: BlockWithMeta = {
   slug: "hero",
+  icon: Sparkles,
+  description: "Large headline section with optional image",
   interfaceName: "HeroBlock",
   fields: [
     { name: "eyebrow", type: "text" },

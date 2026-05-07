@@ -1,8 +1,10 @@
-import type { Block } from "payload"
-import { truncate } from "./_summary"
+import { Mail } from "lucide-react"
+import { truncate, type BlockWithMeta } from "./_summary"
 
-export const ContactSection: Block & { summary?: (v: Record<string, unknown>) => string | undefined } = {
+export const ContactSection: BlockWithMeta = {
   slug: "contactSection",
+  icon: Mail,
+  description: "Contact form or details",
   interfaceName: "ContactSectionBlock",
   fields: [
     { name: "title", type: "text" },
