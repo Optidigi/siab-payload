@@ -534,18 +534,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 </Button>
               </>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => {
-                document.dispatchEvent(new CustomEvent("editor:open-add-block"))
-              }}
-              aria-label="Add block"
-            >
-              <Plus className="h-4 w-4 mr-1" aria-hidden />
-              <span className="hidden lg:inline">Add block</span>
-            </Button>
             <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} variant="bare" />
           </header>
         )}
