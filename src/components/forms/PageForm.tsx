@@ -581,7 +581,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 Danger Zone below.
                 Phone-only combined Page+Publish card prepended above the grid.
               */
-              <div className="@container/editor max-md:px-2 max-md:py-3 md:p-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom)+1rem)] md:pb-0">
+              <div className="@container/editor max-md:px-2 max-md:pt-3 md:p-4 max-md:pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom)+1rem)]">
                 {/*
                   Phone-only combined Page+Publish card. Rendered only on <md
                   so the operator sees title/slug/publish controls at the top
