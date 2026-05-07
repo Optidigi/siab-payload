@@ -32,7 +32,7 @@ export function UserMenu({ user }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <Avatar className="h-7 w-7 max-md:h-10 max-md:w-10">
+        <Avatar className="h-7 w-7 max-md:h-11 max-md:w-11">
           <AvatarFallback className="text-xs max-md:text-sm">{initial}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
