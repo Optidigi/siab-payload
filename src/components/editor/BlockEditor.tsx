@@ -18,6 +18,7 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { blockBySlug } from "@/blocks/registry"
 import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
@@ -192,9 +193,21 @@ export function BlockEditor({
         onOpenChange={setPickerOpen}
         tenantId={tenantId}
       />
+      {/*
+        Trailing "+ Add block" — desktop and `<md` empty-state only. Phone
+        with blocks present uses the floating FAB (PageForm renders it),
+        so this would be a duplicate affordance. Render only when:
+        - on desktop (md+), OR
+        - on phone with zero blocks (so the empty state has a clear CTA
+          before the FAB has anything to add to). When fields.length > 0,
+          phone hides this in favor of the FAB.
+      */}
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent",
+          fields.length > 0 && "hidden md:inline-flex",
+        )}
         onClick={() => openPickerAt(fields.length)}
         aria-label="Add block at end"
       >

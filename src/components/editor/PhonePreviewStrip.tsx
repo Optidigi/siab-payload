@@ -42,7 +42,15 @@ export function PhonePreviewStrip({ status, errorMessage, pageTitle, onOpen }: P
   return (
     <div
       ref={ref}
-      className="md:hidden fixed bottom-0 inset-x-0 z-30 flex items-center gap-3 h-14 px-4 border-t bg-background pb-[env(safe-area-inset-bottom)]"
+      // Position above the home-indicator (safe-area-inset-bottom) instead
+      // of overlapping it with internal pb-safe-area. This keeps the entire
+      // 56px strip tappable + visible, and lets consumers (FAB, editor
+      // pb, Toaster offset) compute clearance as
+      // `var(--mini-strip-h) + env(safe-area-inset-bottom)` without
+      // double-counting the inset (the strip itself sat 34px lower
+      // visually before this change on iPhone X+).
+      style={{ bottom: "env(safe-area-inset-bottom)" }}
+      className="md:hidden fixed inset-x-0 z-30 flex items-center gap-3 h-14 px-4 border-t bg-background"
       onPointerDown={(e) => { e.preventDefault() }}
       onClick={onOpen}
       role="button"
