@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -122,6 +122,11 @@ export function CreateUserForm() {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{createdKey ? "User created" : "Create user"}</DialogTitle>
+          <DialogDescription>
+            {createdKey
+              ? "User is created. Copy the API key below now — it won't be shown again after this dialog closes."
+              : "Provision a new user with a password set by you. Optionally generate a one-time API key, shown once after save."}
+          </DialogDescription>
         </DialogHeader>
 
         {createdKey ? (
