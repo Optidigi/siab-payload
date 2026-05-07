@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { MediaUsageDialog } from "./MediaUsageDialog"
 import { parsePayloadError } from "@/lib/api"
+import { cn } from "@/lib/utils"
 import type { Media } from "@/payload-types"
 import type { MediaUsageEntry, MediaUsageMap } from "@/lib/queries/mediaUsageWalker"
 
@@ -144,23 +145,41 @@ export function MediaGrid({
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {items.map((m) => {
           const count = usageCount(m)
+          const isSelected = !selectable && selectedIds.has(m.id as any)
           return (
-            <Card key={m.id as any} className={`relative ${selectable ? "cursor-pointer hover:ring-2 hover:ring-ring" : ""}`}>
+            <Card
+              key={m.id as any}
+              className={cn(
+                "relative",
+                selectable && "cursor-pointer hover:ring-2 hover:ring-ring",
+                !selectable && "cursor-pointer transition-colors",
+                isSelected && "ring-2 ring-primary bg-primary/5",
+              )}
+              onClick={() => {
+                if (selectable) {
+                  onSelect?.(m)
+                  return
+                }
+                // Management mode: tapping the card toggles selection.
+                const next = new Set(selectedIds)
+                if (next.has(m.id as any)) next.delete(m.id as any)
+                else next.add(m.id as any)
+                setSelectedIds(next)
+              }}
+            >
               {!selectable && (
-                <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                // Checkbox is now a pure visual indicator. Card click is the
+                // sole interaction path — pointer-events-none avoids the
+                // double-toggle that would otherwise happen when the click
+                // hits both the checkbox and the card.
+                <div className="absolute top-2 left-2 z-10 pointer-events-none">
                   <Checkbox
-                    checked={selectedIds.has(m.id as any)}
-                    onCheckedChange={(v) => {
-                      const next = new Set(selectedIds)
-                      if (v) next.add(m.id as any)
-                      else next.delete(m.id as any)
-                      setSelectedIds(next)
-                    }}
-                    aria-label={`Select ${m.filename}`}
+                    checked={isSelected}
+                    aria-label={`${isSelected ? "Selected" : "Not selected"}: ${m.filename}`}
                   />
                 </div>
               )}
-              <CardContent className="p-2 space-y-2" onClick={() => selectable && onSelect?.(m)}>
+              <CardContent className="p-2 space-y-2">
                 {(m.mimeType ?? "").startsWith("image/")
                   ? <img src={m.url ?? ""} alt={m.alt ?? ""} className="aspect-video w-full object-cover rounded" />
                   : <div className="aspect-video flex items-center justify-center bg-muted text-xs text-muted-foreground rounded">{m.mimeType}</div>}
