@@ -61,25 +61,36 @@ export function ThemeToggle() {
  * inside a dropdown row — used in UserMenu on phone where the standalone
  * ThemeToggle button is hidden in the header to reclaim space.
  */
+const themeIcons = {
+  light: Sun,
+  dark: Moon,
+  system: Monitor,
+}
+
 export function ThemeSwitcher() {
   const { theme, setTheme } = useTheme()
   return (
-    <div className="flex w-full items-center gap-2 px-2 py-1.5">
+    <div className="flex w-full items-center gap-1 px-2 py-1.5">
       <span className="text-xs text-muted-foreground mr-auto">Theme</span>
-      {(["light", "dark", "system"] as const).map((t) => (
-        <button
-          key={t}
-          type="button"
-          onClick={() => setTheme(t)}
-          className={cn(
-            "rounded-md px-2 py-1 text-xs capitalize hover:bg-accent",
-            theme === t && "bg-accent"
-          )}
-          aria-pressed={theme === t}
-        >
-          {t}
-        </button>
-      ))}
+      {(["light", "dark", "system"] as const).map((t) => {
+        const Icon = themeIcons[t]
+        return (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTheme(t)}
+            className={cn(
+              "inline-flex items-center justify-center rounded-md h-9 w-9 hover:bg-accent transition-colors",
+              theme === t && "bg-accent",
+            )}
+            aria-pressed={theme === t}
+            aria-label={t}
+            title={t}
+          >
+            <Icon className="h-4 w-4" aria-hidden />
+          </button>
+        )
+      })}
     </div>
   )
 }
