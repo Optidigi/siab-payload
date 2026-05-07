@@ -3,6 +3,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { Upload } from "lucide-react"
+import { parsePayloadError } from "@/lib/api"
 
 export function MediaUploader({ tenantId, onUploaded }: { tenantId: number | string; onUploaded?: (m: any) => void }) {
   const [pending, setPending] = useState(false)
@@ -11,16 +12,30 @@ export function MediaUploader({ tenantId, onUploaded }: { tenantId: number | str
     const file = e.target.files?.[0]
     if (!file) return
     setPending(true)
-    const fd = new FormData()
-    fd.append("file", file)
-    fd.append("_payload", JSON.stringify({ alt: file.name, tenant: tenantId }))
-    const res = await fetch("/api/media", { method: "POST", body: fd })
-    setPending(false)
-    e.target.value = "" // allow re-picking the same file
-    if (!res.ok) { toast.error("Upload failed"); return }
-    const json = await res.json()
-    toast.success("Uploaded")
-    onUploaded?.(json.doc ?? json)
+    try {
+      const fd = new FormData()
+      fd.append("file", file)
+      fd.append("_payload", JSON.stringify({ alt: file.name, tenant: tenantId }))
+      const res = await fetch("/api/media", { method: "POST", body: fd })
+      if (!res.ok) {
+        // Surface server-side validation/storage error with detail so a
+        // silent failure can't masquerade as success. Previously this was
+        // a bare "Upload failed" toast with no actionable info.
+        const { message } = await parsePayloadError(res)
+        toast.error(message || `Upload failed (${res.status})`)
+        return
+      }
+      const json = await res.json()
+      toast.success(`Uploaded ${file.name}`)
+      onUploaded?.(json.doc ?? json)
+    } catch (err) {
+      // Network failure / aborted request / FormData encoding error — same
+      // category as a non-OK response from the operator's perspective.
+      toast.error(err instanceof Error ? err.message : "Upload failed")
+    } finally {
+      setPending(false)
+      e.target.value = "" // allow re-picking the same file
+    }
   }
 
   return (
