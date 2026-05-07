@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { toast } from "sonner"
+import { Settings as SettingsIcon, Palette, Mail, Compass } from "lucide-react"
 
 const generalFields = [
   { name: "siteName", type: "text", label: "Site name", required: true },
@@ -60,11 +61,11 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
     router.refresh()
   })
 
-  const tabs: Array<[string, any[]]> = [
-    ["general", generalFields],
-    ["branding", brandingFields],
-    ["contact", contactFields],
-    ["navigation", navigationFields]
+  const tabs = [
+    { key: "general",    label: "General",    Icon: SettingsIcon, fields: generalFields },
+    { key: "branding",   label: "Branding",   Icon: Palette,      fields: brandingFields },
+    { key: "contact",    label: "Contact",    Icon: Mail,         fields: contactFields },
+    { key: "navigation", label: "Navigation", Icon: Compass,      fields: navigationFields },
   ]
 
   return (
@@ -81,18 +82,21 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
               without losing scroll behavior.
             */}
             <CardHeader className="border-b p-0">
-              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-                <TabsList className="w-max">
-                  {tabs.map(([k]) => (
-                    <TabsTrigger key={k} value={k} className="capitalize shrink-0">{k}</TabsTrigger>
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible flex justify-center [&::-webkit-scrollbar]:hidden">
+                <TabsList className="mx-auto w-max">
+                  {tabs.map(({ key, label, Icon }) => (
+                    <TabsTrigger key={key} value={key} className="shrink-0 gap-1.5">
+                      <Icon className="h-4 w-4" aria-hidden />
+                      {label}
+                    </TabsTrigger>
                   ))}
                 </TabsList>
               </div>
             </CardHeader>
             <CardContent>
-              {tabs.map(([k, fs]) => (
-                <TabsContent key={k} value={k} className="space-y-3">
-                  {fs.map((f: any, i: number) => <FieldRenderer key={i} field={f} />)}
+              {tabs.map(({ key, fields }) => (
+                <TabsContent key={key} value={key} className="space-y-3">
+                  {fields.map((f: any, i: number) => <FieldRenderer key={i} field={f} />)}
                 </TabsContent>
               ))}
             </CardContent>
