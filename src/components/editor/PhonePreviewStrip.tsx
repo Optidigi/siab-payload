@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useRef } from "react"
-import { ChevronUp } from "lucide-react"
+import { Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { tinyVibrate } from "@/lib/haptics"
 import type { PreviewStatus } from "./PreviewToolbar"
 
 type Props = {
@@ -30,14 +31,15 @@ export function PhonePreviewStrip({ status, errorMessage, pageTitle, onOpen }: P
 
   const dotClass =
     status === "ready" ? "bg-green-500" :
-    status === "loading" ? "bg-amber-500 animate-pulse" :
-    status === "reconnecting" ? "bg-amber-500 animate-pulse" :
+    status === "loading" ? "bg-amber-500 ring-2 ring-amber-400/40 ring-offset-1" :
+    status === "reconnecting" ? "bg-amber-500 ring-2 ring-amber-400/40 ring-offset-1" :
     "bg-destructive"
-  const statusLabel =
-    status === "ready" ? "Live" :
-    status === "loading" ? "Loading…" :
-    status === "reconnecting" ? "Reconnecting…" :
-    `Error${errorMessage ? `: ${errorMessage}` : ""}`
+
+  const line1 =
+    status === "loading" ? "Preview · Loading…" :
+    status === "reconnecting" ? "Preview · Reconnecting…" :
+    status === "error" ? `Preview · Error${errorMessage ? `: ${errorMessage}` : ""}` :
+    "Live preview"
 
   return (
     <div
@@ -50,9 +52,9 @@ export function PhonePreviewStrip({ status, errorMessage, pageTitle, onOpen }: P
       // double-counting the inset (the strip itself sat 34px lower
       // visually before this change on iPhone X+).
       style={{ bottom: "env(safe-area-inset-bottom)" }}
-      className="md:hidden fixed inset-x-0 z-30 flex items-center gap-3 h-14 px-4 border-t bg-background"
+      className="phone-preview-strip md:hidden fixed inset-x-0 z-30 flex items-center gap-3 h-14 px-4 border-t border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 active:scale-[0.98] transition-transform duration-150 ease-out"
       onPointerDown={(e) => { e.preventDefault() }}
-      onClick={onOpen}
+      onClick={() => { tinyVibrate(8); onOpen() }}
       role="button"
       tabIndex={0}
       aria-label="Open preview"
@@ -60,15 +62,31 @@ export function PhonePreviewStrip({ status, errorMessage, pageTitle, onOpen }: P
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen() }
       }}
     >
-      <span className={cn("h-2 w-2 rounded-full shrink-0", dotClass)} aria-hidden />
-      <div className="flex-1 min-w-0 truncate text-sm">
-        <span className="text-muted-foreground">Preview · </span>
-        <span className={cn(status === "error" && "text-destructive")}>{statusLabel}</span>
-        {pageTitle && status === "ready" && (
-          <span className="text-muted-foreground"> · {pageTitle}</span>
+      {/* Eye icon chip */}
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/60 shrink-0" aria-hidden>
+        <Eye className="h-4 w-4 text-muted-foreground" />
+      </span>
+
+      {/* Two-line type hierarchy */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className={cn(
+            "h-2 w-2 rounded-full shrink-0",
+            dotClass
+          )} aria-hidden />
+          <p className={cn(
+            "text-[13px] font-medium tracking-tight truncate",
+            status === "error" && "text-destructive"
+          )}>
+            {line1}
+          </p>
+        </div>
+        {pageTitle && (
+          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+            {pageTitle}
+          </p>
         )}
       </div>
-      <ChevronUp className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
     </div>
   )
 }
