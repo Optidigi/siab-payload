@@ -9,6 +9,7 @@ type Props = {
   control: Control<any>
   pending: boolean
   isDirty?: boolean
+  errorCount?: number
   variant?: "card" | "bare"
 }
 
@@ -20,7 +21,7 @@ type Props = {
  * Field name "status" and option values "draft"/"published" mirror the zod
  * schema and existing inline JSX in PageForm.
  */
-export function PublishControls({ control, pending, isDirty, variant = "card" }: Props) {
+export function PublishControls({ control, pending, isDirty, errorCount, variant = "card" }: Props) {
   return (
     <div className={cn(
       "flex items-end gap-2",
@@ -47,8 +48,13 @@ export function PublishControls({ control, pending, isDirty, variant = "card" }:
           </FormItem>
         )}
       />
-      <Button type="submit" disabled={pending || !isDirty}>
+      <Button type="submit" disabled={pending || !isDirty} title="Save (⌘S / Ctrl+S)">
         {pending ? "Saving..." : "Save"}
+        {!pending && isDirty && errorCount != null && errorCount > 0 && (
+          <span className="ml-1 rounded px-1 py-0.5 text-xs bg-destructive text-destructive-foreground">
+            {errorCount}
+          </span>
+        )}
       </Button>
     </div>
   )

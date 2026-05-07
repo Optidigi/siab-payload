@@ -626,7 +626,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
               <Plus className="h-4 w-4 mr-1" aria-hidden />
               <span className="hidden lg:inline">Add block</span>
             </Button>
-            <PublishControls control={controlAny} pending={pending} isDirty={isDirty} variant="bare" />
+            <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} variant="bare" />
           </header>
         )}
         {/*
@@ -706,7 +706,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                     <Card>
                       <CardHeader><CardTitle>Publish</CardTitle></CardHeader>
                       <CardContent className="space-y-3">
-                        <PublishControls control={controlAny} pending={pending} isDirty={isDirty} variant="card" />
+                        <PublishControls control={controlAny} pending={pending} isDirty={isDirty} errorCount={errorCount} variant="card" />
                       </CardContent>
                     </Card>
                     <Card>
