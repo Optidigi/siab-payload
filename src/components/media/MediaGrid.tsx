@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -16,9 +17,11 @@ import type { MediaUsageEntry, MediaUsageMap } from "@/lib/queries/mediaUsageWal
  *
  *  - Each card shows a "Used in N" badge when the item is referenced by
  *    pages or by site-settings. Clicking the badge opens MediaUsageDialog.
- *  - Delete uses TypedConfirmDialog (must type the filename) instead of
- *    native confirm(). When the item is in use, the dialog description
- *    lists the dependents so the operator sees the impact before typing.
+ *  - Delete uses ConfirmDialog instead of native confirm(). When the item
+ *    is in use, the dialog description lists the dependents so the operator
+ *    sees the impact before confirming.
+ *  - In the management view (selectable=false), cards can be multi-selected
+ *    via checkboxes; a sticky action bar enables bulk delete.
  */
 export function MediaGrid({
   items,
@@ -38,6 +41,8 @@ export function MediaGrid({
   const router = useRouter()
   const [confirmFor, setConfirmFor] = useState<Media | null>(null)
   const [usageFor, setUsageFor] = useState<Media | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set())
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
 
   const usageOf = (m: Media): MediaUsageEntry => {
     // Map keys are `number | string` (the union of Payload id types — pg
@@ -62,13 +67,93 @@ export function MediaGrid({
     else router.refresh()
   }
 
+  const onBulkDelete = async () => {
+    const ids = Array.from(selectedIds)
+    let okCount = 0
+    let failCount = 0
+    for (const id of ids) {
+      const res = await fetch(`/api/media/${id}`, { method: "DELETE" })
+      if (res.ok) okCount++
+      else failCount++
+    }
+    if (failCount === 0) toast.success(`Deleted ${okCount} item${okCount === 1 ? "" : "s"}`)
+    else toast.error(`Deleted ${okCount}, failed ${failCount}`)
+    setSelectedIds(new Set())
+    if (onDeleted) onDeleted()
+    else router.refresh()
+  }
+
+  // Build bulk-delete description
+  const buildBulkDescription = () => {
+    const ids = Array.from(selectedIds)
+    const selectedItems = items.filter((m) => ids.includes(m.id as any))
+    const MAX_NAMES = 5
+    const shownNames = selectedItems.slice(0, MAX_NAMES).map((m) => m.filename ?? String(m.id))
+    const extra = selectedItems.length - shownNames.length
+
+    // Check if any selected item is referenced somewhere
+    const hasRefs = selectedItems.some((m) => usageCount(m) > 0)
+
+    return (
+      <>
+        <p>
+          Permanently delete {ids.length} item{ids.length === 1 ? "" : "s"}:{" "}
+          <strong>{shownNames.join(", ")}{extra > 0 ? ` and ${extra} more` : ""}</strong>.
+        </p>
+        {hasRefs && (
+          <p className="mt-2 text-xs">
+            Some of these files are referenced by pages. Those pages will show broken images until the references are replaced.
+          </p>
+        )}
+      </>
+    )
+  }
+
   return (
     <>
+      {!selectable && selectedIds.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border bg-background/95 backdrop-blur px-3 py-2 mb-3">
+          <span className="text-sm font-medium">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              type="button"
+              onClick={() => setBulkConfirmOpen(true)}
+            >
+              Delete {selectedIds.size}
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {items.map((m) => {
           const count = usageCount(m)
           return (
-            <Card key={m.id as any} className={selectable ? "cursor-pointer hover:ring-2 hover:ring-ring" : ""}>
+            <Card key={m.id as any} className={`relative ${selectable ? "cursor-pointer hover:ring-2 hover:ring-ring" : ""}`}>
+              {!selectable && (
+                <div className="absolute top-2 left-2 z-10" onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    checked={selectedIds.has(m.id as any)}
+                    onCheckedChange={(v) => {
+                      const next = new Set(selectedIds)
+                      if (v) next.add(m.id as any)
+                      else next.delete(m.id as any)
+                      setSelectedIds(next)
+                    }}
+                    aria-label={`Select ${m.filename}`}
+                  />
+                </div>
+              )}
               <CardContent className="p-2 space-y-2" onClick={() => selectable && onSelect?.(m)}>
                 {(m.mimeType ?? "").startsWith("image/")
                   ? <img src={m.url ?? ""} alt={m.alt ?? ""} className="aspect-video w-full object-cover rounded" />
@@ -150,6 +235,15 @@ export function MediaGrid({
           onConfirm={() => onConfirmDelete(confirmFor)}
         />
       )}
+
+      <ConfirmDialog
+        open={bulkConfirmOpen}
+        onOpenChange={setBulkConfirmOpen}
+        title={`Delete ${selectedIds.size} media item${selectedIds.size === 1 ? "" : "s"}`}
+        description={buildBulkDescription()}
+        confirmLabel={`Delete ${selectedIds.size}`}
+        onConfirm={onBulkDelete}
+      />
     </>
   )
 }
