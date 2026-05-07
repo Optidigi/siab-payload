@@ -10,7 +10,9 @@ export function SiteHeader({ user }: { user: Pick<User, "email" | "name" | "role
       <SidebarTrigger />
       <Separator orientation="vertical" className="mx-2 h-4" />
       <div className="flex-1" />
-      <ThemeToggle />
+      <div className="max-md:hidden">
+        <ThemeToggle />
+      </div>
       <UserMenu user={{ email: user.email, name: user.name ?? null, role: user.role }} />
     </header>
   )

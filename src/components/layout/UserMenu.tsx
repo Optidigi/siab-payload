@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Key, User } from "lucide-react"
 import { toast } from "sonner"
+import { ThemeSwitcher } from "./ThemeToggle"
 
 type Props = {
   user: { email: string; name?: string | null; role: "super-admin" | "owner" | "editor" | "viewer" }
@@ -41,6 +42,10 @@ export function UserMenu({ user }: Props) {
           {user.name && <span className="text-xs text-muted-foreground truncate">{user.email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem className="md:hidden p-0 focus:bg-transparent">
+          <ThemeSwitcher />
+        </DropdownMenuItem>
+        <DropdownMenuSeparator className="md:hidden" />
         <DropdownMenuItem asChild>
           <a href="/profile"><User className="mr-2 h-4 w-4" /> Profile</a>
         </DropdownMenuItem>
