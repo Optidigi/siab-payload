@@ -5,6 +5,7 @@ import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -16,6 +17,7 @@ import {
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
 import { blockBySlug } from "@/blocks/registry"
+import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
 import { BlockTypePicker } from "./BlockTypePicker"
 import { InsertSlot } from "./InsertSlot"
@@ -50,8 +52,13 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
   }, [fields.length])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 }, // desktop mouse-friendly
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 }, // long-press for touch
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -90,7 +97,7 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
 
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center">
