@@ -116,22 +116,27 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }, [previewMode])
 
   // Split percentage: how much of the editor-area width the preview
-  // occupies in side mode. Lazy initializer mirrors `previewMode`
-  // above — read localStorage once on mount; clamp to [20, 60] so a
-  // corrupted value (or one persisted from the old [20,80] range)
-  // can never wedge the layout. 40 is the default split — leans the
-  // editor a bit wider than the preview so form fields stay readable.
+  // occupies in side mode. Stored per-page so different pages can have
+  // different splits; global key acts as a fallback for unsaved pages.
+  // Clamp to [20, 60] — 40 is the default.
+  const splitStorageKey = `page-editor:preview-split:${initial?.id ?? "new"}`
   const [splitPct, setSplitPct] = useState<number>(() => {
     if (typeof window === "undefined") return 40
-    const stored = window.localStorage.getItem("page-editor:preview-split")
-    const n = stored ? Number(stored) : NaN
+    const perPage = window.localStorage.getItem(splitStorageKey)
+    const global = window.localStorage.getItem("page-editor:preview-split")
+    const raw = perPage ?? global
+    if (!raw) return 40
+    const n = parseInt(raw, 10)
     return Number.isFinite(n) && n >= 20 && n <= 60 ? n : 40
   })
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Write per-page key for precise memory; also update the global key
+      // so new pages inherit the last-used split as a sensible default.
+      window.localStorage.setItem(splitStorageKey, String(splitPct))
       window.localStorage.setItem("page-editor:preview-split", String(splitPct))
     }
-  }, [splitPct])
+  }, [splitPct, splitStorageKey])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
   const formContainerRef = useRef<HTMLDivElement>(null)
