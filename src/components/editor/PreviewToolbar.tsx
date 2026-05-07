@@ -56,13 +56,34 @@ export function PreviewToolbar({
         {/* Viewport switcher — hidden on <md (no mouse-pointer affordance,
             and the phone is a phone). Re-shows at md+ where it's useful. */}
         <div className="hidden md:flex items-center gap-1">
-          <Button variant={viewport === "mobile" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("mobile")} aria-label="Mobile viewport (375px)">
+          <Button
+            variant={viewport === "mobile" ? "secondary" : "ghost"}
+            size="icon"
+            className={cn("h-7 w-7", viewport === "mobile" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            onClick={() => setViewport("mobile")}
+            aria-label="Mobile viewport (375px)"
+            title="Mobile viewport (375px)"
+          >
             <Smartphone className="h-3.5 w-3.5" />
           </Button>
-          <Button variant={viewport === "laptop" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("laptop")} aria-label="Laptop viewport (1024px)">
+          <Button
+            variant={viewport === "laptop" ? "secondary" : "ghost"}
+            size="icon"
+            className={cn("h-7 w-7", viewport === "laptop" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            onClick={() => setViewport("laptop")}
+            aria-label="Laptop viewport (1024px)"
+            title="Laptop viewport (1024px)"
+          >
             <Monitor className="h-3.5 w-3.5" />
           </Button>
-          <Button variant={viewport === "full" ? "secondary" : "ghost"} size="icon" className="h-7 w-7" onClick={() => setViewport("full")} aria-label="Full viewport">
+          <Button
+            variant={viewport === "full" ? "secondary" : "ghost"}
+            size="icon"
+            className={cn("h-7 w-7", viewport === "full" && "ring-1 ring-primary ring-offset-1 ring-offset-background")}
+            onClick={() => setViewport("full")}
+            aria-label="Full viewport (no max-width)"
+            title="Full viewport (no max-width)"
+          >
             <Maximize2 className="h-3.5 w-3.5" />
           </Button>
           <span className="mx-1 h-4 w-px bg-border" aria-hidden />
@@ -76,8 +97,8 @@ export function PreviewToolbar({
             size="icon"
             className="h-7 w-7"
             onClick={() => setPreviewMode("fullscreen")}
-            aria-label="Fullscreen preview"
-            title="Fullscreen preview"
+            aria-label="Hide editor — fullscreen preview"
+            title="Hide editor — fullscreen preview"
           >
             <Expand className="h-3.5 w-3.5" />
           </Button>
@@ -87,8 +108,8 @@ export function PreviewToolbar({
             size="icon"
             className="h-7 w-7"
             onClick={() => setPreviewMode("side")}
-            aria-label="Exit fullscreen (side mode)"
-            title="Exit fullscreen (side mode)"
+            aria-label="Exit fullscreen"
+            title="Exit fullscreen"
           >
             <Shrink className="h-3.5 w-3.5" />
           </Button>
