@@ -651,7 +651,23 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           outer flex-col) so SplitDivider's getBoundingClientRect().width
           reads the correct editor-area width and not the full viewport.
         */}
-        <div ref={formContainerRef} className="flex flex-1 min-h-0 w-full">
+        <div ref={formContainerRef} className="relative flex flex-1 min-h-0 w-full">
+          {/*
+            Snap guide lines. Render during drag only in side mode so the
+            operator can see where the four snap points (30/40/50/60%) land.
+            Positioned as absolute children against the container row (which
+            has `position: relative`). The guide lines are at X = pct% from
+            the RIGHT edge (preview occupies the right side), so left =
+            (100 - p)%.
+          */}
+          {showSideInFlow && isDragging && [30, 40, 50, 60].map((p) => (
+            <span
+              key={p}
+              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-[9]"
+              style={{ left: `${100 - p}%` }}
+              aria-hidden
+            />
+          ))}
           {/*
             Editor column. `min-w-0` is mandatory to break the flex
             min-content chain — without it, intrinsic widths of nested
