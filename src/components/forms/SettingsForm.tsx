@@ -82,12 +82,12 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
               without losing scroll behavior.
             */}
             <CardHeader className="border-b p-0">
-              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible flex justify-center [&::-webkit-scrollbar]:hidden">
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible md:flex md:justify-center [&::-webkit-scrollbar]:hidden">
                 <TabsList className="mx-auto w-max">
                   {tabs.map(({ key, label, Icon }) => (
-                    <TabsTrigger key={key} value={key} className="shrink-0 gap-1.5">
+                    <TabsTrigger key={key} value={key} aria-label={label} className="shrink-0 gap-1.5">
                       <Icon className="h-4 w-4" aria-hidden />
-                      {label}
+                      <span className="max-md:hidden">{label}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>
