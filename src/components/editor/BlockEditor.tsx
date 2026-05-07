@@ -1,10 +1,12 @@
 "use client"
 import { Fragment, useEffect, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
+import { toast } from "sonner"
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -15,7 +17,10 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy
 } from "@dnd-kit/sortable"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { blockBySlug } from "@/blocks/registry"
+import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
 import { BlockTypePicker } from "./BlockTypePicker"
 import { InsertSlot } from "./InsertSlot"
@@ -24,9 +29,30 @@ import { InsertSlot } from "./InsertSlot"
 // and BlockTypePicker (list-fetch filter). The multi-tenant plugin requires
 // tenant on creates and only auto-scopes reads/writes for non-super-admin
 // users — passing it explicitly works for both roles, so we always do.
-export function BlockEditor({ tenantId }: { tenantId: number | string }) {
-  const { control } = useFormContext()
+export function BlockEditor({
+  tenantId,
+  isPhone,
+  pageId,
+}: {
+  tenantId: number | string
+  isPhone: boolean
+  pageId: string | number
+}) {
+  const { control, getValues } = useFormContext()
   const { fields, append, insert, remove, move } = useFieldArray({ control, name: "blocks" })
+
+  const handleRemove = (index: number) => {
+    // Deep clone to avoid stale ref to nested asset IDs.
+    const removed = JSON.parse(JSON.stringify(getValues(`blocks.${index}`)))
+    remove(index)
+    toast.success("Block deleted", {
+      duration: 6000,
+      action: {
+        label: "Undo",
+        onClick: () => insert(index, removed),
+      },
+    })
+  }
 
   // Track which slot the picker should target. Open state lives here so
   // the InsertSlot buttons (and the trailing "+ Add block") can all share
@@ -49,9 +75,25 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
     return () => document.removeEventListener("editor:open-add-block", onOpen)
   }, [fields.length])
 
+  // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
+  // mounted BlockListItems can respond without prop-drilling.
+  const [allCollapsed, setAllCollapsed] = useState(false)
+  const onToggleAll = () => {
+    const nextCollapsed = !allCollapsed
+    setAllCollapsed(nextCollapsed)
+    document.dispatchEvent(
+      new CustomEvent("editor:set-blocks-open", { detail: { open: !nextCollapsed } })
+    )
+  }
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 }, // desktop mouse-friendly
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 }, // long-press for touch
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   const onDragEnd = (e: DragEndEvent) => {
@@ -90,7 +132,14 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
 
   return (
     <div className="space-y-3">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      {fields.length > 0 && (
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" type="button" onClick={onToggleAll}>
+            {allCollapsed ? "Expand all" : "Collapse all"}
+          </Button>
+        </div>
+      )}
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center">
@@ -118,8 +167,11 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
                       blockSlug={slug}
                       blockConfig={cfg}
                       tenantId={tenantId}
-                      onRemove={() => remove(i)}
+                      onRemove={() => handleRemove(i)}
                       onMove={(from, to) => move(from, to)}
+                      isPhone={isPhone}
+                      pageId={pageId}
+                      blockFieldId={f.id}
                     />
                   </Fragment>
                 )
@@ -141,9 +193,21 @@ export function BlockEditor({ tenantId }: { tenantId: number | string }) {
         onOpenChange={setPickerOpen}
         tenantId={tenantId}
       />
+      {/*
+        Trailing "+ Add block" — desktop and `<md` empty-state only. Phone
+        with blocks present uses the floating FAB (PageForm renders it),
+        so this would be a duplicate affordance. Render only when:
+        - on desktop (md+), OR
+        - on phone with zero blocks (so the empty state has a clear CTA
+          before the FAB has anything to add to). When fields.length > 0,
+          phone hides this in favor of the FAB.
+      */}
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent"
+        className={cn(
+          "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent",
+          fields.length > 0 && "hidden md:inline-flex",
+        )}
         onClick={() => openPickerAt(fields.length)}
         aria-label="Add block at end"
       >

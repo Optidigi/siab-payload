@@ -14,7 +14,8 @@ import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/e
 import { PreviewPane } from "@/components/editor/PreviewPane"
 import type { PreviewStatus } from "@/components/editor/PreviewToolbar"
 import { SplitDivider } from "@/components/editor/SplitDivider"
-import { MobileTabbar } from "@/components/editor/MobileTabbar"
+import { PhoneTopBanner } from "@/components/editor/PhoneTopBanner"
+import { PhonePreviewStrip } from "@/components/editor/PhonePreviewStrip"
 import { PublishControls } from "@/components/editor/PublishControls"
 import { PageMetaInline } from "@/components/editor/PageMetaInline"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
@@ -24,7 +25,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { parsePayloadError } from "@/lib/api"
 import { scrollToFirstError } from "@/lib/formScroll"
 import { toast } from "sonner"
-import { Trash2, ChevronUp, ChevronDown, Plus, ExternalLink, Copy } from "lucide-react"
+import { Trash2, Plus, ExternalLink, Copy, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Page } from "@/payload-types"
 
@@ -163,18 +164,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const previewWrapperRef = useRef<HTMLDivElement>(null)
   const formContainerRef = useRef<HTMLDivElement>(null)
 
-  // Phone sheet drag — tracks pointer state outside of React state so
-  // the move handler can mutate the transform synchronously without a
-  // rerender per frame. The sheet element is the same `previewWrapperRef`
-  // div used for the desktop side preview (one wrapper, mode-swapped
-  // styling) so we don't need a second ref. `lastFocusedFieldRef` is
-  // what we scroll back into view when the operator collapses to peek.
-  const sheetDragStateRef = useRef<{
-    startY: number
-    startState: "peek" | "full"
-    lastDeltaY: number
-  } | null>(null)
-  const [isSheetDragging, setIsSheetDragging] = useState(false)
   const lastFocusedFieldRef = useRef<HTMLElement | null>(null)
 
   // Lifted preview lifecycle state. Owned here so siblings (mobile
@@ -184,10 +173,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const [previewErrorMessage, setPreviewErrorMessage] = useState<string | undefined>()
   const [previewIsSlowLoad, setPreviewIsSlowLoad] = useState(false)
 
-  // Phone bottom-sheet state. NOT persisted in localStorage — the
+  // Phone preview overlay state. NOT persisted in localStorage — the
   // operator decision is per-session. Defaults to closed so a phone
   // user lands on a clean editor.
-  const [previewSheetState, setPreviewSheetState] = useState<"closed" | "peek" | "full">("closed")
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const isDesktop = useIsDesktop()
 
@@ -227,17 +216,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     document.addEventListener("focusin", onFocusIn)
     return () => document.removeEventListener("focusin", onFocusIn)
   }, [])
-
-  // When the sheet collapses to peek, scroll the last-focused field
-  // into the editor's center so the operator can keep typing without
-  // hunting. Skipped on closed/full transitions — full hides the
-  // editor entirely and closed leaves the editor where it is.
-  useEffect(() => {
-    if (previewSheetState !== "peek") return
-    const el = lastFocusedFieldRef.current
-    if (!el) return
-    el.scrollIntoView({ block: "center", behavior: "smooth" })
-  }, [previewSheetState])
 
   // Iframe → admin: scroll the editor row for the clicked block + focus
   // its first input. Querying by `[name^="blocks.<n>."]` works because
@@ -401,149 +379,33 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   else if (isDirty) saveStatus = "dirty"
   else if (lastSavedAt) saveStatus = "saved"
 
-  // Map the SaveStatus union → MobileTabbar's narrower dot status.
-  // "idle" maps to "saved" so a never-edited form shows the neutral
-  // muted dot rather than implying anything.
-  const tabbarSaveStatus: "saved" | "unsaved" | "saving" | "error" =
-    saveStatus === "saving"
-      ? "saving"
-      : saveStatus === "error"
-      ? "error"
-      : saveStatus === "dirty"
-      ? "unsaved"
-      : "saved"
-
-  // Map the PreviewStatus union → MobileTabbar's dot status. The
-  // tabbar's "not-loaded" reads as a passive grey when the operator
-  // hasn't opened the sheet yet — we surface it as "live" once
-  // PreviewPane reports `ready`, and pulse amber while loading or
-  // reconnecting. Switching on `previewStatus` (and a `_exhaustive: never`
-  // default) makes growing the PreviewStatus union a compile-time error
-  // here instead of silently falling through to "error".
-  const tabbarPreviewStatus: "live" | "loading" | "reconnecting" | "error" | "not-loaded" = (() => {
-    switch (previewStatus) {
-      case "loading":
-        return previewSheetState === "closed" ? "not-loaded" : "loading"
-      case "ready":
-        return "live"
-      case "reconnecting":
-        return "reconnecting"
-      case "error":
-        return "error"
-      default: {
-        const _exhaustive: never = previewStatus
-        void _exhaustive
-        return "error"
-      }
-    }
-  })()
-
-  const onTapEdit = () => setPreviewSheetState("closed")
-  const onTapPreview = () =>
-    setPreviewSheetState((s) => (s === "closed" ? "peek" : s === "peek" ? "full" : "closed"))
-
-  // Phone sheet drag handlers. We drive the transform imperatively
-  // during the drag so it tracks the finger 1:1; on release we
-  // restore the CSS transition and let the React-state-driven
-  // transform animate to the chosen rest state.
-  const onSheetDragStart = (e: React.PointerEvent) => {
-    if (previewSheetState === "closed") return
-    e.preventDefault()
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    sheetDragStateRef.current = {
-      startY: e.clientY,
-      startState: previewSheetState,
-      lastDeltaY: 0,
-    }
-    setIsSheetDragging(true)
-  }
-  const onSheetDragMove = (e: React.PointerEvent) => {
-    const drag = sheetDragStateRef.current
-    if (!drag) return
-    const deltaY = e.clientY - drag.startY
-    drag.lastDeltaY = deltaY
-    if (previewWrapperRef.current) {
-      const baseTranslate =
-        drag.startState === "full" ? 0 : window.innerHeight * 0.4
-      previewWrapperRef.current.style.transition = "none"
-      previewWrapperRef.current.style.transform = `translateY(${baseTranslate + deltaY}px)`
-    }
-  }
-  const onSheetDragEnd = (e: React.PointerEvent) => {
-    const drag = sheetDragStateRef.current
-    if (!drag) return
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
-    const deltaY = drag.lastDeltaY
-    const threshold = window.innerHeight * 0.25
-    let next: "closed" | "peek" | "full"
-    if (drag.startState === "full") {
-      next = deltaY > threshold ? "peek" : "full"
-    } else {
-      if (deltaY < -threshold) next = "full"
-      else if (deltaY > threshold) next = "closed"
-      else next = "peek"
-    }
-    sheetDragStateRef.current = null
-    setIsSheetDragging(false)
-    if (previewWrapperRef.current) {
-      // Clear inline transform/transition so the React-state-driven
-      // transform takes over.
-      previewWrapperRef.current.style.transition = ""
-      previewWrapperRef.current.style.transform = ""
-    }
-    setPreviewSheetState(next)
-  }
 
   // Desktop side mode renders the preview as an in-flow flex column
   // sibling of the editor; in any other mode the preview wrapper is
   // either hidden or absolutely positioned, so it doesn't take a
   // flex-basis slot.
   const showSideInFlow = isDesktop && previewMode === "side"
-  const isPhoneSheetOpen = !isDesktop && previewSheetState !== "closed"
 
   // Wrapper className/style for the single PreviewPane mount. The
   // wrapper element stays at the SAME React tree position across all
   // modes — only its className/style change. That's load-bearing
   // because each remount loses heartbeat state, signed-token age,
   // scroll position, and mid-typing debounce timers.
+  // Phone: closed = hidden (iframe not visible); open = fixed inset-0
+  // fullscreen overlay (z-50 above PhoneTopBanner z-30).
   const previewWrapperClass = cn(
     "flex flex-col",
     isDesktop && previewMode === "hidden" && "hidden",
     showSideInFlow && "self-stretch min-w-0 border-l bg-background",
     isDesktop && previewMode === "fullscreen" &&
       "fixed inset-0 bg-background z-40",
-    !isDesktop && previewSheetState === "closed" && "hidden",
-    // Phone peek/full: full-viewport-height sheet whose `transform`
-    // (computed below) shifts it down to reveal the editor for peek
-    // and slides off-screen for closed. The tabbar's bottom-pad
-    // (~56px + safe-area) is handled inside the wrapper via
-    // padding-bottom so the iframe content doesn't sit under the
-    // tabbar.
-    isPhoneSheetOpen &&
-      "fixed inset-x-0 bottom-0 z-40 bg-background border-t shadow-2xl rounded-t-2xl overflow-hidden",
+    !isDesktop && !isPreviewOpen && "hidden",
+    !isDesktop && isPreviewOpen && "fixed inset-0 z-50 bg-background",
   )
   const previewWrapperStyle: React.CSSProperties | undefined = showSideInFlow
     ? {
         flex: `0 0 ${splitPct}%`,
         transition: isDragging ? "none" : "flex-basis 80ms ease-out",
-      }
-    : isPhoneSheetOpen
-    ? {
-        height: "100dvh",
-        transform:
-          previewSheetState === "full"
-            ? "translateY(0)"
-            : previewSheetState === "peek"
-            ? "translateY(40dvh)"
-            : "translateY(100dvh)",
-        transition: isSheetDragging ? "none" : "transform 300ms ease-out",
-        // Reserve room for the bottom tabbar so iframe content isn't
-        // hidden behind it. `--tabbar-h` is published by MobileTabbar
-        // via ResizeObserver and already includes safe-area-inset-bottom
-        // (it lives in the tabbar's own `pb-[max(...,env(...))]`), so
-        // don't double-add. Fallback covers the brief window before
-        // the observer fires on initial mount.
-        paddingBottom: "var(--tabbar-h, 64px)",
       }
     : undefined
 
@@ -629,12 +491,28 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         )}
       >
         {/*
+          Phone-only sticky top banner. Shown on <md only (md:hidden
+          inside PhoneTopBanner). Contains Edit/Preview toggle, title,
+          Save button, and save status chip.
+        */}
+        {!isDesktop && (
+          <PhoneTopBanner
+            mode={isPreviewOpen ? "preview" : "edit"}
+            onModeChange={(m) => setIsPreviewOpen(m === "preview")}
+            pending={pending}
+            isDirty={isDirty}
+            errorCount={errorCount}
+            saveStatus={saveStatus}
+            lastSavedAt={lastSavedAt}
+            onSave={triggerSave}
+          />
+        )}
+        {/*
           Sticky TopBar — desktop side-preview mode only. Contains the
           card-less Title + Slug fields and the bare PublishControls so
           the primary actions are always reachable without scrolling.
-          `hidden md:flex` ensures it never renders on phone (MobileTabbar
-          owns phone Save). TopBar lives inside <form> so the Save button
-          remains type="submit".
+          `hidden md:flex` ensures it never renders on phone.
+          TopBar lives inside <form> so the Save button remains type="submit".
         */}
         {showSideInFlow && (
           <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
@@ -712,10 +590,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 already in TopBar), no Publish card (PublishControls in
                 TopBar). gap-4 handles spacing so no mt-8 needed on Danger.
               */
-              <div className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-4 p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
                 <Card>
                   <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-                  <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                  <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                 </Card>
                 <Card>
                   <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
@@ -731,7 +609,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                 Page card + Blocks (col-span-2), Publish + SEO column,
                 Danger Zone below.
               */
-              <div className="@container/editor p-4">
+              <div className="@container/editor p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
                 <div className="grid grid-cols-1 @[800px]/editor:grid-cols-3 gap-4">
                   <div className="@[800px]/editor:col-span-2 space-y-4">
                     <Card>
@@ -747,7 +625,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                     </Card>
                     <Card>
                       <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
-                      <CardContent><BlockEditor tenantId={tenantId}/></CardContent>
+                      <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                     </Card>
                   </div>
                   {/*
@@ -795,27 +673,6 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             />
           )}
           {/*
-            Phone-sheet backdrop. Sibling of the sheet so a tap can close
-            it without intercepting events on the iframe. `inert` keeps
-            form fields behind the peek sheet unfocusable, so a stray
-            tap on (visible-but-occluded) editor controls doesn't yank
-            focus while the sheet is up.
-          */}
-          {isPhoneSheetOpen && (
-            <div
-              // `isPhoneSheetOpen` already implies the sheet is open, so
-              // `inert` is unconditional here. We use ts-ignore (not
-              // ts-expect-error) so React 19 type updates that add `inert`
-              // to HTMLAttributes don't turn this comment into an "unused
-              // directive" error.
-              // @ts-ignore inert is a valid HTMLAttribute in React 19+
-              inert=""
-              className="fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 md:hidden"
-              onClick={() => setPreviewSheetState("closed")}
-              aria-hidden
-            />
-          )}
-          {/*
             Single PreviewPane mount. The wrapper class/style swaps based
             on breakpoint × mode but the wrapper element itself stays at
             the SAME position in the React tree across all modes — that's
@@ -832,65 +689,57 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             className={previewWrapperClass}
             style={previewWrapperStyle}
           >
-            {isPhoneSheetOpen && (
-              <>
-                {/* Drag handle (the visible "pill" at the top of the sheet). */}
+            {/*
+              Phone preview overlay: "Done" button to return to edit mode.
+              Only shown on phone (<md) when preview is open. Sits above the
+              PreviewPane (z-10 relative to the z-50 overlay).
+            */}
+            {!isDesktop && isPreviewOpen && (
+              <div className="md:hidden flex items-center gap-2 shrink-0 border-b bg-background px-3 py-2">
                 <button
                   type="button"
-                  onPointerDown={onSheetDragStart}
-                  onPointerMove={onSheetDragMove}
-                  onPointerUp={onSheetDragEnd}
-                  onPointerCancel={onSheetDragEnd}
-                  className="flex justify-center py-2 cursor-grab active:cursor-grabbing touch-none"
-                  aria-label="Drag to resize preview"
+                  onPointerDown={(e) => e.preventDefault()}
+                  onClick={() => setIsPreviewOpen(false)}
+                  className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md text-sm font-medium hover:bg-accent"
+                  aria-label="Back to edit"
                 >
-                  <span className="h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+                  <X className="h-4 w-4" aria-hidden />
+                  Done
                 </button>
-                {/* Sheet header — chevron toggles between peek and full. */}
-                <div className="flex items-center justify-end gap-1 px-3 pb-2">
-                  {previewSheetState === "peek" ? (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewSheetState("full")}
-                      aria-label="Expand preview to full"
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
-                    >
-                      <ChevronUp className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewSheetState("peek")}
-                      aria-label="Collapse preview to peek"
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent"
-                    >
-                      <ChevronDown className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </>
+              </div>
             )}
             {/*
               Inner pane container. Always rendered (so PreviewPane's
               position in the React tree is stable across breakpoint
               flips and never remounts) — its className just no-ops on
-              non-phone modes. On phone, `flex-1 min-h-0` shares the
-              sheet's height with the drag handle and header. On
-              desktop the wrapper above sizes the pane directly so this
-              container effectively `display: contents`.
+              non-phone modes. On phone, `flex-1 min-h-0` fills the
+              fixed overlay. On desktop the wrapper above sizes the pane
+              directly so this container effectively `display: contents`.
             */}
-            <div
-              className={cn(
-                "flex flex-col",
-                isPhoneSheetOpen
-                  ? "flex-1 min-h-0 overflow-hidden"
-                  : "h-full",
-              )}
-            >
+            <div className={cn(
+              "flex flex-col",
+              (!isDesktop && isPreviewOpen) ? "flex-1 min-h-0 overflow-hidden" : "h-full",
+            )}>
               {previewPane}
             </div>
           </div>
         </div>
+        {/*
+          Phone-only floating Add Block button. Sits above the mini-strip.
+          Hidden when preview overlay is open (FAB doesn't make sense there).
+        */}
+        {!isDesktop && !isPreviewOpen && (
+          <button
+            type="button"
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => document.dispatchEvent(new CustomEvent("editor:open-add-block"))}
+            className="md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center"
+            style={{ bottom: `calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem)` }}
+            aria-label="Add block"
+          >
+            <Plus className="h-6 w-6" aria-hidden />
+          </button>
+        )}
       </form>
       <SaveStatusBar
         status={saveStatus}
@@ -903,13 +752,14 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         previewMode={previewMode}
         setPreviewMode={setPreviewMode}
       />
-      <MobileTabbar
-        saveStatus={tabbarSaveStatus}
-        previewStatus={tabbarPreviewStatus}
-        sheetState={previewSheetState}
-        onTapEdit={onTapEdit}
-        onTapPreview={onTapPreview}
-      />
+      {!isDesktop && !isPreviewOpen && (
+        <PhonePreviewStrip
+          status={previewStatus}
+          errorMessage={previewErrorMessage}
+          pageTitle={form.watch("title")}
+          onOpen={() => setIsPreviewOpen(true)}
+        />
+      )}
       <UnsavedChangesDialog
         open={guard.pending !== null}
         onCancel={guard.cancel}
