@@ -13,6 +13,7 @@ import { BlockEditor } from "@/components/editor/BlockEditor"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { SaveStatusBar, type SaveStatus, type PreviewMode } from "@/components/editor/SaveStatusBar"
 import { PreviewPane } from "@/components/editor/PreviewPane"
+import type { PreviewStatus } from "@/components/editor/PreviewToolbar"
 import { SplitDivider } from "@/components/editor/SplitDivider"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
@@ -110,6 +111,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }, [splitPct])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
+
+  // Lifted preview lifecycle state. Owned here so siblings (mobile
+  // tabbar, desktop save bar) can observe the preview status without
+  // mounting an extra <PreviewPane> instance.
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("loading")
+  const [previewErrorMessage, setPreviewErrorMessage] = useState<string | undefined>()
+  const [previewIsSlowLoad, setPreviewIsSlowLoad] = useState(false)
 
   // Cross-pane focus state. focusin in PageForm's <form> sets the focused
   // block index; PreviewPane forwards it to the iframe via postMessage.
@@ -376,6 +384,12 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
               focusedBlockIndex={focusedBlockIndex}
               focusSeq={focusSeq}
               onClickBlock={handleClickBlock}
+              status={previewStatus}
+              setStatus={setPreviewStatus}
+              errorMessage={previewErrorMessage}
+              setErrorMessage={setPreviewErrorMessage}
+              isSlowLoad={previewIsSlowLoad}
+              setIsSlowLoad={setPreviewIsSlowLoad}
             />
           </div>
         </>
@@ -393,6 +407,12 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             focusedBlockIndex={focusedBlockIndex}
             focusSeq={focusSeq}
             onClickBlock={handleClickBlock}
+            status={previewStatus}
+            setStatus={setPreviewStatus}
+            errorMessage={previewErrorMessage}
+            setErrorMessage={setPreviewErrorMessage}
+            isSlowLoad={previewIsSlowLoad}
+            setIsSlowLoad={setPreviewIsSlowLoad}
           />
         </div>
       )}
