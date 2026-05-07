@@ -29,8 +29,16 @@ export const deleteMediaFile: CollectionAfterDeleteHook = async ({ doc, req }) =
   const tenantId = tenantIdOf(doc)
   if (!tenantId || !doc.filename) return
   const filename = doc.filename as string
-  const file = path.join(dataDir(), "tenants", tenantId, "media", filename)
-  await fs.rm(file, { force: true })
+  // Remove from both locations: per-tenant projection (consumed by the
+  // tenant Astro frontends) AND the Payload staticDir copy at
+  // `_uploads-tmp/` (consumed by admin-side serving — see
+  // `projectMediaToDisk` for why we keep both).
+  const tenantFile = path.join(dataDir(), "tenants", tenantId, "media", filename)
+  const stagingFile = path.join(dataDir(), "_uploads-tmp", filename)
+  await Promise.all([
+    fs.rm(tenantFile, { force: true }),
+    fs.rm(stagingFile, { force: true }),
+  ])
   let m = await readManifest(dataDir(), tenantId)
   m = removeEntry(m, "media", filename)
   await writeManifest(dataDir(), m)

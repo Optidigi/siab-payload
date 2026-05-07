@@ -63,17 +63,28 @@ export const projectMediaToDisk: CollectionAfterChangeHook = async ({ doc, opera
   const tenantMediaDir = path.join(dataDir(), "tenants", tenantId, "media")
   await fs.mkdir(tenantMediaDir, { recursive: true })
 
-  // Move uploaded file from staging dir to per-tenant dir on create/update.
-  // Skip silently if the staging file isn't there (e.g., metadata-only update).
+  // Project the uploaded file from Payload's staticDir (`_uploads-tmp/`)
+  // to the per-tenant dir on create/update.
+  //
+  // We COPY (not rename/move) so the file remains in `_uploads-tmp/`
+  // — that's Payload's staticDir, and `m.url` resolves to
+  // `/api/media/file/<filename>` which Payload serves from staticDir.
+  // The earlier `rename` left admin-side thumbnails permanently broken
+  // (file gone from staticDir, 404). Per-tenant copy is for the tenant
+  // Astro frontends that read directly from disk.
+  //
+  // Skip silently if the staging file isn't there (metadata-only update,
+  // or a re-projection of an already-projected file where the source
+  // copy may have been cleaned up out of band).
   const staging = path.join(dataDir(), "_uploads-tmp", doc.filename as string)
   const final = path.join(tenantMediaDir, doc.filename as string)
   if (operation === "create" || operation === "update") {
     try {
       await fs.access(staging)
-      await fs.rename(staging, final)
+      await fs.copyFile(staging, final)
     } catch (err: any) {
       if (err?.code !== "ENOENT") {
-        req.payload.logger.warn({ err, tenantId, filename: doc.filename }, "[projection] media move failed")
+        req.payload.logger.warn({ err, tenantId, filename: doc.filename }, "[projection] media copy failed")
       }
     }
   }
