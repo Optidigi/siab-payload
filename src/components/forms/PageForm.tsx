@@ -395,7 +395,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const previewWrapperClass = cn(
     "flex flex-col",
     isDesktop && previewMode === "hidden" && "hidden",
-    showSideInFlow && "self-stretch min-w-0 border-l bg-background",
+    showSideInFlow && "min-w-0 border-l bg-background md:sticky md:top-0 md:self-start md:h-[calc(100dvh-6rem)]",
     isDesktop && previewMode === "fullscreen" &&
       "fixed inset-0 bg-background z-40",
     !isDesktop && !isPreviewOpen && "hidden",
@@ -484,10 +484,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit, onInvalid)}
-        className={cn(
-          "flex flex-col w-full",
-          showSideInFlow && "md:h-[calc(100dvh-6rem)] md:overflow-hidden",
-        )}
+        className="flex flex-col w-full"
       >
         {/*
           Sticky TopBar — desktop side-preview mode only. Contains the
@@ -524,7 +521,14 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           outer flex-col) so SplitDivider's getBoundingClientRect().width
           reads the correct editor-area width and not the full viewport.
         */}
-        <div ref={formContainerRef} className="relative flex flex-1 min-h-0 w-full">
+        <div
+          ref={formContainerRef}
+          className={cn(
+            "relative flex w-full min-h-0",
+            showSideInFlow && "md:h-[calc(100dvh-6rem)]",
+            !showSideInFlow && "flex-1",
+          )}
+        >
           {/*
             Snap guide lines. Render during drag only in side mode so the
             operator can see where the four snap points (30/40/50/60%) land.
@@ -556,22 +560,18 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           )}>
             {showSideInFlow ? (
               /*
-                Side mode: single stacked column — no Page card (Title/Slug
-                already in TopBar), no Publish card (PublishControls in
-                TopBar). gap-4 handles spacing so no mt-8 needed on Danger.
+                Side mode: editor column shows ONLY the Blocks card.
+                SEO + Danger Zone are rendered BELOW the split-view row
+                (outside formContainerRef) so the user can scroll to them
+                while the preview remains sticky at the top-right.
+                No Page card (Title/Slug in TopBar), no Publish card
+                (PublishControls in TopBar).
               */
-              <div className="flex flex-col gap-4 p-4 md:pb-4 pb-[calc(var(--mini-strip-h,56px)+env(safe-area-inset-bottom))]">
+              <div className="flex flex-col gap-4 p-4">
                 <Card>
                   <CardHeader><CardTitle>Blocks</CardTitle></CardHeader>
                   <CardContent><BlockEditor tenantId={tenantId} isPhone={!isDesktop} pageId={initial?.id ?? `draft-${draftSessionId}`}/></CardContent>
                 </Card>
-                <Card>
-                  <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
-                    {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
-                  </CardContent>
-                </Card>
-                {dangerZone}
               </div>
             ) : (
               /*
@@ -746,6 +746,22 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             </div>
           </div>
         </div>
+        {/*
+          Side-mode only: SEO + Danger Zone rendered below the split-view row
+          so the user can scroll to them while the preview stays sticky.
+          Hidden mode keeps them inside the 3-col grid above.
+        */}
+        {showSideInFlow && (
+          <section className="px-4 py-6 space-y-4 max-w-3xl">
+            <Card>
+              <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {seoFields.map((f, i) => <FieldRenderer key={i} field={f} namePrefix="seo"/>)}
+              </CardContent>
+            </Card>
+            {dangerZone}
+          </section>
+        )}
         {/*
           Phone-only Save FAB. Sits above the mini-strip. Visible only when
           there is unsaved work (dirty), validation errors, or a save is
