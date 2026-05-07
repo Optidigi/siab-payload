@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { listForms } from "@/lib/queries/forms"
 import { FormsTable } from "@/components/tables/FormsTable"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
 
 export default async function FormsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -12,7 +13,10 @@ export default async function FormsPage({ params }: { params: Promise<{ slug: st
   const forms = await listForms(tenant.id)
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-xl font-semibold">Forms — {tenant.name}</h1>
+      <PageHeader
+        title="Forms"
+        tenant={{ name: tenant.name, slug: tenant.slug }}
+      />
       <FormsTable data={forms.docs as any} />
     </div>
   )

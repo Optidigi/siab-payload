@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { TenantEditForm } from "@/components/forms/TenantEditForm"
+import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
@@ -25,10 +26,11 @@ export default async function EditTenantPage({ params }: { params: Promise<{ slu
 
   return (
     <div className="flex flex-col gap-4">
-      <div>
-        <h1 className="text-xl font-semibold">Edit tenant</h1>
-        <p className="text-sm text-muted-foreground">{tenant.name} · {tenant.domain}</p>
-      </div>
+      <PageHeader
+        title="Edit tenant"
+        subtitle={`${tenant.name} · ${tenant.domain}`}
+        tenant={{ name: tenant.name, slug: tenant.slug }}
+      />
       <TenantEditForm
         // Defensive: force a fresh client form mount when slug changes
         // (post-rename navigation). Today the route segment unmounts the
