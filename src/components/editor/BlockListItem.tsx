@@ -58,7 +58,7 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2">
+      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-t-md">
         <div className="flex items-center gap-2">
           <button
             type="button"
