@@ -728,6 +728,34 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                   <X className="h-4 w-4" aria-hidden />
                   Done
                 </button>
+                {/*
+                  Inline preview status — replaces the now-desktop-only
+                  PreviewToolbar. Single signal the operator needs while
+                  in the preview overlay: is the iframe live / loading /
+                  errored? No reload button: the strip-tap re-mount path
+                  + page save are the recovery affordances.
+                */}
+                <div className="flex items-center gap-1.5 ml-auto min-w-0">
+                  <span
+                    className={cn(
+                      "h-2 w-2 rounded-full shrink-0",
+                      previewStatus === "ready" && "bg-green-500",
+                      previewStatus === "loading" && "bg-amber-500 animate-pulse",
+                      previewStatus === "reconnecting" && "bg-amber-500 animate-pulse",
+                      previewStatus === "error" && "bg-destructive",
+                    )}
+                    aria-hidden
+                  />
+                  <span className={cn(
+                    "text-xs truncate",
+                    previewStatus === "error" ? "text-destructive" : "text-muted-foreground",
+                  )}>
+                    {previewStatus === "ready" && "Live"}
+                    {previewStatus === "loading" && "Loading…"}
+                    {previewStatus === "reconnecting" && "Reconnecting…"}
+                    {previewStatus === "error" && "Error"}
+                  </span>
+                </div>
               </div>
             )}
             {/*

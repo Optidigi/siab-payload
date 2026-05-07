@@ -47,7 +47,12 @@ export function PreviewToolbar({
       : `Error${errorMessage ? `: ${errorMessage}` : ""}`
 
   return (
-    <div className="flex items-center justify-between gap-2 border-b bg-card px-3 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+    // Desktop only. On phone the preview overlay has its own header
+    // ("Done" + status indicator) — this toolbar's mode toggles
+    // (Expand/Shrink, X) drive `previewMode` which is desktop-only state,
+    // so the buttons no-op on phone. Keep the desktop toolbar for the
+    // viewport switcher + open-in-new-tab + refresh affordances.
+    <div className="hidden md:flex items-center justify-between gap-2 border-b bg-card px-3 py-2 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
       <div className="flex items-center gap-2 min-w-0">
         <span className={cn("h-2 w-2 rounded-full shrink-0", dotClass)} aria-hidden />
         <span className="text-xs text-muted-foreground truncate">{label}</span>
