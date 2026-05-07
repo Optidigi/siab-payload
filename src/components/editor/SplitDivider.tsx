@@ -39,12 +39,12 @@ function snapTo(pct: number): number {
  * Keyboard a11y: Arrow keys nudge ±5% within the [20, 80] clamp.
  */
 export function SplitDivider({ pct, setPct, iframeWrapperRef, isDragging, setIsDragging }: Props) {
-  const dragStateRef = useRef<{ startX: number; startPct: number } | null>(null)
+  const dragStateRef = useRef<{ startX: number; startPct: number; lastPct: number } | null>(null)
 
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    dragStateRef.current = { startX: e.clientX, startPct: pct }
+    dragStateRef.current = { startX: e.clientX, startPct: pct, lastPct: pct }
     setIsDragging(true)
     if (iframeWrapperRef.current) iframeWrapperRef.current.style.pointerEvents = "none"
   }
@@ -56,13 +56,15 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, isDragging, setIsD
     // overlay is right-anchored, so a left-drag means a higher pct.
     const deltaPct = (deltaX / window.innerWidth) * -100
     const next = Math.max(20, Math.min(80, dragStateRef.current.startPct + deltaPct))
+    dragStateRef.current.lastPct = next
     setPct(next)
   }
 
   const onPointerUp = (e: React.PointerEvent) => {
     if (!dragStateRef.current) return
+    const finalPct = dragStateRef.current.lastPct
     ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
-    setPct(snapTo(pct))
+    setPct(snapTo(finalPct))
     dragStateRef.current = null
     setIsDragging(false)
     if (iframeWrapperRef.current) iframeWrapperRef.current.style.pointerEvents = ""
