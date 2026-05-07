@@ -506,8 +506,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
 
   const previewPane = (
     <PreviewPane
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      control={form.control as unknown as import("react-hook-form").Control<any>}
+      control={controlAny}
       tenantId={tenantId}
       tenantOrigin={tenantOrigin}
       pageId={initial?.id ?? `draft-${draftSessionId}`}
