@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils"
  */
 export function InsertSlot({ onClick, label = "Add" }: { onClick: () => void; label?: string }) {
   return (
-    <div className="group relative flex h-2 items-center">
+    <div className="group relative flex h-2 max-md:h-3 items-center">
       <button
         type="button"
         onClick={onClick}
@@ -28,8 +28,9 @@ export function InsertSlot({ onClick, label = "Add" }: { onClick: () => void; la
         <span className={cn(
           "inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-sm hover:border-primary hover:text-primary",
           "max-md:bg-foreground max-md:text-background max-md:border-foreground",
+          "max-md:text-sm max-md:px-3 max-md:py-1.5 max-md:gap-1.5",
         )}>
-          <Plus className="h-3 w-3" />
+          <Plus className="h-3 w-3 max-md:h-4 max-md:w-4" />
           {label}
         </span>
       </button>
