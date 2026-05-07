@@ -109,3 +109,20 @@
 
 * { border-color: var(--border); }
 body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+
+/* When the on-screen keyboard is open (set by usePhoneKeyboard hook),
+   hide the bottom mini-strip and the floating Add Block button so the
+   keyboard area is clear and the strip doesn't iOS-auto-lift above it. */
+html[data-kb-open] .phone-preview-strip,
+html[data-kb-open] .phone-fab {
+  display: none;
+}
+
+/* iOS auto-zooms inputs with computed font-size < 16px on focus.
+   shadcn <Input> already has text-base on mobile via its own classes,
+   but raw <input>, <textarea>, <select> elsewhere need this belt. */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}

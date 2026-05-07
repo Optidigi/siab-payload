@@ -1,13 +1,10 @@
 "use client"
 import { useFormContext } from "react-hook-form"
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Button } from "@/components/ui/button"
 import { useRelativeTime } from "@/lib/useRelativeTime"
 import { cn } from "@/lib/utils"
 
 type Props = {
-  mode: "edit" | "preview"
-  onModeChange: (m: "edit" | "preview") => void
   pending: boolean
   isDirty: boolean
   errorCount: number
@@ -16,7 +13,7 @@ type Props = {
   onSave: () => void
 }
 
-export function PhoneTopBanner({ mode, onModeChange, pending, isDirty, errorCount, saveStatus, lastSavedAt, onSave }: Props) {
+export function PhoneTopBanner({ pending, isDirty, errorCount, saveStatus, lastSavedAt, onSave }: Props) {
   const { watch } = useFormContext()
   const title = watch("title") as string | undefined
   const relTime = useRelativeTime(lastSavedAt)
@@ -34,32 +31,7 @@ export function PhoneTopBanner({ mode, onModeChange, pending, isDirty, errorCoun
       // Avoid scroll-anchor jumps when status text width changes during save.
       style={{ contentVisibility: "auto" }}
     >
-      <ToggleGroup
-        type="single"
-        value={mode}
-        onValueChange={(v) => v && onModeChange(v as "edit" | "preview")}
-        className="shrink-0"
-      >
-        <ToggleGroupItem
-          value="edit"
-          // Preserve iOS soft-keyboard focus on tap; the default <button> behavior would steal focus.
-          onPointerDown={(e) => { e.preventDefault() }}
-          className="h-11 px-3 text-sm font-medium"
-          aria-label="Edit mode"
-        >
-          Edit
-        </ToggleGroupItem>
-        <ToggleGroupItem
-          value="preview"
-          onPointerDown={(e) => { e.preventDefault() }}
-          className="h-11 px-3 text-sm font-medium"
-          aria-label="Preview mode"
-        >
-          Preview
-        </ToggleGroupItem>
-      </ToggleGroup>
-
-      <div className="flex-1 min-w-0 truncate text-sm font-medium text-center">
+      <div className="flex-1 min-w-0 truncate text-sm font-medium">
         {title || "Untitled"}
       </div>
 
@@ -80,7 +52,10 @@ export function PhoneTopBanner({ mode, onModeChange, pending, isDirty, errorCoun
             size="sm"
             onClick={onSave}
             disabled={pending}
-            onPointerDown={(e) => { e.preventDefault() }}
+            onPointerDown={(e) => {
+              const tag = document.activeElement?.tagName
+              if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
+            }}
             className="h-9 gap-1.5"
             title="Save (⌘S / Ctrl+S)"
           >

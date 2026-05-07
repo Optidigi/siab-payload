@@ -1,7 +1,8 @@
 "use client"
 import { useEffect, useState } from "react"
-import { ChevronDown, ChevronRight, Trash2, GripVertical, BookmarkPlus } from "lucide-react"
+import { ChevronDown, ChevronRight, GripVertical, BookmarkPlus, Trash2, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { FieldRenderer } from "./FieldRenderer"
 import { SaveAsPresetDialog } from "./SaveAsPresetDialog"
 import { useSortable } from "@dnd-kit/sortable"
@@ -105,19 +106,19 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background rounded-t-md">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setOpenPersist(!open)}
-            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center"
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label={open ? "Collapse block" : "Expand block"}
           >
             {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
           </button>
           <button
             type="button"
-            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center"
+            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label="Drag to reorder block"
             {...listeners}
           >
@@ -126,42 +127,47 @@ export function BlockListItem({
           {typedConfig?.icon && (
             <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
           )}
-          <span className="font-medium">
+          <span className="font-medium truncate">
             {typeof typedConfig?.labels?.singular === "string"
               ? typedConfig.labels.singular
               : blockSlug}
           </span>
           {summaryText && (
-            <span className="ml-2 text-xs text-muted-foreground truncate min-w-0">
+            <span className="text-xs text-muted-foreground truncate min-w-0">
               · {summaryText}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            onClick={() => setSaveAsPresetOpen(true)}
-            aria-label="Save block as preset"
-            className="h-11 w-11 md:h-8 md:w-8"
-          >
-            <BookmarkPlus className="h-4 w-4"/>
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove block"
-            className="h-11 w-11 md:h-8 md:w-8"
-          >
-            <Trash2 className="h-4 w-4"/>
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="max-md:size-11 size-8 shrink-0"
+              aria-label="Block actions"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => setSaveAsPresetOpen(true)}>
+              <BookmarkPlus className="h-4 w-4 mr-2" />
+              Save as preset
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onRemove}
+              className="text-destructive focus:text-destructive"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete block
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {open && (
-        <div className="border-t p-3 space-y-3">
+        <div className="border-t p-3 space-y-3 max-md:p-4 max-md:space-y-4">
           {(typedConfig?.fields ?? []).map((f, i) => (
             <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}

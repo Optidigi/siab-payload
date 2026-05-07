@@ -152,7 +152,7 @@ export function BlockEditor({
               </div>
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-1 max-md:space-y-2.5">
               {fields.map((f, i) => {
                 const slug = (f as any).blockType
                 const cfg = blockBySlug[slug]
