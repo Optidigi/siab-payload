@@ -113,15 +113,17 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     }
   }, [previewMode])
 
-  // Split percentage: how much of the viewport the preview occupies in side
-  // mode. Lazy initializer mirrors `previewMode` above — read localStorage
-  // once on mount; clamp to [20, 80] so a corrupted value can never wedge
-  // the layout. 50 is the default split.
+  // Split percentage: how much of the editor-area width the preview
+  // occupies in side mode. Lazy initializer mirrors `previewMode`
+  // above — read localStorage once on mount; clamp to [20, 50] so a
+  // corrupted value (or one persisted from the old [20,80] range)
+  // can never wedge the layout. 40 is the default split — leans the
+  // editor a bit wider than the preview so form fields stay readable.
   const [splitPct, setSplitPct] = useState<number>(() => {
-    if (typeof window === "undefined") return 50
+    if (typeof window === "undefined") return 40
     const stored = window.localStorage.getItem("page-editor:preview-split")
     const n = stored ? Number(stored) : NaN
-    return Number.isFinite(n) && n >= 20 && n <= 80 ? n : 50
+    return Number.isFinite(n) && n >= 20 && n <= 50 ? n : 40
   })
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -130,6 +132,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   }, [splitPct])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
+  const formContainerRef = useRef<HTMLDivElement>(null)
 
   // Lifted preview lifecycle state. Owned here so siblings (mobile
   // tabbar, desktop save bar) can observe the preview status without
@@ -399,6 +402,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           pct={splitPct}
           setPct={setSplitPct}
           iframeWrapperRef={previewWrapperRef}
+          containerRef={formContainerRef}
           isDragging={isDragging}
           setIsDragging={setIsDragging}
         />
