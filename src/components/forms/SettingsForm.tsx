@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
 import { toast } from "sonner"
@@ -69,37 +69,40 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4 max-w-3xl">
-        <Tabs defaultValue="general">
-          {/*
-            Phone (under md): bleed the scroll-area to the viewport edges with
-            -mx-4 + px-4 so it feels like a native horizontal scroller. w-max
-            on TabsList lets it size to its content; shrink-0 on each Trigger
-            prevents collapse. Desktop reverts to default layout. The
-            ::-webkit-scrollbar:hidden hides the macOS/Chrome scroll bar
-            without losing scroll behavior.
-          */}
-          <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible [&::-webkit-scrollbar]:hidden">
-            <TabsList className="w-max">
-              {tabs.map(([k]) => (
-                <TabsTrigger key={k} value={k} className="capitalize shrink-0">{k}</TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-          {tabs.map(([k, fs]) => (
-            <TabsContent key={k} value={k}>
-              <Card>
-                <CardHeader><CardTitle className="capitalize">{k}</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
+      <form onSubmit={onSubmit} noValidate className="max-w-3xl">
+        <Card>
+          <Tabs defaultValue="general">
+            {/*
+              Phone (under md): bleed the scroll-area to the viewport edges with
+              -mx-4 + px-4 so it feels like a native horizontal scroller. w-max
+              on TabsList lets it size to its content; shrink-0 on each Trigger
+              prevents collapse. Desktop reverts to default layout. The
+              ::-webkit-scrollbar:hidden hides the macOS/Chrome scroll bar
+              without losing scroll behavior.
+            */}
+            <CardHeader className="border-b p-0">
+              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible [&::-webkit-scrollbar]:hidden">
+                <TabsList className="w-max">
+                  {tabs.map(([k]) => (
+                    <TabsTrigger key={k} value={k} className="capitalize shrink-0">{k}</TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {tabs.map(([k, fs]) => (
+                <TabsContent key={k} value={k} className="space-y-3">
                   {fs.map((f: any, i: number) => <FieldRenderer key={i} field={f} />)}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
-        {canEdit && (
-          <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save settings"}</Button>
-        )}
+                </TabsContent>
+              ))}
+            </CardContent>
+          </Tabs>
+          {canEdit && (
+            <CardFooter className="border-t justify-end">
+              <Button type="submit" disabled={pending}>{pending ? "Saving..." : "Save settings"}</Button>
+            </CardFooter>
+          )}
+        </Card>
       </form>
     </FormProvider>
   )
