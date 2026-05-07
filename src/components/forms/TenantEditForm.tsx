@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { Tenant } from "@/payload-types"
@@ -51,9 +52,8 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
   // Block accidental nav loss when the form has unsaved edits or a save
   // is in flight. Hook installs a native beforeunload prompt (tab close /
   // refresh / address-bar nav) plus a click + popstate guard for in-app
-  // navigation. The returned pending/confirm/cancel surface is unused here
-  // (no custom dialog wired); the native dialog covers the high-risk paths.
-  useNavigationGuard(form.formState.isDirty || savePending)
+  // navigation. pending/confirm/cancel surface the custom dialog below.
+  const guard = useNavigationGuard(form.formState.isDirty || savePending)
 
   const onSubmit = async (values: Values) => {
     setSavePending(true)
@@ -214,6 +214,11 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
         confirmPhrase={tenant.slug}
         confirmLabel="Delete tenant"
         onConfirm={onDelete}
+      />
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
       />
     </div>
   )

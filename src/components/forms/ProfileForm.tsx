@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { RoleBadge } from "@/components/shared/RoleBadge"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -40,9 +41,8 @@ export function ProfileForm({ user }: { user: User }) {
   // Block accidental nav loss when either form has unsaved edits or a
   // save is in flight. Hook installs a native beforeunload prompt (tab
   // close / refresh / address-bar nav) plus a click + popstate guard for
-  // in-app navigation. The returned pending/confirm/cancel surface is
-  // unused here (no custom dialog wired).
-  useNavigationGuard(
+  // in-app navigation. pending/confirm/cancel surface the custom dialog below.
+  const guard = useNavigationGuard(
     nameForm.formState.isDirty ||
       passwordForm.formState.isDirty ||
       namePending ||
@@ -165,6 +165,11 @@ export function ProfileForm({ user }: { user: User }) {
           </Form>
         </CardContent>
       </Card>
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+      />
     </div>
   )
 }
