@@ -38,7 +38,7 @@ function snapTo(pct: number): number {
  *
  * Pointer events with setPointerCapture so the drag survives if the
  * cursor leaves the divider's box. We ALSO disable pointer-events on
- * the iframe wrapper while dragging because Chrome/Edge sometimes route
+ * the preview wrapper while dragging because Chrome/Edge sometimes route
  * move events to the iframe before pointer-capture binds — belt+braces.
  *
  * Drag delta is computed against the form container's width (not

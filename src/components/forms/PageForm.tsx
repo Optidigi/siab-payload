@@ -370,17 +370,26 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // tabbar's "not-loaded" reads as a passive grey when the operator
   // hasn't opened the sheet yet — we surface it as "live" once
   // PreviewPane reports `ready`, and pulse amber while loading or
-  // reconnecting.
-  const tabbarPreviewStatus: "live" | "loading" | "reconnecting" | "error" | "not-loaded" =
-    previewSheetState === "closed" && previewStatus === "loading"
-      ? "not-loaded"
-      : previewStatus === "ready"
-      ? "live"
-      : previewStatus === "loading"
-      ? "loading"
-      : previewStatus === "reconnecting"
-      ? "reconnecting"
-      : "error"
+  // reconnecting. Switching on `previewStatus` (and a `_exhaustive: never`
+  // default) makes growing the PreviewStatus union a compile-time error
+  // here instead of silently falling through to "error".
+  const tabbarPreviewStatus: "live" | "loading" | "reconnecting" | "error" | "not-loaded" = (() => {
+    switch (previewStatus) {
+      case "loading":
+        return previewSheetState === "closed" ? "not-loaded" : "loading"
+      case "ready":
+        return "live"
+      case "reconnecting":
+        return "reconnecting"
+      case "error":
+        return "error"
+      default: {
+        const _exhaustive: never = previewStatus
+        void _exhaustive
+        return "error"
+      }
+    }
+  })()
 
   const onTapEdit = () => setPreviewSheetState("closed")
   const onTapPreview = () =>
@@ -481,9 +490,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             ? "translateY(40dvh)"
             : "translateY(100dvh)",
         transition: isSheetDragging ? "none" : "transform 300ms ease-out",
-        // Tabbar height + safe area so iframe content isn't hidden
-        // behind the tabbar at the bottom of the screen.
-        paddingBottom: "calc(56px + env(safe-area-inset-bottom))",
+        // Reserve room for the bottom tabbar so iframe content isn't
+        // hidden behind it. `--tabbar-h` is published by MobileTabbar
+        // via ResizeObserver and already includes safe-area-inset-bottom
+        // (it lives in the tabbar's own `pb-[max(...,env(...))]`), so
+        // don't double-add. Fallback covers the brief window before
+        // the observer fires on initial mount.
+        paddingBottom: "var(--tabbar-h, 64px)",
       }
     : undefined
 
@@ -618,9 +631,13 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         */}
         {isPhoneSheetOpen && (
           <div
-            // React 19 / current DOM accept the boolean form of inert.
-            // @ts-expect-error inert is a valid HTMLAttribute in React 19+
-            inert={previewSheetState !== "closed" ? "" : undefined}
+            // `isPhoneSheetOpen` already implies the sheet is open, so
+            // `inert` is unconditional here. We use ts-ignore (not
+            // ts-expect-error) so React 19 type updates that add `inert`
+            // to HTMLAttributes don't turn this comment into an "unused
+            // directive" error.
+            // @ts-ignore inert is a valid HTMLAttribute in React 19+
+            inert=""
             className="fixed inset-0 z-30 bg-black/30 transition-opacity duration-300 md:hidden"
             onClick={() => setPreviewSheetState("closed")}
             aria-hidden

@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useRef } from "react"
 import { Pencil, Eye } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -32,18 +33,55 @@ type Props = {
 }
 
 function dotClass(status: SaveDotStatus | PreviewDotStatus): string {
-  if (status === "saved" || status === "not-loaded") return "bg-muted-foreground/40"
-  if (status === "live") return "bg-green-500"
-  if (status === "saving" || status === "loading" || status === "reconnecting") return "bg-amber-500 animate-pulse"
-  if (status === "unsaved") return "bg-amber-500"
-  return "bg-destructive"
+  switch (status) {
+    case "saved":
+    case "not-loaded":
+      return "bg-muted-foreground/40"
+    case "live":
+      return "bg-green-500"
+    case "saving":
+    case "loading":
+    case "reconnecting":
+      return "bg-amber-500 animate-pulse"
+    case "unsaved":
+      return "bg-amber-500"
+    case "error":
+      return "bg-destructive"
+    default: {
+      // Fail loud at compile time if SaveDotStatus | PreviewDotStatus grows.
+      const _exhaustive: never = status
+      void _exhaustive
+      return "bg-destructive"
+    }
+  }
 }
 
 export function MobileTabbar({ saveStatus, previewStatus, sheetState, onTapEdit, onTapPreview }: Props) {
   const editActive = sheetState === "closed"
   const previewActive = sheetState !== "closed"
+  // Publish the tabbar's measured height as `--tabbar-h` on
+  // <html> so consumers (e.g. the phone sheet's paddingBottom) can
+  // reserve exactly the right amount of space without hardcoding a
+  // value that drifts when safe-area-inset-bottom or font scaling
+  // changes the actual rendered height.
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const apply = () => {
+      document.documentElement.style.setProperty("--tabbar-h", `${el.offsetHeight}px`)
+    }
+    apply()
+    const ro = new ResizeObserver(apply)
+    ro.observe(el)
+    return () => {
+      ro.disconnect()
+      document.documentElement.style.removeProperty("--tabbar-h")
+    }
+  }, [])
   return (
     <div
+      ref={ref}
       className={cn(
         "fixed bottom-0 inset-x-0 z-40 md:hidden",
         "flex items-stretch border-t bg-background",
