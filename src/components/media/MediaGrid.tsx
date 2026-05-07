@@ -68,12 +68,18 @@ export function MediaGrid({
   }
 
   const onBulkDelete = async () => {
+    // Parallel deletes via Promise.allSettled so 10+ items don't take 10×
+    // the round-trip time of a single delete. allSettled (vs all) means
+    // one failure doesn't abort the rest — partial-success is reported
+    // via the toast count.
     const ids = Array.from(selectedIds)
+    const results = await Promise.allSettled(
+      ids.map((id) => fetch(`/api/media/${id}`, { method: "DELETE" }))
+    )
     let okCount = 0
     let failCount = 0
-    for (const id of ids) {
-      const res = await fetch(`/api/media/${id}`, { method: "DELETE" })
-      if (res.ok) okCount++
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.ok) okCount++
       else failCount++
     }
     if (failCount === 0) toast.success(`Deleted ${okCount} item${okCount === 1 ? "" : "s"}`)
