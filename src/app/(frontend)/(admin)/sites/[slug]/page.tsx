@@ -6,7 +6,7 @@ import { ActivityFeed } from "@/components/dashboard/ActivityFeed"
 import { StatusPill } from "@/components/shared/StatusPill"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { Pencil } from "lucide-react"
+import { Pencil, FileCheck2, Activity, Inbox, BadgeCheck } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireRole } from "@/lib/authGate"
@@ -40,10 +40,10 @@ export default async function TenantOverviewPage({ params }: { params: Promise<{
         }
       />
       <StatCards stats={[
-        { label: "Published pages", value: stats.publishedPages },
-        { label: "Edits this week", value: stats.editsThisWeek },
-        { label: "Form submissions (30d)", value: stats.formsThisMonth },
-        { label: "Status", value: tenant.status as string }
+        { label: "Published pages", value: stats.publishedPages, icon: FileCheck2 },
+        { label: "Edits this week", value: stats.editsThisWeek, icon: Activity },
+        { label: "Form submissions (30d)", value: stats.formsThisMonth, icon: Inbox },
+        { label: "Status", value: tenant.status as string, icon: BadgeCheck }
       ]} />
       <EditsChart data={series} />
       <ActivityFeed entries={activity} />
