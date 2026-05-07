@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
 import { BLOCKS } from "@/blocks/registry"
 import { sanitizePresetData } from "@/lib/blockPresets/sanitize"
@@ -237,16 +237,15 @@ function PresetRow({
       >
         <Trash2 className="h-3.5 w-3.5"/>
       </Button>
-      <TypedConfirmDialog
+      <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title={`Delete preset "${preset.name}"`}
+        title={`Delete preset "${preset.name}"?`}
         description={
           <>
             This removes the preset from the picker. <strong>It won&apos;t affect blocks already inserted on pages.</strong>
           </>
         }
-        confirmPhrase={preset.name}
         confirmLabel="Delete preset"
         onConfirm={async () => {
           const res = await fetch(`/api/block-presets/${preset.id}`, { method: "DELETE" })
