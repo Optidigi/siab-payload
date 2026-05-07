@@ -3,8 +3,9 @@ import { listTenants } from "@/lib/queries/tenants"
 import { TenantsTable } from "@/components/tables/TenantsTable"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Globe, Plus } from "lucide-react"
 
 export default async function SitesPage() {
   await requireRole(["super-admin"])
@@ -19,7 +20,21 @@ export default async function SitesPage() {
           </Button>
         }
       />
-      <TenantsTable data={tenants as any} />
+      <TenantsTable
+        data={tenants as any}
+        emptyState={
+          <EmptyState
+            icon={Globe}
+            title="No tenants"
+            description="Create your first tenant to get started."
+            action={
+              <Button asChild>
+                <Link href="/sites/new"><Plus className="h-4 w-4 mr-1" /> New tenant</Link>
+              </Button>
+            }
+          />
+        }
+      />
     </div>
   )
 }

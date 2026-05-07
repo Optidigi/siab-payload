@@ -19,7 +19,7 @@ import { toast } from "sonner"
 import { relativeTime } from "@/lib/relativeTime"
 import type { Tenant } from "@/payload-types"
 
-export function TenantsTable({ data }: { data: Tenant[] }) {
+export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?: React.ReactNode }) {
   const router = useRouter()
   const [target, setTarget] = useState<Tenant | null>(null)
 
@@ -114,7 +114,7 @@ export function TenantsTable({ data }: { data: Tenant[] }) {
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="name" filterPlaceholder="Filter tenants..." />
+      <DataTable columns={cols} data={data} filterColumn="name" filterPlaceholder="Filter tenants..." emptyState={emptyState} />
       {target && (
         <TypedConfirmDialog
           open={!!target}

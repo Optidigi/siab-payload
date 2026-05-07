@@ -3,6 +3,8 @@ import { getTenantBySlug } from "@/lib/queries/tenants"
 import { listForms } from "@/lib/queries/forms"
 import { FormsTable } from "@/components/tables/FormsTable"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { Inbox } from "lucide-react"
 import { notFound } from "next/navigation"
 
 export default async function FormsPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -17,7 +19,16 @@ export default async function FormsPage({ params }: { params: Promise<{ slug: st
         title="Forms"
         tenant={{ name: tenant.name, slug: tenant.slug }}
       />
-      <FormsTable data={forms.docs as any} />
+      <FormsTable
+        data={forms.docs as any}
+        emptyState={
+          <EmptyState
+            icon={Inbox}
+            title="No submissions yet"
+            description="When your forms receive submissions, they appear here."
+          />
+        }
+      />
     </div>
   )
 }

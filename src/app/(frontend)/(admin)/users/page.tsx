@@ -4,6 +4,8 @@ import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
 import { CreateUserForm } from "@/components/forms/CreateUserForm"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { Users } from "lucide-react"
 
 export default async function UsersPage() {
   const { user, ctx } = await requireAuth()
@@ -16,7 +18,18 @@ export default async function UsersPage() {
           title="All users"
           action={<CreateUserForm />}
         />
-        <UsersTable data={users as any} canManage />
+        <UsersTable
+          data={users as any}
+          canManage
+          emptyState={
+            <EmptyState
+              icon={Users}
+              title="No users"
+              description="Provision a user account to grant access."
+              action={<CreateUserForm />}
+            />
+          }
+        />
       </div>
     )
   }
@@ -31,7 +44,18 @@ export default async function UsersPage() {
         title="Team"
         action={canManage ? <UserInviteForm tenantId={tenantId} /> : undefined}
       />
-      <UsersTable data={users as any} canManage={canManage} />
+      <UsersTable
+        data={users as any}
+        canManage={canManage}
+        emptyState={
+          <EmptyState
+            icon={Users}
+            title="No team members yet"
+            description="Invite your first team member to collaborate on this site."
+            action={canManage ? <UserInviteForm tenantId={tenantId} /> : undefined}
+          />
+        }
+      />
     </div>
   )
 }

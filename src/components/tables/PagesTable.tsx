@@ -20,7 +20,7 @@ import { parsePayloadError } from "@/lib/api"
 import { relativeTime } from "@/lib/relativeTime"
 import type { Page } from "@/payload-types"
 
-export function PagesTable({ data, base }: { data: Page[]; base: string }) {
+export function PagesTable({ data, base, emptyState }: { data: Page[]; base: string; emptyState?: React.ReactNode }) {
   const router = useRouter()
   const [target, setTarget] = useState<Page | null>(null)
 
@@ -111,7 +111,7 @@ export function PagesTable({ data, base }: { data: Page[]; base: string }) {
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="title" filterPlaceholder="Filter pages..." />
+      <DataTable columns={cols} data={data} filterColumn="title" filterPlaceholder="Filter pages..." emptyState={emptyState} />
       {target && (
         <TypedConfirmDialog
           open={!!target}

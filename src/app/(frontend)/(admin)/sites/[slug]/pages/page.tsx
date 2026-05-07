@@ -4,7 +4,8 @@ import { listPages } from "@/lib/queries/pages"
 import { PagesTable } from "@/components/tables/PagesTable"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { Plus } from "lucide-react"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { FileText, Plus } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 
@@ -21,7 +22,24 @@ export default async function PagesIndex({ params }: { params: Promise<{ slug: s
         tenant={{ name: tenant.name, slug: tenant.slug }}
         action={<Button asChild><Link href={`/sites/${slug}/pages/new`}><Plus className="mr-1 h-4 w-4"/> New page</Link></Button>}
       />
-      <PagesTable data={pages as any} base={`/sites/${slug}/pages`}/>
+      <PagesTable
+        data={pages as any}
+        base={`/sites/${slug}/pages`}
+        emptyState={
+          <EmptyState
+            icon={FileText}
+            title="No pages yet"
+            description="Create your first page to start building this site."
+            action={
+              <Button asChild>
+                <Link href={`/sites/${slug}/pages/new`}>
+                  <Plus className="h-4 w-4 mr-1" /> New page
+                </Link>
+              </Button>
+            }
+          />
+        }
+      />
     </div>
   )
 }

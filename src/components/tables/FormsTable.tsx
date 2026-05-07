@@ -7,7 +7,7 @@ import { relativeTime } from "@/lib/relativeTime"
 import { FormSubmissionSheet } from "@/components/forms/FormSubmissionSheet"
 import type { Form as FormDoc } from "@/payload-types"
 
-export function FormsTable({ data }: { data: FormDoc[] }) {
+export function FormsTable({ data, emptyState }: { data: FormDoc[]; emptyState?: React.ReactNode }) {
   const [active, setActive] = useState<FormDoc | null>(null)
 
   const cols: ColumnDef<FormDoc, any>[] = [
@@ -51,7 +51,7 @@ export function FormsTable({ data }: { data: FormDoc[] }) {
         const found = data.find((d) => String(d.id) === id)
         if (found) setActive(found)
       }}>
-        <DataTable columns={cols} data={data} filterColumn="email" filterPlaceholder="Filter by email..." />
+        <DataTable columns={cols} data={data} filterColumn="email" filterPlaceholder="Filter by email..." emptyState={emptyState} />
       </div>
       <FormSubmissionSheet form={active} open={!!active} onOpenChange={(b) => !b && setActive(null)} />
     </>

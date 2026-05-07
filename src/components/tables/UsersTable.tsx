@@ -18,7 +18,7 @@ import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
-export function UsersTable({ data, canManage }: { data: User[]; canManage: boolean }) {
+export function UsersTable({ data, canManage, emptyState }: { data: User[]; canManage: boolean; emptyState?: React.ReactNode }) {
   const router = useRouter()
   // Single shared dialog target — set when the operator picks Delete from
   // a row's kebab menu.
@@ -110,7 +110,7 @@ export function UsersTable({ data, canManage }: { data: User[]; canManage: boole
 
   return (
     <>
-      <DataTable columns={cols} data={data} filterColumn="email" filterPlaceholder="Filter users..." />
+      <DataTable columns={cols} data={data} filterColumn="email" filterPlaceholder="Filter users..." emptyState={emptyState} />
       {target && (
         <TypedConfirmDialog
           open={!!target}

@@ -4,6 +4,8 @@ import { listUsersForTenant } from "@/lib/queries/users"
 import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
 import { PageHeader } from "@/components/layout/PageHeader"
+import { EmptyState } from "@/components/shared/EmptyState"
+import { Users } from "lucide-react"
 import { notFound } from "next/navigation"
 
 export default async function TenantUsersPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -20,7 +22,18 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ sl
         tenant={{ name: tenant.name, slug: tenant.slug }}
         action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}
       />
-      <UsersTable data={users as any} canManage={canManage} />
+      <UsersTable
+        data={users as any}
+        canManage={canManage}
+        emptyState={
+          <EmptyState
+            icon={Users}
+            title="No team members yet"
+            description="Invite your first team member to collaborate on this site."
+            action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}
+          />
+        }
+      />
     </div>
   )
 }
