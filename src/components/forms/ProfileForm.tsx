@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { RoleBadge } from "@/components/shared/RoleBadge"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -35,6 +36,18 @@ export function ProfileForm({ user }: { user: User }) {
     resolver: zodResolver(passwordSchema),
     defaultValues: { currentPassword: "", newPassword: "", confirm: "" }
   })
+
+  // Block accidental nav loss when either form has unsaved edits or a
+  // save is in flight. Hook installs a native beforeunload prompt (tab
+  // close / refresh / address-bar nav) plus a click + popstate guard for
+  // in-app navigation. The returned pending/confirm/cancel surface is
+  // unused here (no custom dialog wired).
+  useNavigationGuard(
+    nameForm.formState.isDirty ||
+      passwordForm.formState.isDirty ||
+      namePending ||
+      passwordPending,
+  )
 
   const onUpdateName = async (v: z.infer<typeof nameSchema>) => {
     setNamePending(true)

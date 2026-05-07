@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
@@ -55,6 +56,13 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
   })
 
   const role = form.watch("role")
+
+  // Block accidental nav loss when the form has unsaved edits or a save
+  // is in flight. Hook installs a native beforeunload prompt (tab close /
+  // refresh / address-bar nav) plus a click + popstate guard for in-app
+  // navigation. The returned pending/confirm/cancel surface is unused here
+  // (no custom dialog wired); the native dialog covers the high-risk paths.
+  useNavigationGuard(form.formState.isDirty || savePending)
 
   const onSubmit = async (values: Values) => {
     setSavePending(true)
