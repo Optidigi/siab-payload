@@ -752,7 +752,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
           Hidden mode keeps them inside the 3-col grid above.
         */}
         {showSideInFlow && (
-          <section className="px-4 py-6 space-y-4 max-w-3xl">
+          <section className="px-4 py-6 space-y-4">
             <Card>
               <CardHeader><CardTitle>SEO</CardTitle></CardHeader>
               <CardContent className="space-y-3">
