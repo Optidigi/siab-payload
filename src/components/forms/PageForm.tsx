@@ -776,7 +776,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
               if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
             }}
             onClick={triggerSave}
-            className="phone-fab relative md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center disabled:opacity-60"
+            className="phone-fab md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center disabled:opacity-60"
             style={{ bottom: `calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem)` }}
             aria-label="Save page"
           >
