@@ -36,6 +36,12 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
   })
 
   const isEmpty = table.getRowModel().rows.length === 0
+  // Distinguish "list is empty" (show caller-supplied empty state with
+  // primary CTA like "+ New page") from "filter narrowed to zero rows"
+  // (always show the generic "No results / adjust your search" state).
+  // Without this, filtering a populated list to 0 results displays the
+  // wrong copy ("No pages yet — create your first page").
+  const isFilterNarrowed = isEmpty && data.length > 0
 
   return (
     <div className="space-y-3">
@@ -66,12 +72,20 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
       )}
 
       {isEmpty ? (
-        emptyState ?? (
+        isFilterNarrowed ? (
           <EmptyState
             icon={FileQuestion}
             title="No results"
             description="Try adjusting your search or filter."
           />
+        ) : (
+          emptyState ?? (
+            <EmptyState
+              icon={FileQuestion}
+              title="No results"
+              description="Try adjusting your search or filter."
+            />
+          )
         )
       ) : (
         <>
