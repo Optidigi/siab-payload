@@ -105,7 +105,7 @@ export function BlockListItem({
       tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1} of ${total}: ${blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2 sticky top-0 z-[5] bg-background rounded-t-md">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 sticky top-0 z-[5] bg-background rounded-t-md">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -161,7 +161,7 @@ export function BlockListItem({
         </div>
       </div>
       {open && (
-        <div className="border-t p-3 space-y-3">
+        <div className="border-t p-3 space-y-3 max-md:p-4 max-md:space-y-4">
           {(typedConfig?.fields ?? []).map((f, i) => (
             <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}

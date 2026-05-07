@@ -109,3 +109,12 @@
 
 * { border-color: var(--border); }
 body { background: var(--background); color: var(--foreground); font-family: var(--font-sans); }
+
+/* iOS auto-zooms inputs with computed font-size < 16px on focus.
+   shadcn <Input> already has text-base on mobile via its own classes,
+   but raw <input>, <textarea>, <select> elsewhere need this belt. */
+@media (max-width: 767px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
