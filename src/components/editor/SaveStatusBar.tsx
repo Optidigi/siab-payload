@@ -116,13 +116,18 @@ export function SaveStatusBar({
   // Hidden states: pill not rendered, but if a preview toggle is provided
   // we still surface it in the same anchored position so the operator can
   // toggle the preview pane independent of save state.
+  //
+  // Phone: this entire bar is suppressed (`hidden md:flex` on every
+  // returned root). The bottom-anchored mobile branch collided with the
+  // new tabbar; on phone the tabbar's Edit-tab dot now carries the
+  // save state. The desktop top-right pill is unchanged.
   if (status === "idle" || (status === "saved" && !showSaved)) {
     if (!previewToggle) return null
     return (
       <div
         className={cn(
-          "fixed left-4 right-4 z-40 bottom-[max(1rem,env(safe-area-inset-bottom))] md:bottom-auto md:left-auto md:top-16 md:right-4",
-          "flex items-center gap-1 rounded-md border bg-card/80 px-2 py-1 shadow-sm backdrop-blur",
+          "hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4",
+          "items-center gap-1 rounded-md border bg-card/80 px-2 py-1 shadow-sm backdrop-blur",
         )}
       >
         {previewToggle}
@@ -131,10 +136,10 @@ export function SaveStatusBar({
   }
 
   // Position: top-right on desktop (clears the 48px sticky SiteHeader at z-10
-  // by anchoring at top-16 = 64px → 16px gap below the header), bottom strip
-  // on mobile.
+  // by anchoring at top-16 = 64px → 16px gap below the header). On phone
+  // the bar is fully suppressed via `hidden md:flex`.
   const positionClasses =
-    "fixed left-4 right-4 z-40 bottom-[max(1rem,env(safe-area-inset-bottom))] md:bottom-auto md:left-auto md:top-16 md:right-4"
+    "hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4"
 
   let tone = "border bg-muted text-muted-foreground"
   let body: React.ReactNode = null
@@ -260,7 +265,7 @@ export function SaveStatusBar({
   }
 
   return (
-    <div className={cn(positionClasses, "flex items-center gap-2")}>
+    <div className={cn(positionClasses, "md:items-center md:gap-2")}>
       {pill}
       <div className="flex items-center rounded-md border bg-card/80 px-1 py-1 shadow-sm backdrop-blur">
         {previewToggle}

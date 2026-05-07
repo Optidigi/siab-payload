@@ -18,18 +18,40 @@ type Props = {
   focusedBlockIndex?: number | null
   focusSeq?: number
   onClickBlock?: (index: number) => void
+  // Status props are now controlled by PageForm so siblings (mobile
+  // tabbar, etc.) can observe and react to preview lifecycle without
+  // mounting a second PreviewPane.
+  status: PreviewStatus
+  setStatus: (s: PreviewStatus | ((prev: PreviewStatus) => PreviewStatus)) => void
+  errorMessage?: string
+  setErrorMessage: (m: string | undefined) => void
+  isSlowLoad: boolean
+  setIsSlowLoad: (b: boolean) => void
 }
 
 const DEBOUNCE_MS = 100
 const HEARTBEAT_TIMEOUT_MS = 60_000
 
-export function PreviewPane({ control, tenantId, tenantOrigin, pageId, previewMode, setPreviewMode, focusedBlockIndex, focusSeq, onClickBlock }: Props) {
+export function PreviewPane({
+  control,
+  tenantId,
+  tenantOrigin,
+  pageId,
+  previewMode,
+  setPreviewMode,
+  focusedBlockIndex,
+  focusSeq,
+  onClickBlock,
+  status,
+  setStatus,
+  errorMessage,
+  setErrorMessage,
+  isSlowLoad,
+  setIsSlowLoad,
+}: Props) {
   const { state: tokenState, forceRefresh } = useSignedPreviewToken({ tenantId, pageId })
   const iframeRef = useRef<HTMLIFrameElement>(null)
-  const [status, setStatus] = useState<PreviewStatus>("loading")
-  const [errorMessage, setErrorMessage] = useState<string | undefined>()
   const [viewport, setViewport] = useState<ViewportMode>("full")
-  const [isSlowLoad, setIsSlowLoad] = useState(false)
   const [iframeLoadedAt, setIframeLoadedAt] = useState<number | null>(null)
   const lastHeartbeatRef = useRef<number>(0)
 
