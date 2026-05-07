@@ -717,7 +717,10 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         {!isDesktop && !isPreviewOpen && (
           <button
             type="button"
-            onPointerDown={(e) => e.preventDefault()}
+            onPointerDown={(e) => {
+              const tag = document.activeElement?.tagName
+              if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
+            }}
             onClick={() => document.dispatchEvent(new CustomEvent("editor:open-add-block"))}
             className="phone-fab md:hidden fixed z-30 right-4 rounded-full bg-primary text-primary-foreground shadow-lg h-14 w-14 flex items-center justify-center"
             style={{ bottom: `calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem)` }}

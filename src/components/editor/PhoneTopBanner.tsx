@@ -52,7 +52,10 @@ export function PhoneTopBanner({ pending, isDirty, errorCount, saveStatus, lastS
             size="sm"
             onClick={onSave}
             disabled={pending}
-            onPointerDown={(e) => { e.preventDefault() }}
+            onPointerDown={(e) => {
+              const tag = document.activeElement?.tagName
+              if (tag === "INPUT" || tag === "TEXTAREA") e.preventDefault()
+            }}
             className="h-9 gap-1.5"
             title="Save (⌘S / Ctrl+S)"
           >
