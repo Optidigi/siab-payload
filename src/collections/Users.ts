@@ -1,5 +1,6 @@
 import type { ArrayFieldValidation, CollectionConfig } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
+import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 
 // Domain invariant: super-admins have no tenants; all other roles have
@@ -68,6 +69,12 @@ export const Users: CollectionConfig = {
   fields: [
     { name: "name", type: "text" },
     { name: "role", type: "select", required: true, defaultValue: "editor",
+      // Field-level update gate: ONLY super-admin may mutate role. Without this,
+      // any authed user reachable by `canManageUsers` (which includes self via
+      // `{ id: { equals: u.id } }` for editor/viewer) could PATCH their own
+      // record with `role: "super-admin"` and bypass tenant scoping entirely.
+      // See audit findings #2 and #3 (T2, P0).
+      access: { update: isSuperAdminField },
       options: [
         { label: "Super-admin", value: "super-admin" },
         { label: "Owner", value: "owner" },
@@ -85,6 +92,12 @@ export const Users: CollectionConfig = {
       type: "array",
       validate: validateTenants,
       saveToJWT: true,
+      // Field-level update gate paired with `role`: setting `tenants: []` while
+      // flipping `role: "super-admin"` is the precise self-promotion shape the
+      // validator (`validateTenants`) accepts. Lock both halves so the payload
+      // can never escalate even if `role` access is somehow relaxed in future.
+      // See audit findings #2 and #3 (T2, P0).
+      access: { update: isSuperAdminField },
       admin: { description: "empty for super-admin; exactly one entry otherwise" },
       fields: [
         {
