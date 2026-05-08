@@ -1,7 +1,13 @@
 import { defineConfig } from "vitest/config"
+import react from "@vitejs/plugin-react"
 import path from "path"
 
 export default defineConfig({
+  // tsconfig sets `jsx: "preserve"` for Next.js' SWC pipeline. Vitest's
+  // built-in transformer doesn't compile preserved JSX, so we wire the
+  // standard React plugin for the test pipeline. Test-runtime only — the
+  // Next.js build is unaffected.
+  plugins: [react()],
   test: {
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
