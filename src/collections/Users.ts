@@ -1,7 +1,19 @@
+import { timingSafeEqual } from "crypto"
 import type { ArrayFieldValidation, CollectionConfig } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
+
+// Constant-time string compare. Length-mismatch returns false immediately
+// (timingSafeEqual itself throws on length mismatch); the per-byte compare
+// only runs on equal-length inputs. Used by the bootstrap-token gate so
+// brute-force probes can't extract the env-var token byte-by-byte.
+const safeEqual = (a: string, b: string): boolean => {
+  const ab = Buffer.from(a, "utf8")
+  const bb = Buffer.from(b, "utf8")
+  if (ab.length !== bb.length) return false
+  return timingSafeEqual(ab, bb)
+}
 
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
@@ -52,12 +64,25 @@ export const Users: CollectionConfig = {
     }
   },
   access: {
-    // create: super-admin / owner can create. Bootstrap exception: if there
-    // are zero users, allow unauthenticated creation so the first super-admin
-    // can be seeded via POST /api/users on a fresh production database.
-    // Once any user exists, this lock is permanent.
-    create: async ({ req }) => {
+    // create: super-admin / owner can create. Bootstrap exception (audit-p1
+    // finding #6, T2): the previous count-only gate silently re-opened
+    // unauthenticated POST /api/users whenever the users table was empty
+    // (DB restore from blank, accidental purge, fresh re-deploy missing
+    // seed). The hardened gate now requires ALL of:
+    //   1. `BOOTSTRAP_TOKEN` env var set on the server
+    //   2. `x-bootstrap-token` request header matches it (timing-safe compare)
+    //   3. incoming `data.role === "super-admin"` (no other role may bootstrap)
+    //   4. users table is still empty
+    // Operator workflow: deploy with BOOTSTRAP_TOKEN set, run the seed curl
+    // ONCE, then unset BOOTSTRAP_TOKEN and redeploy. Documented in
+    // .env.example and docs/runbooks/deploy.md.
+    create: async ({ req, data }) => {
       if (req.user?.role === "super-admin" || req.user?.role === "owner") return true
+      const expected = process.env.BOOTSTRAP_TOKEN
+      if (!expected) return false
+      const provided = req.headers?.get?.("x-bootstrap-token")
+      if (!provided || !safeEqual(provided, expected)) return false
+      if (data?.role !== "super-admin") return false
       const { totalDocs } = await req.payload.count({ collection: "users", overrideAccess: true })
       return totalDocs === 0
     },
