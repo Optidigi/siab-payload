@@ -1,5 +1,6 @@
 import type { CollectionConfig, JSONFieldValidation } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
+import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 
 // Audit-p1 #5 sub-fix 2 (T4) — payload-size DoS cap on the public-create
 // surface. The audit's suggested cap is ~32 KB, sized for typical contact-
@@ -28,11 +29,23 @@ export const Forms: CollectionConfig = {
   slug: "forms",
   access: {
     read: canRead,
-    // Public form posts: any unauthenticated visitor can submit. Anonymous
-    // flood is mitigated upstream by middleware rate-limit at /api/forms
-    // (audit-p1 #5 sub-fix 1, src/middleware.ts) — 10 POSTs / 60s / IP.
-    // Per-record payload size is capped here in `data`'s validate.
-    create: () => true,
+    // Public form posts: any unauthenticated visitor can submit. Three layers
+    // compose to close the audit-p1 #5 (T4) anonymous-abuse vector:
+    //   (a) Middleware rate-limit (src/middleware.ts) — 10 POSTs / 60s / IP
+    //       on requests with NO auth signals (the orchestrator-friendliness
+    //       pose: a real apiKey-authed orchestrator must not be limited).
+    //   (b) THIS gate — reject when `req.user` is null AND the request
+    //       presented an Authorization header or payload-token cookie.
+    //       That combination means the caller TRIED to authenticate but
+    //       Payload's strategies couldn't validate the credential — i.e.
+    //       a bypass attempt against the middleware's presence-only check.
+    //       Bogus-auth attackers get 403 here; the flood vector closes.
+    //   (c) Per-record `data` 32 KB cap on the json field (sub-fix 2 below).
+    create: ({ req }) => {
+      if (req.user) return true
+      if (hasUnvalidatedAuthSignal(req)) return false
+      return true
+    },
     update: canWrite,
     delete: ({ req }) => req.user?.role === "super-admin" || req.user?.role === "owner"
   },

@@ -113,8 +113,14 @@ const expectForbidden = async (promise: Promise<any>) => {
 // -----------------------------------------------------------------------------
 
 describe("AMD-3 — beforeOperation hook honestly rejects non-super-admin apiKey writes (HTTP 403, not silent strip)", () => {
-  it("S1: Users.hooks.beforeOperation has exactly one hook (the AMD-3 honest-rejection hook)", () => {
-    expect(beforeOperationHooks.length).toBe(1)
+  it("S1: Users.hooks.beforeOperation has at least one hook, and the AMD-3 honest-rejection hook is at index 0 (preserved across audit-p1 #5 layer-2 hook addition)", () => {
+    // The "exactly one" structural assumption was relaxed when audit-p1 #5
+    // sub-fix 1 layer-2 added a second beforeOperation hook
+    // (`rejectBogusAuthForgotPassword`). The AMD-3 hook
+    // (`rejectNonSuperAdminApiKeyWrites`) is registered first and remains
+    // at index 0; the new hook only fires on `operation === "forgotPassword"`
+    // so it cannot mask AMD-3's update-path coverage.
+    expect(beforeOperationHooks.length).toBeGreaterThanOrEqual(1)
     expect(typeof apiKeyHonestRejectHook).toBe("function")
   })
 
