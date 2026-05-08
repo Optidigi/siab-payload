@@ -47,6 +47,30 @@ describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation",
     it("permits role updates from super-admin (positive control)", () => {
       expect(roleField.access.update(reqFor("super-admin"))).toBe(true)
     })
+
+    // Defense-in-depth: pre-merge security review noted that the original
+    // commits set only `access.update`, leaving the create path open. An
+    // owner is permitted by `Users.access.create` (collection-level), and
+    // `validateTenants` accepts `role:"super-admin"` together with
+    // `tenants:[]`, so an owner POSTing `/api/users` with that body would
+    // mint a super-admin platform-wide. Same family as Findings #2/#3.
+    it("declares an `access.create` function for the role field", () => {
+      expect(typeof roleField.access.create).toBe("function")
+    })
+
+    it("rejects role create from owner (POST /api/users → super-admin escalation vector)", () => {
+      expect(roleField.access.create(reqFor("owner"))).toBe(false)
+    })
+
+    it("rejects role create from editor / viewer / anon", () => {
+      expect(roleField.access.create(reqFor("editor"))).toBe(false)
+      expect(roleField.access.create(reqFor("viewer"))).toBe(false)
+      expect(roleField.access.create(reqFor(null))).toBe(false)
+    })
+
+    it("permits role create from super-admin (positive control)", () => {
+      expect(roleField.access.create(reqFor("super-admin"))).toBe(true)
+    })
   })
 
   describe("`tenants` field", () => {
@@ -70,6 +94,24 @@ describe("audit-p0 #2/#3 — field-level access blocks role/tenants escalation",
 
     it("permits tenants updates from super-admin (positive control)", () => {
       expect(tenantsField.access.update(reqFor("super-admin"))).toBe(true)
+    })
+
+    it("declares an `access.create` function for the tenants field", () => {
+      expect(typeof tenantsField.access.create).toBe("function")
+    })
+
+    it("rejects tenants create from owner / editor / viewer / anon", () => {
+      // The escalation payload requires `tenants:[]` paired with role:super-admin.
+      // Block create on tenants too so the bypass cannot be reassembled even if
+      // role-create access is ever relaxed in isolation.
+      expect(tenantsField.access.create(reqFor("owner"))).toBe(false)
+      expect(tenantsField.access.create(reqFor("editor"))).toBe(false)
+      expect(tenantsField.access.create(reqFor("viewer"))).toBe(false)
+      expect(tenantsField.access.create(reqFor(null))).toBe(false)
+    })
+
+    it("permits tenants create from super-admin (positive control)", () => {
+      expect(tenantsField.access.create(reqFor("super-admin"))).toBe(true)
     })
   })
 })

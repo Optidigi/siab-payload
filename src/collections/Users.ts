@@ -69,12 +69,13 @@ export const Users: CollectionConfig = {
   fields: [
     { name: "name", type: "text" },
     { name: "role", type: "select", required: true, defaultValue: "editor",
-      // Field-level update gate: ONLY super-admin may mutate role. Without this,
-      // any authed user reachable by `canManageUsers` (which includes self via
-      // `{ id: { equals: u.id } }` for editor/viewer) could PATCH their own
-      // record with `role: "super-admin"` and bypass tenant scoping entirely.
-      // See audit findings #2 and #3 (T2, P0).
-      access: { update: isSuperAdminField },
+      // Field-level access: ONLY super-admin may write role on either create or
+      // update. Update closes Findings #2/#3 (PATCH /api/users/<self> with
+      // role:"super-admin"). Create closes the parallel POST /api/users path —
+      // `Users.access.create` permits owners and `validateTenants` accepts
+      // role:"super-admin" with empty tenants, so without the create gate an
+      // owner could escalate via the same payload shape on a fresh row.
+      access: { create: isSuperAdminField, update: isSuperAdminField },
       options: [
         { label: "Super-admin", value: "super-admin" },
         { label: "Owner", value: "owner" },
@@ -92,12 +93,11 @@ export const Users: CollectionConfig = {
       type: "array",
       validate: validateTenants,
       saveToJWT: true,
-      // Field-level update gate paired with `role`: setting `tenants: []` while
-      // flipping `role: "super-admin"` is the precise self-promotion shape the
-      // validator (`validateTenants`) accepts. Lock both halves so the payload
-      // can never escalate even if `role` access is somehow relaxed in future.
-      // See audit findings #2 and #3 (T2, P0).
-      access: { update: isSuperAdminField },
+      // Field-level access paired with `role`: setting `tenants:[]` while
+      // flipping `role:"super-admin"` is the precise self-promotion shape
+      // `validateTenants` accepts. Gate both create and update so the payload
+      // cannot be reassembled even if either half is later relaxed.
+      access: { create: isSuperAdminField, update: isSuperAdminField },
       admin: { description: "empty for super-admin; exactly one entry otherwise" },
       fields: [
         {
