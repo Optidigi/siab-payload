@@ -280,6 +280,87 @@ describe("audit-p1 #7 sub-fix A — rejectNonSuperAdminPasswordWrites locks the 
       }),
     )
   })
+
+  // -----------------------------------------------------------------------
+  // Sibling email-pivot vector (closed in fix batch 7 Pass 2 follow-up).
+  //
+  // Audit text §"Suggested fix" for #7 explicitly says: "Same gate for
+  // email change." Pre-Pass-2, the lock-down hook only matched 'password'
+  // in data — leaving email-change unprotected. A stolen-cookie attacker
+  // could PATCH the victim's email to attacker-controlled, then trigger
+  // forgot-password to mail the reset link to the attacker, and complete
+  // the takeover. The fix extends the hook to also reject when 'email'
+  // is in data (same conditions: non-super-admin, no allowSelfPasswordChange
+  // bypass flag).
+  // -----------------------------------------------------------------------
+
+  it("Email-pivot vector: editor PATCH self with {email:'attacker@evil'} → 403 (audit's 'Same gate for email change' requirement)", async () => {
+    await expectForbidden(
+      callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "update",
+        req: reqAuthed("editor", 42, "self", "victim@x"),
+        data: { email: "attacker@evil.example" },
+      }),
+    )
+  })
+
+  it("Email-pivot vector: owner PATCH tenant-member with {email:'X'} → 403 (closes the cross-user takeover sibling)", async () => {
+    await expectForbidden(
+      callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "update",
+        req: reqAuthed("owner", 42, "owner-self", "o@x"),
+        data: { email: "attacker@evil.example" },
+      }),
+    )
+  })
+
+  it("Email-pivot vector: super-admin PATCH with {email:'X'} → does NOT throw (admin email-fix path preserved, parallel to admin-reset)", async () => {
+    let threw = false
+    try {
+      await callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "update",
+        req: reqAuthed("super-admin", null, "sa1", "sa@x"),
+        data: { email: "fixed@x" },
+      })
+    } catch {
+      threw = true
+    }
+    expect(threw).toBe(false)
+  })
+
+  it("Email-pivot vector: anonymous PATCH with {email} → 403 (defense-in-depth)", async () => {
+    await expectForbidden(
+      callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "update",
+        req: reqAnon(),
+        data: { email: "x@x" },
+      }),
+    )
+  })
+
+  it("Email-pivot vector: combined {password, email} write from non-super-admin → 403 (single rejection covers both)", async () => {
+    await expectForbidden(
+      callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "update",
+        req: reqAuthed("editor", 42, "self", "e@x"),
+        data: { password: "x", email: "y@x" },
+      }),
+    )
+  })
+
+  it("Email-pivot vector: hook only fires on operation === 'update'; create with {email} → does NOT throw (create-side covered by canCreateUserField)", async () => {
+    let threw = false
+    try {
+      await callBeforeOpHook(passwordWriteRejectHook, {
+        operation: "create",
+        req: reqAuthed("super-admin", null, "sa1", "sa@x"),
+        data: { email: "new@x", role: "editor" },
+      })
+    } catch {
+      threw = true
+    }
+    expect(threw).toBe(false)
+  })
 })
 
 // -----------------------------------------------------------------------------
