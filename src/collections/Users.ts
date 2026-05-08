@@ -1,5 +1,6 @@
 import type { ArrayFieldValidation, CollectionConfig } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
+import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 
 // Domain invariant: super-admins have no tenants; all other roles have
@@ -68,6 +69,13 @@ export const Users: CollectionConfig = {
   fields: [
     { name: "name", type: "text" },
     { name: "role", type: "select", required: true, defaultValue: "editor",
+      // Field-level access: ONLY super-admin may write role on either create or
+      // update. Update closes Findings #2/#3 (PATCH /api/users/<self> with
+      // role:"super-admin"). Create closes the parallel POST /api/users path —
+      // `Users.access.create` permits owners and `validateTenants` accepts
+      // role:"super-admin" with empty tenants, so without the create gate an
+      // owner could escalate via the same payload shape on a fresh row.
+      access: { create: isSuperAdminField, update: isSuperAdminField },
       options: [
         { label: "Super-admin", value: "super-admin" },
         { label: "Owner", value: "owner" },
@@ -85,6 +93,11 @@ export const Users: CollectionConfig = {
       type: "array",
       validate: validateTenants,
       saveToJWT: true,
+      // Field-level access paired with `role`: setting `tenants:[]` while
+      // flipping `role:"super-admin"` is the precise self-promotion shape
+      // `validateTenants` accepts. Gate both create and update so the payload
+      // cannot be reassembled even if either half is later relaxed.
+      access: { create: isSuperAdminField, update: isSuperAdminField },
       admin: { description: "empty for super-admin; exactly one entry otherwise" },
       fields: [
         {
