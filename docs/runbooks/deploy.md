@@ -173,17 +173,38 @@ user; if you're deploying as a different host user, you must override.
 
 ## Step 8 — Seed first super-admin
 
-The `Users` collection has a bootstrap exception that allows unauthenticated
-user creation when the table is empty. Use it once, then change the password
-immediately.
+The `Users` collection has a hardened bootstrap exception (audit-p1 #6, T2)
+that allows unauthenticated super-admin creation **only** when ALL of the
+following hold:
+
+1. The `users` table is empty
+2. The `BOOTSTRAP_TOKEN` env var is set on the server
+3. The request carries an `x-bootstrap-token` header matching the env var
+4. The request body has `role: "super-admin"` (no other role may bootstrap)
+
+Use it once, rotate, then unset the env var. Leaving `BOOTSTRAP_TOKEN` set in
+production keeps an unauthenticated escalation path armed if the users
+table is ever emptied.
 
 ```bash
+# 1. Set the bootstrap token in the server env (e.g. .env or your secrets manager)
+TOKEN=$(openssl rand -hex 32)
+echo "BOOTSTRAP_TOKEN=$TOKEN" >> .env
+docker compose up -d   # restart with the new env
+
+# 2. Mint the first super-admin
 PASSWORD=$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-22)
 echo "Save this password: $PASSWORD"
 
-curl -X POST -H "Content-Type: application/json" \
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-bootstrap-token: $TOKEN" \
   -d "{\"email\":\"admin@<your-domain>\",\"password\":\"$PASSWORD\",\"name\":\"Admin\",\"role\":\"super-admin\"}" \
   https://admin.<your-domain>/api/users
+
+# 3. Remove BOOTSTRAP_TOKEN from .env (or your secrets manager) and redeploy
+sed -i '/^BOOTSTRAP_TOKEN=/d' .env
+docker compose up -d
 ```
 
 Log in at `https://admin.<your-domain>/login`, then go to your user record in
