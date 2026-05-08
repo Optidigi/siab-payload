@@ -211,6 +211,50 @@ export const Users: CollectionConfig = {
           saveToJWT: true
         }
       ]
-    }
+    },
+    // Audit AMENDMENT AMD-2 (T2 primary, T5 secondary) — Payload's
+    // auto-injected `apiKey` / `enableAPIKey` / `apiKeyIndex` fields ship
+    // with NO `access` property (see node_modules/payload/dist/auth/baseFields/apiKey.js).
+    // Per Payload's default-allow-when-unspecified, any caller who passes
+    // the collection-level access can mass-assign these fields, producing:
+    //   A) owner mints attacker-known apiKey on a new editor (bypass invite-flow)
+    //   B) editor/viewer self-set apiKey for persistence past password rotation
+    //   C) owner sets apiKey on any tenant member → audit-trail forgery
+    //      (owner can authenticate as victim; updatedBy reflects victim id)
+    //
+    // Mechanism: field-override via name-match. Payload's mergeBaseFields
+    // (node_modules/payload/dist/fields/mergeBaseFields.js:7-31) finds the
+    // base field by `name`, splices it from the merged list, and pushes
+    // deepMergeWithReactComponents(baseField, matchCopy). Default deepmerge
+    // semantics (utilities/deepMerge.js:37-41) have matchCopy (this collection's
+    // explicit field) winning on conflicts while preserving baseField's
+    // unique properties — so declaring only {name, type, access} here yields
+    // a merged field that retains the baseField's encrypt/decrypt hooks,
+    // admin Field:false, label, and (for apiKeyIndex) the HMAC beforeValidate
+    // hook, while picking up our isSuperAdminField gate.
+    //
+    // Defense-in-depth: locking apiKey alone is transitively sufficient
+    // (the apiKeyIndex hook only runs HMAC when data.apiKey is present,
+    // which it won't be after the field-strip cascade). We lock all three
+    // anyway so a future Payload revision that wires the hook differently
+    // can't silently re-arm this vector.
+    //
+    // Self-rotation note: this locks editor/viewer/owner from rotating
+    // their own apiKey via PATCH /api/users/<self>. The Payload-admin's
+    // auto-injected apiKey UI is hidden (admin.components.Field: false),
+    // BUT a custom self-rotation UI exists at src/components/forms/
+    // ApiKeyManager.tsx (mounted on src/app/(frontend)/(admin)/api-key/
+    // page.tsx). After this gate, that PATCH returns 200 with the apiKey/
+    // enableAPIKey fields silently stripped — the UI appears to succeed but
+    // the api-key state never changes for non-super-admin users. This is a
+    // known functional regression flagged in audits/05-fix-batch-4-report.md
+    // out-of-batch observations. Closing the security vector is the
+    // priority; reconciling the UI is a product decision deferred to a
+    // future amendment (options: narrow access to `req.user?.id === id`
+    // for self-rotation, or replace the UI with a super-admin-mediated
+    // request flow). Do not silently relax the access here.
+    { name: "enableAPIKey", type: "checkbox", access: { create: isSuperAdminField, update: isSuperAdminField } },
+    { name: "apiKey",       type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } },
+    { name: "apiKeyIndex",  type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } }
   ]
 }
