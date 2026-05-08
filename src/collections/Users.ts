@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "crypto"
-import type { ArrayFieldValidation, CollectionConfig, FieldAccess } from "payload"
+import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionConfig, FieldAccess } from "payload"
+import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
@@ -93,6 +94,46 @@ const canCreateUserField: FieldAccess = ({ req, data }) => {
   return false
 }
 
+// Audit AMENDMENT AMD-3 (T2 secondary) — honest rejection on non-super-admin
+// apiKey writes. Pairs with the AMD-2 field-level access (kept untouched as
+// defense-in-depth) and the UI gating in src/app/(frontend)/(admin)/api-key/
+// page.tsx.
+//
+// Why beforeOperation: AMD-2's field-level access strips apiKey/enableAPIKey/
+// apiKeyIndex from `data` during the field-level beforeValidate cascade. By
+// the time `beforeChange` (collection) and `beforeValidate` (collection)
+// hooks run, those fields have already been deleted — see the documented
+// hook order at node_modules/payload/dist/collections/operations/utilities/
+// update.js:13-24 (beforeValidate-Fields → beforeValidate-Collection →
+// beforeChange-Collection → beforeChange-Fields). The earliest collection-
+// level hook is `beforeOperation`, dispatched at updateByID.js:25-30 via
+// buildBeforeOperation.js:6-22 BEFORE any field hook fires; that's the only
+// hook that still sees the caller's original `data.apiKey` intent and can
+// distinguish a write attempt from a no-op.
+//
+// Both `update` and `updateByID` operations map to hookOperation `'update'`
+// (collections/operations/utilities/types.js:operationToHookOperation), so
+// gating on `operation === "update"` covers both. The hook intentionally does
+// NOT fire on `'create'` — sub-vector A is closed by AMD-2's field-level
+// access (the strip is the right outcome on create; we just want honest
+// rejection on update where a UI was previously expecting silent strip to
+// succeed).
+//
+// Sending `apiKey: null` or `enableAPIKey: false` is still a write attempt —
+// use `in` checks rather than truthiness, so any non-super-admin caller who
+// names one of the three keys gets a 403 regardless of value.
+const apiKeyFieldNames = ["apiKey", "enableAPIKey", "apiKeyIndex"] as const
+const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook = ({ args, operation, req }) => {
+  if (operation !== "update") return args
+  if (req.user?.role === "super-admin") return args
+  const data = args?.data
+  if (!data || typeof data !== "object") return args
+  for (const key of apiKeyFieldNames) {
+    if (key in data) throw new Forbidden(req.t)
+  }
+  return args
+}
+
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
 // team members), but a single user is always scoped to one tenant.
@@ -140,6 +181,12 @@ export const Users: CollectionConfig = {
       },
       generateEmailSubject: () => "Reset your siab-payload password"
     }
+  },
+  hooks: {
+    // AMD-3 — honest 403 instead of silent strip when a non-super-admin
+    // names apiKey / enableAPIKey / apiKeyIndex in an update payload. See
+    // the function definition above for hook-ordering rationale.
+    beforeOperation: [rejectNonSuperAdminApiKeyWrites]
   },
   access: {
     // create: super-admin / owner can create. Bootstrap exception (audit-p1
@@ -240,19 +287,26 @@ export const Users: CollectionConfig = {
     // can't silently re-arm this vector.
     //
     // Self-rotation note: this locks editor/viewer/owner from rotating
-    // their own apiKey via PATCH /api/users/<self>. The Payload-admin's
-    // auto-injected apiKey UI is hidden (admin.components.Field: false),
-    // BUT a custom self-rotation UI exists at src/components/forms/
-    // ApiKeyManager.tsx (mounted on src/app/(frontend)/(admin)/api-key/
-    // page.tsx). After this gate, that PATCH returns 200 with the apiKey/
-    // enableAPIKey fields silently stripped — the UI appears to succeed but
-    // the api-key state never changes for non-super-admin users. This is a
-    // known functional regression flagged in audits/05-fix-batch-4-report.md
-    // out-of-batch observations. Closing the security vector is the
-    // priority; reconciling the UI is a product decision deferred to a
-    // future amendment (options: narrow access to `req.user?.id === id`
-    // for self-rotation, or replace the UI with a super-admin-mediated
-    // request flow). Do not silently relax the access here.
+    // their own apiKey via PATCH /api/users/<self>. AMD-3 stacks an honest
+    // 403 on top via the `beforeOperation` hook above (so the PATCH no
+    // longer returns 200-with-silent-strip), and the `/api-key` page now
+    // gates non-super-admin renders to a placeholder.
+    //
+    // Two-layer coverage map (Payload v3.84.1):
+    //   - `overrideAccess: false` (external API calls): BOTH the hook and
+    //     this field-level access run. Hook throws early; strip would also
+    //     fire if the hook were ever removed.
+    //   - `overrideAccess: true` (internal Local-API / trusted-boundary
+    //     writes): the field-level strip is skipped per
+    //     `node_modules/payload/dist/fields/hooks/beforeValidate/promise.js:217`
+    //     (`result = overrideAccess ? true : ...`), but the hook still
+    //     fires unconditionally — `buildBeforeOperation.js:6-22` does not
+    //     check overrideAccess. So the hook is the broader-coverage layer;
+    //     this field-level access is the narrower fallback that survives
+    //     if the hook is ever removed without also removing this gate.
+    //
+    // Do not relax this for self-rotation pressure; that re-arms AMD-2
+    // sub-vector B (persistent backdoor across credential rotation).
     { name: "enableAPIKey", type: "checkbox", access: { create: isSuperAdminField, update: isSuperAdminField } },
     { name: "apiKey",       type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } },
     { name: "apiKeyIndex",  type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } }
