@@ -1,10 +1,11 @@
 import { timingSafeEqual } from "crypto"
-import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionConfig, FieldAccess } from "payload"
+import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionBeforeValidateHook, CollectionConfig, FieldAccess } from "payload"
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
 import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
+import { changePasswordHandler } from "@/lib/auth/changePassword"
 
 // Constant-time string compare. Length-mismatch returns false immediately
 // (timingSafeEqual itself throws on length mismatch); the per-byte compare
@@ -151,6 +152,134 @@ const rejectBogusAuthForgotPassword: CollectionBeforeOperationHook = ({ args, op
   return args
 }
 
+// Audit-p1 #7 sub-fix A (T5) — lock the naive credential PATCH paths.
+//
+// Prior state: any authed user could PATCH /api/users/<self> with EITHER
+// {password:"X"} OR {email:"attacker@evil"} and the server accepted the
+// change. With a stolen session cookie:
+//   • password vector — directly rotates the victim's password and the
+//     attacker logs in subsequently (audit's primary repro).
+//   • email vector — rewrites the email to attacker-controlled, then
+//     anonymous /api/users/forgot-password mails the reset link to the
+//     attacker, who completes the reset (audit's "Same gate for email
+//     change" requirement; sibling-vector identified in adversarial
+//     review of fix batch 7 Pass 1).
+//
+// canManageUsers gates self-only for non-owner roles but does not gate
+// the credential fields specifically. Payload's auto-injected `email`
+// field (`node_modules/payload/dist/auth/baseFields/email.js:2-23`) ships
+// with NO `access` property — the same default-allow shape that produced
+// the original P0 #2/#3 (role/tenants) and AMD-2 (apiKey) findings.
+//
+// Mechanism: throw Forbidden when ALL of the following are true:
+//   - operation === "update" (covers `update` and `updateByID`; both map
+//     to hookOperation 'update' per `node_modules/payload/dist/collections/
+//     operations/utilities/types.js:operationToHookOperation`)
+//   - req.user?.role !== "super-admin" (super-admin retains the admin-reset
+//     path used for "lost password without email access" recovery and the
+//     parallel admin-fix-typoed-email recovery)
+//   - context?.allowSelfPasswordChange !== true (the change-password
+//     endpoint sets this flag AFTER verifying currentPassword; that's the
+//     only sanctioned bypass — see src/lib/auth/changePassword.ts. The
+//     endpoint only writes `data.password`, so the flag is currently
+//     password-specific by usage even though the hook's scope covers email
+//     too. If a future endpoint mints verified email rotations, it can
+//     reuse the same flag with the same context-merge invariant.)
+//   - either 'password' OR 'email' is a key in args.data (regardless of
+//     value — sending the key at all is the user's intent to write;
+//     matches the AMD-3 'in'-check pattern, including empty-string, null,
+//     and any other type-confusion attempts).
+//
+// Sits at index 2 in `Users.hooks.beforeOperation` AFTER the existing two
+// (rejectNonSuperAdminApiKeyWrites, rejectBogusAuthForgotPassword). All
+// three short-circuit on operations they don't care about, so order does
+// not affect correctness — APPENDING preserves the AMD-3 / P1 #5 contracts
+// and lets future audits add new hooks without re-arming any closed vector.
+//
+// The `context` parameter passed to the hook by `buildBeforeOperation` is
+// `args.req.context` (per buildBeforeOperation.js:14), so when the change-
+// password endpoint calls `payload.update({context:{allowSelfPasswordChange:
+// true}})`, that flag lands in req.context via createLocalReq.js:7-19.
+//
+// CREATE-side coverage: this hook short-circuits on operation !== "update",
+// so it does NOT fire on create. Email/password on create are governed by
+// `canCreateUserField` (AMD-1) — the only admit paths are super-admin,
+// owner-invite (only for editor/viewer-into-own-tenant; AMD-1 does not
+// validate that the inviter knows the email's mailbox, so an inviter who
+// types a typo'd email mints an account at the wrong address — but that's
+// a feature concern, not a takeover concern, since the new account is
+// brand-new with no prior credentials to hijack), and bootstrap. None
+// of those reach the credential-write hook.
+const credentialFieldNames = ["password", "email"] as const
+const rejectNonSuperAdminCredentialWrites: CollectionBeforeOperationHook = ({ args, context, operation, req }) => {
+  if (operation !== "update") return args
+  if (req.user?.role === "super-admin") return args
+  if ((context as { allowSelfPasswordChange?: boolean })?.allowSelfPasswordChange === true) return args
+  const data = args?.data
+  if (!data || typeof data !== "object") return args
+  for (const key of credentialFieldNames) {
+    if (key in data) throw new Forbidden(req.t)
+  }
+  return args
+}
+
+// Audit-p1 #7 sub-fix B (T5) — invalidate all sessions on password change.
+//
+// Pairs with `useSessions: true` on Users.auth (below). Payload's session-
+// based JWT verification at `node_modules/payload/dist/auth/strategies/
+// jwt.js:73-81` rejects any JWT whose `sid` claim is not in the user's
+// `sessions[]` array (or whose claim is missing entirely). Setting
+// `data.sessions = []` during a password-rotation pipeline therefore
+// invalidates every pre-rotation token for that user.
+//
+// Two password-rotation signatures fire this hook:
+//
+//   1. Regular update path (`payload.update({data:{password:"X"}})`):
+//      the plaintext password rides through `data` until Payload's pre-
+//      change pipeline hashes it into salt/hash. At beforeValidate time,
+//      `data.password` is the plaintext attribute — present iff this is
+//      a password-rotation update.
+//      Caller surface: super-admin admin-reset PATCH /api/users/:id with
+//      {password:"X"}, AND the new change-password endpoint's internal
+//      payload.update call.
+//
+//   2. resetPassword operation
+//      (`node_modules/payload/dist/auth/operations/resetPassword.js:55-79`):
+//      the operation manually assigns `user.salt = newSalt; user.hash =
+//      newHash` and then invokes beforeValidate hooks with `data: user`
+//      (the same object). Plaintext is not in `data` — but `hash` IS.
+//      We detect this signature via `typeof data.hash === "string"` AND
+//      a salt sibling is also present; check both to avoid spurious
+//      session-clears on the unlikely event a non-resetPassword path
+//      assigns hash but leaves salt intact (we can't think of one in
+//      Payload v3.84.1, but the dual-signal guard is cheap defense).
+//
+//      resetPassword passes `data: user` BY REFERENCE and ignores the
+//      hook's return value — so the in-place mutation is what propagates
+//      to the subsequent `db.updateOne({data: user})` call. We mutate AND
+//      return so both pipelines see sessions=[].
+//
+// Out of scope: this hook does NOT fire on operation === "create" — a
+// brand-new user has no prior sessions to invalidate (the sessions[]
+// will be empty by default).
+//
+// Out of scope: this hook does NOT fire on `data.password` for the
+// `login` operation. Login passes credentials but does not include
+// `password` in the data being persisted; only resetPassword and update
+// pass through beforeValidate with password material.
+const clearSessionsOnPasswordChange: CollectionBeforeValidateHook = ({ data, operation }) => {
+  if (operation !== "update") return data
+  if (!data || typeof data !== "object") return data
+  const d = data as Record<string, unknown>
+  const passwordRotation = typeof d.password === "string"
+  const resetPasswordRotation = typeof d.hash === "string" && typeof d.salt === "string"
+  if (!passwordRotation && !resetPasswordRotation) return data
+  // Mutate in place (covers resetPassword's pass-by-reference path) AND
+  // return (covers the regular update pipeline that uses the return value).
+  ;(d as Record<string, unknown>).sessions = []
+  return data
+}
+
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
 // team members), but a single user is always scoped to one tenant.
@@ -169,6 +298,31 @@ export const Users: CollectionConfig = {
   slug: "users",
   auth: {
     useAPIKey: true,
+    // Audit-p1 #7 sub-fix B (T5) — Payload's built-in session-based JWT
+    // invalidation. With this flag set, login signs JWTs with a per-session
+    // `sid` claim AND adds an entry to user.sessions[]; verification at
+    // `node_modules/payload/dist/auth/strategies/jwt.js:73-81` rejects any
+    // JWT whose sid is not in the array. Pairs with the
+    // `clearSessionsOnPasswordChange` beforeValidate hook above (which
+    // empties sessions[] on every password rotation) so a stolen pre-
+    // rotation cookie cannot survive a password change.
+    //
+    // Note on Payload defaults: `auth.useSessions` defaults to `true` per
+    // `node_modules/payload/dist/collections/config/defaults.js:128, 142`,
+    // so this flag is documentation-as-code rather than a behaviour change.
+    // The pre-fix codebase was implicitly using sessions; what was missing
+    // was the `clearSessionsOnPasswordChange` hook to actually rotate them
+    // on credential change. Stating the flag explicitly here makes the
+    // session-rotation contract auditable from this file alone — a future
+    // change that sets `useSessions: false` would visibly break sub-fix B.
+    //
+    // Migration: NO new migration required — the `users_sessions` table
+    // is already provisioned by the initial schema migration
+    // (`src/migrations/20260505_172626_initial_schema.ts:22-28, 290, 327-328`).
+    // The table existed in earlier snapshots and was kept across previous
+    // schema changes; the schema and runtime config have always been in
+    // alignment. Verified by `grep users_sessions src/migrations/*.json`.
+    useSessions: true,
     forgotPassword: {
       generateEmailHTML: async (args) => {
         const token = (args as any)?.token as string | undefined
@@ -201,16 +355,53 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     // beforeOperation runs at the earliest collection-level point, BEFORE
-    // any field-level access strip. Two hooks compose:
-    //   1. AMD-3 — honest 403 (instead of AMD-2's silent strip) when a
-    //      non-super-admin names apiKey / enableAPIKey / apiKeyIndex on
-    //      update.
-    //   2. audit-p1 #5 layer-2 — 403 on forgot-password when the caller
-    //      presented auth signals but the strategies didn't validate
-    //      to a user (closes the middleware rate-limit bypass discovered
-    //      in adversarial review of fix batch 6 Pass 1).
-    beforeOperation: [rejectNonSuperAdminApiKeyWrites, rejectBogusAuthForgotPassword]
+    // any field-level access strip. Three hooks compose; all short-circuit
+    // on operations they don't care about, so order does not affect
+    // correctness — APPENDING preserves prior contracts:
+    //   [0] AMD-3 — honest 403 (instead of AMD-2's silent strip) when a
+    //       non-super-admin names apiKey / enableAPIKey / apiKeyIndex on
+    //       update.
+    //   [1] audit-p1 #5 layer-2 — 403 on forgot-password when the caller
+    //       presented auth signals but the strategies didn't validate
+    //       to a user (closes the middleware rate-limit bypass discovered
+    //       in adversarial review of fix batch 6 Pass 1).
+    //   [2] audit-p1 #7 sub-fix A — 403 when a non-super-admin update
+    //       names `password` OR `email` and the change-password endpoint's
+    //       bypass flag is absent (forces self-rotations through the
+    //       verified endpoint; preserves the admin-reset path for super-
+    //       admin; closes the sibling email-pivot vector identified in
+    //       adversarial review).
+    beforeOperation: [rejectNonSuperAdminApiKeyWrites, rejectBogusAuthForgotPassword, rejectNonSuperAdminCredentialWrites],
+    // beforeValidate (collection) fires on update for both the regular
+    // update pipeline AND the resetPassword path
+    // (`node_modules/payload/dist/auth/operations/resetPassword.js:70-79`
+    // explicitly invokes collection beforeValidate hooks before its
+    // db.updateOne). The hook empties sessions[] when it sees a password-
+    // rotation signature, invalidating every pre-rotation JWT for the user
+    // (audit-p1 #7 sub-fix B).
+    beforeValidate: [clearSessionsOnPasswordChange]
   },
+  endpoints: [
+    // Audit-p1 #7 sub-fix A (T5) — verified self-service password change.
+    // Mounts at POST /api/users/change-password (Payload prefixes
+    // collection endpoints with /api/<slug>; see
+    // `node_modules/payload/dist/collections/endpoints/index.js`).
+    //
+    // Authoritative path of trust:
+    //   1. Caller authenticated (req.user populated by Payload's auth
+    //      strategies before the handler runs).
+    //   2. CurrentPassword verified server-side via payload.login.
+    //   3. Password update with overrideAccess + a `context` flag the
+    //      lock-down hook recognizes — neither the field-level access
+    //      nor the hook can block this verified path.
+    //   4. Sessions cleared by the beforeValidate hook (sub-fix B).
+    //   5. Fresh login session issued; new cookie set on response.
+    {
+      path: "/change-password",
+      method: "post",
+      handler: changePasswordHandler
+    }
+  ],
   access: {
     // create: super-admin / owner can create. Bootstrap exception (audit-p1
     // finding #6, T2): the previous count-only gate silently re-opened

@@ -68,26 +68,33 @@ export function ProfileForm({ user }: { user: User }) {
 
   const onUpdatePassword = async (v: z.infer<typeof passwordSchema>) => {
     setPasswordPending(true)
-    // Payload's PATCH allows changing password directly when authenticated.
-    // We additionally verify current password client-side via a quick login
-    // attempt to prevent session hijack -> password change.
-    const verify = await fetch("/api/users/login", {
+    // Audit-p1 #7 sub-fix A — single POST to the verified-self-change
+    // endpoint. The server re-checks `currentPassword` and rotates the
+    // user's session on success (sub-fix B), invalidating every other
+    // pre-rotation JWT. The endpoint sets a fresh `payload-token` cookie
+    // on the 200 response so this tab stays logged in across the rotation.
+    //
+    // Replaces the previous client-side login pre-check + naive PATCH —
+    // a stolen cookie could bypass that pair (the audit's repro). The new
+    // endpoint authoritatively binds "knew current password" to "is
+    // allowed to set a new password" on the server.
+    const res = await fetch("/api/users/change-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: user.email, password: v.currentPassword })
-    })
-    if (!verify.ok) {
-      setPasswordPending(false)
-      toast.error("Current password is incorrect")
-      return
-    }
-    const res = await fetch(`/api/users/${user.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ password: v.newPassword })
+      body: JSON.stringify({
+        currentPassword: v.currentPassword,
+        newPassword: v.newPassword,
+      }),
     })
     setPasswordPending(false)
     if (!res.ok) {
+      // Map server status to a user-friendly message; preserve the prior
+      // UX where 403 surfaces as "current password incorrect" (the only
+      // 403 the endpoint emits comes from payload.login throwing).
+      if (res.status === 403) {
+        toast.error("Current password is incorrect")
+        return
+      }
       const txt = await res.text()
       toast.error("Password update failed: " + txt.slice(0, 100))
       return
