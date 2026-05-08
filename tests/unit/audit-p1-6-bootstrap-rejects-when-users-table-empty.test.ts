@@ -205,7 +205,11 @@ describe("audit-p1 #6 — field-level role/tenants create permits bootstrap path
   const roleField = (Users.fields as any[]).find((f) => f.name === "role")
   const tenantsField = (Users.fields as any[]).find((f) => f.name === "tenants")
 
-  const fieldReq = (opts: { user?: any | null; bootstrapHeader?: string | null }) => ({
+  const fieldReq = (opts: {
+    user?: any | null
+    bootstrapHeader?: string | null
+    data?: any
+  }) => ({
     req: {
       user: opts.user ?? null,
       headers: {
@@ -213,16 +217,28 @@ describe("audit-p1 #6 — field-level role/tenants create permits bootstrap path
           k.toLowerCase() === "x-bootstrap-token" ? (opts.bootstrapHeader ?? null) : null,
       },
     },
+    // AMD-1 tightened the field gate to require `data.role === "super-admin"`
+    // on the bootstrap branch (was role-blind under `isSuperAdminOrBootstrapField`).
+    // Tests that exercise the legitimate seed path now pass the role explicitly.
+    data: opts.data,
   })
 
-  it("role.access.create permits anonymous caller with valid bootstrap token (legitimate first-seed flow)", () => {
+  it("role.access.create permits anonymous caller with valid bootstrap token + role=super-admin (legitimate first-seed flow)", () => {
     process.env.BOOTSTRAP_TOKEN = "secret-1234"
-    expect(roleField.access.create(fieldReq({ user: null, bootstrapHeader: "secret-1234" }))).toBe(true)
+    expect(
+      roleField.access.create(
+        fieldReq({ user: null, bootstrapHeader: "secret-1234", data: { role: "super-admin" } })
+      )
+    ).toBe(true)
   })
 
-  it("tenants.access.create permits anonymous caller with valid bootstrap token", () => {
+  it("tenants.access.create permits anonymous caller with valid bootstrap token + role=super-admin", () => {
     process.env.BOOTSTRAP_TOKEN = "secret-1234"
-    expect(tenantsField.access.create(fieldReq({ user: null, bootstrapHeader: "secret-1234" }))).toBe(true)
+    expect(
+      tenantsField.access.create(
+        fieldReq({ user: null, bootstrapHeader: "secret-1234", data: { role: "super-admin" } })
+      )
+    ).toBe(true)
   })
 
   it("role.access.create still rejects anonymous caller WITHOUT bootstrap token (BOOTSTRAP_TOKEN unset)", () => {
