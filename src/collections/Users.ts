@@ -16,9 +16,9 @@ const safeEqual = (a: string, b: string): boolean => {
 }
 
 // Shared check used by both the collection-level access.create gate AND the
-// field-level isSuperAdminOrBootstrapField below. Keeping the two paths in
-// lock-step prevents the field gate from stripping `role`/`tenants` on a
-// caller that the collection gate is about to admit.
+// field-level canCreateUserField below. Keeping the two paths in lock-step
+// prevents the field gate from stripping `role`/`tenants` on a caller that
+// the collection gate is about to admit.
 const requestHasValidBootstrapToken = (req: any): boolean => {
   const expected = process.env.BOOTSTRAP_TOKEN
   if (!expected) return false
@@ -27,28 +27,70 @@ const requestHasValidBootstrapToken = (req: any): boolean => {
   return safeEqual(provided, expected)
 }
 
-// Bootstrap-aware variant of isSuperAdminField — used for `role.access.create`
-// and `tenants.access.create` so the BOOTSTRAP_TOKEN seed path (audit-p1 #6)
-// can actually mint the first super-admin. Without this, batch-1's
-// isSuperAdminField would strip `role` and `tenants` from the anonymous
-// bootstrap payload (req.user null → returns false), defaultValue
-// `"editor"` would fill `role`, and validateTenants would reject the row
-// (`exactly one tenant required for non-super-admin`).
+// Mirror of `ownerTenantId` in src/lib/actions/inviteUser.ts:9-13. Inlined
+// here (rather than imported) because that file is "use server" — every
+// export must be an async function, so a sync helper can't be re-exported.
+// Keep the two copies in sync; both resolve user.tenants[0].tenant (which
+// may be a populated doc or a bare FK id depending on auth depth) to its id.
+const ownerTenantIdOf = (user: any): unknown => {
+  const first = user?.tenants?.[0]?.tenant
+  if (first == null) return null
+  return typeof first === "object" ? first.id : first
+}
+
+// Field-access gate for `role.access.create` AND `tenants.access.create` ONLY.
+// Update access on these fields stays `isSuperAdminField` — the relaxation
+// here is CREATE-only; the stolen-cookie PATCH vector (audit P0 #2/#3) must
+// remain closed and is verified by the AMD-1 test's update-access guard case.
 //
-// Update access stays gated by `isSuperAdminField` — the relaxation is
-// CREATE-only. A stolen token + session cookie must NOT promote anyone
-// via PATCH (audit P0 #2/#3 family).
+// Admits exactly:
+//   A) super-admin (any role, any tenants shape)
+//   B) anonymous + valid BOOTSTRAP_TOKEN AND data.role === "super-admin"
+//      (the field gate must agree with the collection-level bootstrap gate at
+//      Users.access.create — both require role=super-admin so a token leak
+//      cannot mint editor/viewer/owner; re-arm guard for audit-p1 #6).
+//   C) owner whose own tenant matches data.tenants[0].tenant AND
+//      data.role ∈ {"editor", "viewer"}. tenants must be exactly length 1
+//      (matching `validateTenants`'s non-super-admin invariant). Tenant-id
+//      compare uses String(a) === String(b) for the populated-vs-FK shape.
+// Everything else (editor, viewer, owner with disallowed role/tenant,
+// anonymous without token, anonymous with token but wrong role) → false.
 //
-// This function does NOT verify totalDocs === 0 — the collection-level
-// gate at Users.access.create handles that. The field gate's job is to
-// not strip the field on the legitimate bootstrap path.
-const isSuperAdminOrBootstrapField: FieldAccess = ({ req }) => {
+// AMD-1 (T2 secondary): closes the functional regression introduced by P0
+// commit cb00e47 (which wired isSuperAdminField on role/tenants create) while
+// preserving every closed P0/P1 vector.
+const canCreateUserField: FieldAccess = ({ req, data }) => {
+  // A) super-admin shortcut
   if (req.user?.role === "super-admin") return true
-  // Bootstrap exception is anonymous-only. Authed non-super-admin callers
-  // (owner / editor / viewer) must not be relaxed — they have legitimate
-  // UI flows and the bootstrap conditions don't apply to them.
-  if (req.user) return false
-  return requestHasValidBootstrapToken(req)
+
+  // B) anonymous bootstrap path — anonymous-only, role-restricted to
+  // super-admin to match the collection-level gate. Authed callers with a
+  // token cookie must NOT be relaxed (their session already routes them
+  // through the normal UI path; relaxing them would re-open P0 #2/#3 for
+  // any operator who left BOOTSTRAP_TOKEN set in production).
+  if (req.user == null) {
+    if (!requestHasValidBootstrapToken(req)) return false
+    return data?.role === "super-admin"
+  }
+
+  // C) owner-invite path. Tightly bound: role must be editor or viewer,
+  // tenants[] must contain exactly one entry that matches the caller's
+  // own tenant. Owner cannot mint another owner (no role-promotion within
+  // tenant) or a super-admin (re-arm guard for P0 #2/#3); cannot invite
+  // into a tenant they don't own (T1 cross-tenant guard).
+  if (req.user.role === "owner") {
+    if (data?.role !== "editor" && data?.role !== "viewer") return false
+    const own = ownerTenantIdOf(req.user)
+    if (own == null) return false
+    const tenants = (data as any)?.tenants
+    if (!Array.isArray(tenants) || tenants.length !== 1) return false
+    const target = tenants[0]?.tenant
+    if (target == null) return false
+    return String(target) === String(own)
+  }
+
+  // D) editor / viewer / any other authed role → never permitted on create.
+  return false
 }
 
 // Domain invariant: super-admins have no tenants; all other roles have
@@ -129,14 +171,12 @@ export const Users: CollectionConfig = {
     { name: "role", type: "select", required: true, defaultValue: "editor",
       // Field-level access. Update is super-admin-only — closes Findings
       // #2/#3 (PATCH /api/users/<self> with role:"super-admin"). Create
-      // permits super-admin OR the anonymous bootstrap path (audit-p1 #6)
-      // so the first super-admin can be seeded; owner/editor/viewer are
-      // still blocked, closing the same family on POST. The collection-level
-      // gate at Users.access.create independently enforces
-      // `totalDocs === 0` and `data.role === "super-admin"` for the
-      // bootstrap path, so the field-level relaxation cannot widen the
-      // attack surface.
-      access: { create: isSuperAdminOrBootstrapField, update: isSuperAdminField },
+      // is gated by `canCreateUserField`, which admits: super-admin (any),
+      // anonymous + bootstrap-token + role=super-admin (audit-p1 #6 seed),
+      // and owner inviting editor/viewer into own tenant (AMD-1 owner
+      // invite path). Editor / viewer / owner attempting any other shape
+      // are blocked, closing the P0 #2/#3 family on POST as well.
+      access: { create: canCreateUserField, update: isSuperAdminField },
       options: [
         { label: "Super-admin", value: "super-admin" },
         { label: "Owner", value: "owner" },
@@ -157,9 +197,9 @@ export const Users: CollectionConfig = {
       // Field-level access paired with `role`: setting `tenants:[]` while
       // flipping `role:"super-admin"` is the precise self-promotion shape
       // `validateTenants` accepts. Update remains super-admin-only; create
-      // also permits the anonymous bootstrap path (audit-p1 #6) so the
-      // legitimate first-seed payload is not stripped by field access.
-      access: { create: isSuperAdminOrBootstrapField, update: isSuperAdminField },
+      // uses `canCreateUserField` which mirrors the role gate so neither
+      // half of the payload can be assembled in isolation.
+      access: { create: canCreateUserField, update: isSuperAdminField },
       admin: { description: "empty for super-admin; exactly one entry otherwise" },
       fields: [
         {
