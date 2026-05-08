@@ -3,6 +3,7 @@ import type { ArrayFieldValidation, CollectionBeforeOperationHook, CollectionCon
 import { Forbidden } from "payload"
 import { canManageUsers } from "@/access/canManageUsers"
 import { isSuperAdminField } from "@/access/isSuperAdmin"
+import { hasUnvalidatedAuthSignal } from "@/access/authSignals"
 import { resetPasswordTemplate } from "@/lib/email/templates/resetPassword"
 
 // Constant-time string compare. Length-mismatch returns false immediately
@@ -134,6 +135,22 @@ const rejectNonSuperAdminApiKeyWrites: CollectionBeforeOperationHook = ({ args, 
   return args
 }
 
+// Audit-p1 #5 sub-fix 1 layer-2 (T4) — bogus-auth rejection on the public
+// forgot-password endpoint. The middleware rate-limit at src/middleware.ts
+// bypasses on syntactic auth-signal presence (orchestrator-friendliness for
+// AMD-1's apiKey-authed Phase 8 calls). An attacker presenting a bogus
+// header would otherwise bypass middleware AND reach the unauthenticated
+// forgot-password handler, triggering email floods on attacker-supplied
+// addresses. This hook detects: forgotPassword + req.user==null + auth
+// signal present → bypass attempt → 403. See src/access/authSignals.ts
+// for the polarity-invariant note.
+const rejectBogusAuthForgotPassword: CollectionBeforeOperationHook = ({ args, operation, req }) => {
+  if (operation !== "forgotPassword") return args
+  if (req.user) return args
+  if (hasUnvalidatedAuthSignal(req)) throw new Forbidden(req.t)
+  return args
+}
+
 // Domain invariant: super-admins have no tenants; all other roles have
 // exactly one. Multiple users may share the same tenant (clients can add
 // team members), but a single user is always scoped to one tenant.
@@ -183,10 +200,16 @@ export const Users: CollectionConfig = {
     }
   },
   hooks: {
-    // AMD-3 — honest 403 instead of silent strip when a non-super-admin
-    // names apiKey / enableAPIKey / apiKeyIndex in an update payload. See
-    // the function definition above for hook-ordering rationale.
-    beforeOperation: [rejectNonSuperAdminApiKeyWrites]
+    // beforeOperation runs at the earliest collection-level point, BEFORE
+    // any field-level access strip. Two hooks compose:
+    //   1. AMD-3 — honest 403 (instead of AMD-2's silent strip) when a
+    //      non-super-admin names apiKey / enableAPIKey / apiKeyIndex on
+    //      update.
+    //   2. audit-p1 #5 layer-2 — 403 on forgot-password when the caller
+    //      presented auth signals but the strategies didn't validate
+    //      to a user (closes the middleware rate-limit bypass discovered
+    //      in adversarial review of fix batch 6 Pass 1).
+    beforeOperation: [rejectNonSuperAdminApiKeyWrites, rejectBogusAuthForgotPassword]
   },
   access: {
     // create: super-admin / owner can create. Bootstrap exception (audit-p1

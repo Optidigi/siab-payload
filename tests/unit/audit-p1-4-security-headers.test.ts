@@ -25,18 +25,22 @@ const reqAt = (path: string, host = "admin.example.com") =>
 const headerOf = (res: Response, name: string) => res.headers.get(name)
 
 describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
+  // The middleware became async in audit-p1 #5 (T4) — rate-limit gate must
+  // `await limiter.consume()`. The header-stamping branch is unaffected
+  // semantically; just adding `await` to each call site here.
+
   describe("strict path (e.g. /sites/<slug>/users — the audit's clickjacking exploit URL)", () => {
     const path = "/sites/foo/users"
 
-    it("sets Content-Security-Policy with frame-ancestors 'none' (clickjacking defense)", () => {
-      const res = middleware(reqAt(path))
+    it("sets Content-Security-Policy with frame-ancestors 'none' (clickjacking defense)", async () => {
+      const res = await middleware(reqAt(path))
       const csp = headerOf(res, "content-security-policy")
       expect(csp).toBeTruthy()
       expect(csp).toMatch(/frame-ancestors\s+'none'/)
     })
 
-    it("CSP includes a frame-src directive permitting cross-origin HTTPS (live-preview iframe)", () => {
-      const res = middleware(reqAt(path))
+    it("CSP includes a frame-src directive permitting cross-origin HTTPS (live-preview iframe)", async () => {
+      const res = await middleware(reqAt(path))
       const csp = headerOf(res, "content-security-policy")!
       // Either an explicit frame-src that permits https:, or wildcard fallback.
       // We DO NOT want default-src to silently fall back to 'self', which would
@@ -44,8 +48,8 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(csp).toMatch(/frame-src[^;]*\bhttps:/)
     })
 
-    it("CSP includes baseline directives: default-src, script-src, style-src, img-src, base-uri, form-action", () => {
-      const res = middleware(reqAt(path))
+    it("CSP includes baseline directives: default-src, script-src, style-src, img-src, base-uri, form-action", async () => {
+      const res = await middleware(reqAt(path))
       const csp = headerOf(res, "content-security-policy")!
       expect(csp).toMatch(/default-src\s+'self'/)
       expect(csp).toMatch(/script-src\s+/)
@@ -55,18 +59,18 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(csp).toMatch(/form-action\s+'self'/)
     })
 
-    it("sets X-Frame-Options: DENY (legacy clickjacking defense for older browsers)", () => {
-      const res = middleware(reqAt(path))
+    it("sets X-Frame-Options: DENY (legacy clickjacking defense for older browsers)", async () => {
+      const res = await middleware(reqAt(path))
       expect(headerOf(res, "x-frame-options")).toBe("DENY")
     })
 
-    it("sets X-Content-Type-Options: nosniff", () => {
-      const res = middleware(reqAt(path))
+    it("sets X-Content-Type-Options: nosniff", async () => {
+      const res = await middleware(reqAt(path))
       expect(headerOf(res, "x-content-type-options")).toBe("nosniff")
     })
 
-    it("sets Strict-Transport-Security with long max-age + includeSubDomains", () => {
-      const res = middleware(reqAt(path))
+    it("sets Strict-Transport-Security with long max-age + includeSubDomains", async () => {
+      const res = await middleware(reqAt(path))
       const hsts = headerOf(res, "strict-transport-security")
       expect(hsts).toBeTruthy()
       // max-age >= 1 year (31536000); includeSubDomains required.
@@ -74,16 +78,16 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
       expect(hsts).toMatch(/includeSubDomains/i)
     })
 
-    it("sets Referrer-Policy", () => {
-      const res = middleware(reqAt(path))
+    it("sets Referrer-Policy", async () => {
+      const res = await middleware(reqAt(path))
       const rp = headerOf(res, "referrer-policy")
       expect(rp).toBeTruthy()
       // Accept any conservative value (same-origin / strict-origin / strict-origin-when-cross-origin).
       expect(rp).toMatch(/(same-origin|strict-origin)/)
     })
 
-    it("preserves existing x-siab-mode / x-siab-host stamping (no regression on tenant routing)", () => {
-      const res = middleware(reqAt("/sites/foo/users", "tenant.example.com"))
+    it("preserves existing x-siab-mode / x-siab-host stamping (no regression on tenant routing)", async () => {
+      const res = await middleware(reqAt("/sites/foo/users", "tenant.example.com"))
       // Inspecting the request-side override is what hostToTenant downstream
       // reads. We assert the function still returns a NextResponse (didn't
       // throw / didn't strip the host stamp from request headers).
@@ -92,16 +96,16 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
   })
 
   describe("the audit's exact exploit URL still gets frame-ancestors 'none'", () => {
-    it("clickjacking iframe of /sites/<slug>/users from evil origin is blocked", () => {
+    it("clickjacking iframe of /sites/<slug>/users from evil origin is blocked", async () => {
       // Audit's reproduction: <iframe src="https://admin.<tenant>/sites/<slug>/users">
-      const res = middleware(reqAt("/sites/clickjack-target/users"))
+      const res = await middleware(reqAt("/sites/clickjack-target/users"))
       expect(headerOf(res, "content-security-policy")).toMatch(/frame-ancestors\s+'none'/)
       expect(headerOf(res, "x-frame-options")).toBe("DENY")
     })
 
-    it("/sites/<slug>/settings, /sites/<slug>/pages/123 — all admin routes get headers", () => {
+    it("/sites/<slug>/settings, /sites/<slug>/pages/123 — all admin routes get headers", async () => {
       for (const p of ["/sites/foo/settings", "/sites/foo/pages/123", "/users", "/login"]) {
-        const res = middleware(reqAt(p))
+        const res = await middleware(reqAt(p))
         expect(headerOf(res, "content-security-policy"), `path=${p}`).toMatch(/frame-ancestors\s+'none'/)
         expect(headerOf(res, "x-frame-options"), `path=${p}`).toBe("DENY")
         expect(headerOf(res, "x-content-type-options"), `path=${p}`).toBe("nosniff")
@@ -116,15 +120,15 @@ describe("audit-p1 #4 — middleware stamps security headers (T12)", () => {
     // a separate repo). The branch is reserved so a future preview route can
     // opt into a relaxed CSP without rewriting middleware.
 
-    it("/__preview* path does NOT set X-Frame-Options: DENY (so it can be framed by admin if ever added)", () => {
-      const res = middleware(reqAt("/__preview/page-123"))
+    it("/__preview* path does NOT set X-Frame-Options: DENY (so it can be framed by admin if ever added)", async () => {
+      const res = await middleware(reqAt("/__preview/page-123"))
       // Reserved branch: /__preview* should not stamp XFO DENY (XFO has no
       // way to allow a specific origin; CSP frame-ancestors must do that).
       expect(headerOf(res, "x-frame-options")).toBeNull()
     })
 
-    it("/__preview* still sets baseline hardening (HSTS, nosniff, Referrer-Policy)", () => {
-      const res = middleware(reqAt("/__preview/page-123"))
+    it("/__preview* still sets baseline hardening (HSTS, nosniff, Referrer-Policy)", async () => {
+      const res = await middleware(reqAt("/__preview/page-123"))
       expect(headerOf(res, "strict-transport-security")).toBeTruthy()
       expect(headerOf(res, "x-content-type-options")).toBe("nosniff")
       expect(headerOf(res, "referrer-policy")).toBeTruthy()
