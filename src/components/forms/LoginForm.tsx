@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "sonner"
+import { validateNextRedirect } from "@/lib/auth/validateNextRedirect"
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -35,7 +36,7 @@ export function LoginForm() {
       toast.error("Invalid email or password")
       return
     }
-    const next = params.get("next") || "/"
+    const next = validateNextRedirect(params.get("next"))
     router.replace(next)
   }
 
