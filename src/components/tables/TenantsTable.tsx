@@ -78,7 +78,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="ghost"
                 type="button"
                 aria-label={`Actions for ${t.name}`}

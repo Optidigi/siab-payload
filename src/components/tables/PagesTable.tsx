@@ -75,7 +75,7 @@ export function PagesTable({ data, base, emptyState }: { data: Page[]; base: str
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="icon-sm"
+                size="icon"
                 variant="ghost"
                 type="button"
                 aria-label={`Actions for ${p.title}`}

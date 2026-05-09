@@ -75,7 +75,7 @@ export function UsersTable({ data, canManage, emptyState }: { data: User[]; canM
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon-sm"
+                    size="icon"
                     variant="ghost"
                     type="button"
                     aria-label={`Actions for ${u.email}`}

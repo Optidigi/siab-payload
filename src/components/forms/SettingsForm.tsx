@@ -81,13 +81,30 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
               ::-webkit-scrollbar:hidden hides the macOS/Chrome scroll bar
               without losing scroll behavior.
             */}
+            {/* U1 + U8 / GitHub issue #11 — on mobile, the tablist now spans
+                full width as a 4-col grid with the label visible alongside the
+                icon (was icon-only at 34×29). Desktop keeps the centered
+                w-max layout for density. */}
+            {/* U1 + U8 / GitHub issue #11 — on mobile, the tablist now spans
+                full width as a 4-col grid with the label visible alongside the
+                icon (was icon-only at 34×29). Trigger uses `min-w-0` so the
+                4 columns share width cleanly at the 320 px U2 floor; label
+                `truncate` handles the longest label ("Navigation" ≈ 62 px on
+                a ~71 px cell) by clipping into an ellipsis rather than
+                overflowing into the adjacent tab. Desktop keeps the centered
+                w-max layout for density. */}
             <CardHeader className="border-b p-0">
-              <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0 md:overflow-visible flex justify-center [&::-webkit-scrollbar]:hidden">
-                <TabsList className="mx-auto w-max">
+              <div className="md:flex md:justify-center md:px-0 md:mx-0">
+                <TabsList className="max-md:w-full max-md:grid max-md:grid-cols-4 md:mx-auto md:w-max">
                   {tabs.map(({ key, label, Icon }) => (
-                    <TabsTrigger key={key} value={key} aria-label={label} className="shrink-0 gap-1.5">
+                    <TabsTrigger
+                      key={key}
+                      value={key}
+                      aria-label={label}
+                      className="gap-1.5 max-md:px-1 max-md:min-w-0"
+                    >
                       <Icon className="h-4 w-4" aria-hidden />
-                      <span className="max-md:hidden">{label}</span>
+                      <span className="text-xs max-md:inline md:text-sm max-md:truncate max-md:min-w-0">{label}</span>
                     </TabsTrigger>
                   ))}
                 </TabsList>

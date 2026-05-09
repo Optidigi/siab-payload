@@ -55,13 +55,13 @@ export function PublishControls({ control, pending, isDirty, errorCount, variant
           </FormItem>
         )}
       />
+      {/* Counter intentionally NOT rendered inside the Button label here.
+          The mobile floating-save FAB (SaveStatusBar) keeps its own count
+          pill; on desktop the surrounding SaveStatusBar already conveys
+          dirty/error state, so doubling it inside the Button reads as
+          ad-hoc decoration. Anchored via GitHub issue #1. */}
       <Button type="submit" disabled={pending || !isDirty} title="Save (⌘S / Ctrl+S)">
         {pending ? "Saving..." : "Save"}
-        {!pending && isDirty && errorCount != null && errorCount > 0 && (
-          <span className="ml-1 rounded px-1 py-0.5 text-xs bg-destructive text-destructive-foreground">
-            {errorCount}
-          </span>
-        )}
       </Button>
     </div>
   )

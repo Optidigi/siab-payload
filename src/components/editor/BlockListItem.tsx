@@ -179,6 +179,11 @@ export function BlockListItem({
       onKeyDown={kbd.onKeyDown}
       aria-label={`Block ${index + 1}: ${typeof typedConfig?.labels?.singular === "string" ? typedConfig.labels.singular : blockSlug}`}
     >
+      {/* Header layout: drag handle + icon + name on the LEFT; collapse
+          chevron + Actions menu on the RIGHT. Per GitHub issue #14, the
+          chevron belongs adjacent to the Actions menu, not in the leftmost
+          cluster — visually groups "controls" together and gives the name
+          its own breathing room. */}
       <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
@@ -193,14 +198,6 @@ export function BlockListItem({
             onPointerMove={onHandlePointerMove}
           >
             <GripVertical className="h-4 w-4"/>
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpenPersist(!open)}
-            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
-            aria-label={open ? "Collapse block" : "Expand block"}
-          >
-            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
           </button>
           {typedConfig?.icon && (
             <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
@@ -217,33 +214,43 @@ export function BlockListItem({
             </span>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="max-md:size-11 size-8 shrink-0"
-              aria-label="Block actions"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => setSaveAsPresetOpen(true)}>
-              <BookmarkPlus className="h-4 w-4 mr-2" />
-              Save as preset
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onRemove}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete block
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setOpenPersist(!open)}
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
+            aria-label={open ? "Collapse block" : "Expand block"}
+          >
+            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="max-md:size-11 size-8 shrink-0"
+                aria-label="Block actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setSaveAsPresetOpen(true)}>
+                <BookmarkPlus className="h-4 w-4 mr-2" />
+                Save as preset
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onRemove}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete block
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {open && (
         <div className="border-t p-3 space-y-3">

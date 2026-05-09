@@ -103,35 +103,20 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 return p !== "primary" && p !== "action" && p !== "hidden"
               })
               const href = getRowHref?.(row.original)
-              return (
-                <Card
-                  key={row.id}
-                  data-id={(row.original as any).id}
-                  className={cn(
-                    "p-3 flex items-start gap-2 transition-shadow",
-                    href && "relative hover:shadow-md active:scale-[0.99]",
-                  )}
-                >
-                  {href && (
-                    <Link
-                      href={href}
-                      className="absolute inset-0 z-0 rounded-[inherit]"
-                      aria-label="Open"
-                    />
-                  )}
-                  <div
-                    className={cn(
-                      "flex-1 min-w-0 space-y-1",
-                      href && "relative z-[1] pointer-events-none",
-                    )}
-                  >
+              {/* U1 / U8 fix — row-Open Link is now a flex sibling of the
+                  Action column instead of an absolutely positioned overlay.
+                  Two consequences: (a) the Link's bounding box no longer
+                  spans behind the Action button (UX-2026-0006 anchored by
+                  GitHub issue #10), and (b) the layout no longer needs
+                  pointer-events-none / z-index tricks to keep clicks on the
+                  Action column from triggering the Link. The Action button's
+                  own size bump (icon-sm → icon) lands separately in
+                  PagesTable / TenantsTable / UsersTable. */}
+              const inner = (
+                <>
+                  <div className={cn("flex-1 min-w-0 space-y-1", href && "[&_a]:text-inherit [&_a]:no-underline")}>
                     {primary && (
-                      <div
-                        className={cn(
-                          "font-medium truncate",
-                          href && "[&_a]:pointer-events-none [&_a]:text-inherit [&_a]:no-underline",
-                        )}
-                      >
+                      <div className="font-medium truncate">
                         {flexRender(primary.column.columnDef.cell, primary.getContext())}
                       </div>
                     )}
@@ -146,14 +131,30 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                       </div>
                     )}
                   </div>
-                  {action && (
-                    <div
-                      className={cn(
-                        "shrink-0",
-                        href && "relative z-[2]",
-                      )}
-                      onClick={(e) => e.stopPropagation()}
+                </>
+              )
+              return (
+                <Card
+                  key={row.id}
+                  data-id={(row.original as any).id}
+                  className={cn(
+                    "p-3 flex items-start gap-2 transition-shadow",
+                    href && "hover:shadow-md active:scale-[0.99]",
+                  )}
+                >
+                  {href ? (
+                    <Link
+                      href={href}
+                      aria-label="Open"
+                      className="flex-1 min-w-0 flex items-start gap-2 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
+                      {inner}
+                    </Link>
+                  ) : (
+                    inner
+                  )}
+                  {action && (
+                    <div className="shrink-0">
                       {flexRender(action.column.columnDef.cell, action.getContext())}
                     </div>
                   )}
