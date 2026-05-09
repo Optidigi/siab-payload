@@ -134,19 +134,36 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 </>
               )
               return (
+                // UX-2026-0029 — shadcn Card primitive ships with
+                // `flex flex-col gap-6 ... py-6` baked in (its default is
+                // vertical content stacks: header → content → footer). For a
+                // list-row pattern we override:
+                //   • `flex-row items-center gap-2` to lay out horizontally
+                //     (text left, action right) — `flex-row` resolves the
+                //     direction conflict with the Card's `flex-col` via
+                //     tailwind-merge (later wins).
+                //   • `!gap-2` and `!py-3` to override Card's `gap-6` / `py-6`
+                //     defaults — these resolve via tailwind-merge naturally
+                //     since `gap`/`p`/`py` utilities are in their own
+                //     property groups; later wins.
+                // tldr: this Card behaves like a row primitive, not a
+                // structured-content card. shadcn convention for "list of
+                // simple rows" is closer to a plain <div> with card
+                // styling, but we keep Card here for the tokenized hover/
+                // shadow behaviour and `data-slot="card"` attachments.
                 <Card
                   key={row.id}
                   data-id={(row.original as any).id}
                   className={cn(
-                    "p-3 flex items-start gap-2 transition-shadow",
-                    href && "hover:shadow-md active:scale-[0.99]",
+                    "flex-row items-center gap-2 px-3 py-3",
+                    href && "hover:shadow-md active:scale-[0.99] transition-shadow",
                   )}
                 >
                   {href ? (
                     <Link
                       href={href}
                       aria-label="Open"
-                      className="flex-1 min-w-0 flex items-start gap-2 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex-1 min-w-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       {inner}
                     </Link>
