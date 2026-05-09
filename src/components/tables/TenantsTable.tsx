@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { relativeTime } from "@/lib/relativeTime"
 import type { Tenant } from "@/payload-types"
@@ -84,7 +84,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
                 aria-label={`Actions for ${t.name}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">

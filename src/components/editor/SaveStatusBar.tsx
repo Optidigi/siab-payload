@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { Loader2, AlertCircle, CheckCircle2, Save, Eye, EyeOff, Maximize } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { useRelativeTime } from "@/lib/useRelativeTime"
 
@@ -151,13 +152,19 @@ export function SaveStatusBar({
   let isClickableJump = false
 
   if (status === "dirty") {
+    // UX-2026-0022 / GitHub issue #2 — dirty indicator now uses shadcn
+    // <Badge> primitive (data-slot="badge") with the count. Outer pill
+    // tone keeps the amber theming for at-a-glance status visibility;
+    // the Badge handles the indicator styling per shadcn idiom.
     tone =
       "border border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-    label = dirtyCount && dirtyCount > 0 ? `${dirtyCount} unsaved` : "Unsaved"
+    label = dirtyCount && dirtyCount > 0 ? `${dirtyCount} unsaved` : "1 unsaved"
     body = (
       <>
         <AlertCircle className="h-4 w-4" aria-hidden />
-        <span>{label}</span>
+        <Badge variant="outline" className="border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300">
+          {label}
+        </Badge>
         <Button
           type="button"
           size="sm"
