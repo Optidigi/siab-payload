@@ -1,16 +1,43 @@
 import "server-only"
 import { getPayload } from "payload"
 import config from "@/payload.config"
+import {
+  normalisePagination,
+  type PayloadFindResult,
+  type PayloadLikeFindClient,
+} from "./paginate"
 
-export async function listMedia(tenantId: number | string) {
-  const payload = await getPayload({ config })
-  return payload.find({
+// Audit-p2 #13 (T10/T8) — see ./pages.ts for the rationale.
+
+export interface ListMediaOpts {
+  page?: number
+  pageSize?: number
+}
+
+export async function listMediaPaginated(
+  tenantId: number | string,
+  opts?: ListMediaOpts,
+  payload?: PayloadLikeFindClient,
+): Promise<PayloadFindResult> {
+  const client = payload ?? ((await getPayload({ config })) as unknown as PayloadLikeFindClient)
+  const { page, limit } = normalisePagination(opts)
+  return client.find({
     collection: "media",
     overrideAccess: true,
     where: { tenant: { equals: tenantId } },
-    limit: 500,
-    sort: "-updatedAt"
+    sort: "-updatedAt",
+    page,
+    limit,
   })
+}
+
+/**
+ * Legacy single-page listing — see comment in ./pages.ts on listPages.
+ * Returns the full result for back-compat with the existing admin
+ * MediaGrid consumer (which expects a `.docs` array on the value).
+ */
+export async function listMedia(tenantId: number | string) {
+  return listMediaPaginated(tenantId)
 }
 
 export async function deleteMedia(id: number | string) {

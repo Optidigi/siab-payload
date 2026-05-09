@@ -3,8 +3,9 @@ import { cache } from "react"
 import { getPayload } from "payload"
 import config from "@/payload.config"
 import { buildMediaUsageMap } from "./mediaUsageWalker"
+import { findAllPaginated } from "./paginate"
 import type { MediaUsageMap } from "./mediaUsageWalker"
-import type { SiteSetting } from "@/payload-types"
+import type { Page, SiteSetting } from "@/payload-types"
 
 export type { MediaPageRef, MediaUsageEntry, MediaUsageMap } from "./mediaUsageWalker"
 export { buildMediaUsageMap } from "./mediaUsageWalker"
@@ -18,20 +19,20 @@ export { buildMediaUsageMap } from "./mediaUsageWalker"
  * The walking logic itself lives in `./mediaUsageWalker.ts` (no
  * server-only side effects) so unit tests can import it cleanly.
  *
- * Upper bound: queries with `limit: 500` per tenant. Real-world tenant
- * page counts are well under this today; if a tenant ever exceeds 500
- * pages, references on overflow pages would silently drop from the
- * usage map. TODO: paginate or assert when totalDocs > 500.
+ * Audit-p2 #13 (T10/T8) — pagination via findAllPaginated. The walker
+ * MUST visit every page in the tenant; a missed reference produces an
+ * unused-media false positive that drives a destructive delete in the
+ * admin UI. The previous `limit: 500` silently truncated past 500 pages
+ * — fixed by paginating until hasNextPage === false.
  */
 export const getMediaUsage = cache(async (tenantId: number | string): Promise<MediaUsageMap> => {
   const payload = await getPayload({ config })
-  const [pagesRes, settingsRes] = await Promise.all([
-    payload.find({
+  const [pages, settingsRes] = await Promise.all([
+    findAllPaginated<Page>(payload as any, {
       collection: "pages",
       overrideAccess: true,
       where: { tenant: { equals: tenantId } },
-      limit: 500,
-      depth: 1
+      depth: 1,
     }),
     payload.find({
       collection: "site-settings",
@@ -42,13 +43,6 @@ export const getMediaUsage = cache(async (tenantId: number | string): Promise<Me
     })
   ])
 
-  if (pagesRes.totalDocs > 500 && process.env.NODE_ENV !== "production") {
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[mediaUsage] tenant ${tenantId} has ${pagesRes.totalDocs} pages — usage map only walks the first 500. Paginate.`
-    )
-  }
-
   const settings = (settingsRes.docs[0] as Pick<SiteSetting, "branding"> | undefined) ?? null
-  return buildMediaUsageMap(pagesRes.docs as any, settings)
+  return buildMediaUsageMap(pages as any, settings)
 })
