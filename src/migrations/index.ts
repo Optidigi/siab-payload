@@ -3,6 +3,7 @@ import * as migration_20260505_194128_users_tenants_array from './20260505_19412
 import * as migration_20260505_202447_cascade_tenant_delete from './20260505_202447_cascade_tenant_delete';
 import * as migration_20260505_222023_grow_site_settings from './20260505_222023_grow_site_settings';
 import * as migration_20260506_205114_block_presets from './20260506_205114_block_presets';
+import * as migration_20260509_pages_tenant_slug_unique from './20260509_pages_tenant_slug_unique';
 
 export const migrations = [
   {
@@ -29,5 +30,10 @@ export const migrations = [
     up: migration_20260506_205114_block_presets.up,
     down: migration_20260506_205114_block_presets.down,
     name: '20260506_205114_block_presets'
+  },
+  {
+    up: migration_20260509_pages_tenant_slug_unique.up,
+    down: migration_20260509_pages_tenant_slug_unique.down,
+    name: '20260509_pages_tenant_slug_unique'
   },
 ];
