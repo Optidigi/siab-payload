@@ -432,10 +432,15 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   )
 
   // Danger zone section — reused in both side-mode column and hidden-mode grid.
+  // WCAG 1.4.3 — text colours dropped to `foreground` so they meet the 4.5:1
+  // ratio against the `bg-destructive/5` composited card. The destructive cue
+  // is still conveyed by the section's red border, the destructive Button, and
+  // the surrounding bg tint — moving the heading off `text-destructive` does
+  // not weaken the affordance for sighted users.
   const dangerZone = (
     <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
-      <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <h2 className="text-base font-semibold text-foreground">Danger zone</h2>
+      <p className="mt-2 text-sm text-foreground">
         {initial ? (
           <>
             Deleting page <strong>{initial.title}</strong> removes the page and any

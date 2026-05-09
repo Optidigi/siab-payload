@@ -1,9 +1,19 @@
+import type { Metadata } from "next"
 import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getPageById } from "@/lib/queries/pages"
 import { PageForm } from "@/components/forms/PageForm"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { notFound } from "next/navigation"
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string; id: string }> }
+): Promise<Metadata> {
+  const { slug, id } = await params
+  const [tenant, page] = await Promise.all([getTenantBySlug(slug), getPageById(Number(id)).catch(() => null)])
+  if (!tenant || !page) return { title: "Page" }
+  return { title: `${page.title} · ${tenant.name}` }
+}
 
 export default async function EditPage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   await requireRole(["super-admin"])
