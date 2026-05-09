@@ -1,7 +1,12 @@
 import path from "node:path"
 import { promises as fs } from "node:fs"
 import type { CollectionAfterDeleteHook } from "payload"
-import { readManifest, writeManifest, removeEntry } from "@/lib/projection/manifest"
+import {
+  readManifest,
+  writeManifest,
+  removeEntry,
+  withManifestLock,
+} from "@/lib/projection/manifest"
 
 const dataDir = () => path.resolve(process.cwd(), process.env.DATA_DIR || "./.data-out")
 
@@ -19,9 +24,11 @@ export const deletePageFile: CollectionAfterDeleteHook = async ({ doc, req }) =>
   if (!slug) return
   const file = path.join(dataDir(), "tenants", tenantId, "pages", `${slug}.json`)
   await fs.rm(file, { force: true })
-  let m = await readManifest(dataDir(), tenantId)
-  m = removeEntry(m, "page", slug)
-  await writeManifest(dataDir(), m)
+  await withManifestLock(dataDir(), tenantId, async () => {
+    let m = await readManifest(dataDir(), tenantId)
+    m = removeEntry(m, "page", slug)
+    await writeManifest(dataDir(), m)
+  })
   req.payload.logger.info({ tenantId, slug }, "[projection] page deleted from disk")
 }
 
@@ -39,8 +46,10 @@ export const deleteMediaFile: CollectionAfterDeleteHook = async ({ doc, req }) =
     fs.rm(tenantFile, { force: true }),
     fs.rm(stagingFile, { force: true }),
   ])
-  let m = await readManifest(dataDir(), tenantId)
-  m = removeEntry(m, "media", filename)
-  await writeManifest(dataDir(), m)
+  await withManifestLock(dataDir(), tenantId, async () => {
+    let m = await readManifest(dataDir(), tenantId)
+    m = removeEntry(m, "media", filename)
+    await writeManifest(dataDir(), m)
+  })
   req.payload.logger.info({ tenantId, filename }, "[projection] media deleted from disk")
 }
