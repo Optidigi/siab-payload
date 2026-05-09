@@ -41,12 +41,30 @@ beforeEach(() => {
   fakeCreate.mockReset()
 })
 
-// Construct a Postgres-shaped unique-violation error. The pg client throws an
-// Error with `.code === "23505"` and a message like
-// `duplicate key value violates unique constraint "site_settings_tenant_idx"`.
-// Payload v3.84.1 has no DuplicateKeyError class (verified in
-// node_modules/payload/dist/errors/) — the error propagates raw from db-postgres.
-const makeUniqueViolation = (constraint = "site_settings_tenant_idx") => {
+// REAL production unique-violation shape. `@payloadcms/drizzle@3.84.1` does
+// NOT propagate the raw pg error to application code — its `handleUpsertError`
+// (node_modules/.pnpm/@payloadcms+drizzle@3.84.1.../upsertRow/handleUpsertError.js:48-59)
+// intercepts pg `.code === "23505"` and throws a Payload `ValidationError`
+// whose `data.errors[0].message === "Value must be unique"` (literal when
+// req.t is undefined) and whose `data.errors[0].path` is the field name
+// resolved from the constraint via `adapter.fieldConstraints`. The wrapped
+// error has NO `.code` property and the top-level `.message` is "The
+// following field is invalid: tenant" (or similar). This was the gap caught
+// by adversarial review of the first iteration of this fix.
+const makeWrappedUniqueViolation = (path = "tenant") => {
+  const err: any = new Error(`The following field is invalid: ${path}`)
+  err.name = "ValidationError"
+  err.status = 400
+  err.data = {
+    collection: "site-settings",
+    errors: [{ message: "Value must be unique", path }],
+  }
+  return err
+}
+
+// Raw pg-shaped unique-violation. Defense-in-depth channel; covers direct-
+// driver paths or a future adapter that strips wrapping.
+const makeRawPgUniqueViolation = (constraint = "site_settings_tenant_idx") => {
   const err: any = new Error(
     `duplicate key value violates unique constraint "${constraint}"`,
   )
@@ -54,6 +72,9 @@ const makeUniqueViolation = (constraint = "site_settings_tenant_idx") => {
   err.constraint = constraint
   return err
 }
+
+// Default test channel uses the production wrapped shape.
+const makeUniqueViolation = makeWrappedUniqueViolation
 
 // -----------------------------------------------------------------------------
 // Half A — application-level race handling in getOrCreateSiteSettings
@@ -186,11 +207,12 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
     expect(fakeFind).toHaveBeenCalledTimes(1)
   })
 
-  it("Case 6b — unique-violation caught BUT re-fetch returns 0 docs → re-throw original error (don't infinite-loop or return undefined)", async () => {
-    // Pathological case: create rejects with 23505 (e.g. constraint exists for a
-    // different reason — phantom history) but the re-fetch finds nothing. The
-    // catch MUST NOT loop or return undefined; it MUST re-throw the original
-    // 23505 so the caller knows something is genuinely wrong.
+  it("Case 6b — unique-violation caught BUT re-fetch returns 0 docs → re-throw the SAME original error (don't infinite-loop or return undefined)", async () => {
+    // Pathological case: create rejects with a unique-violation (phantom
+    // constraint or unrelated UNIQUE just added) but the re-fetch finds
+    // nothing. The catch MUST NOT loop or return undefined; it MUST re-throw
+    // the original error reference so the caller knows something is genuinely
+    // wrong. Identity-equality on the thrown value is the binding contract.
     fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
     const violation = makeUniqueViolation()
     fakeCreate.mockRejectedValueOnce(violation)
@@ -203,10 +225,39 @@ describe("audit-p2 #11 Half A — getOrCreateSiteSettings handles unique-violati
       caught = e
     }
     expect(caught, "expected re-throw when re-fetch finds no row").not.toBeNull()
-    expect(caught.code).toBe("23505")
+    // Identity check: the SAME error object is propagated (not a wrapped one).
+    expect(caught).toBe(violation)
     // Initial find + create + re-fetch find = 2 finds, 1 create. NO further calls.
     expect(fakeFind).toHaveBeenCalledTimes(2)
     expect(fakeCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it("Case 6d — defense-in-depth: raw pg-shaped error (.code === '23505') is also detected as a race", async () => {
+    // The production path goes through drizzle's handleUpsertError wrapping,
+    // but if a future adapter change strips the wrapping (or a direct-driver
+    // path is added), the raw-pg channel must still detect the race.
+    fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+    const winnerRow = { id: 1, tenant: 42, siteName: "Untitled" }
+    fakeCreate.mockRejectedValueOnce(makeRawPgUniqueViolation())
+    fakeFind.mockResolvedValueOnce({ docs: [winnerRow], totalDocs: 1 })
+
+    const result = (await getOrCreateSiteSettings(42)) as { id: number }
+    expect(result.id).toBe(1)
+  })
+
+  it("Case 6e — defense-in-depth: pg-message-only error (no .code) is still detected via message regex", async () => {
+    // Hypothetical adapter that strips both .code and the wrapping but leaves
+    // the original Postgres message text intact. Covered by channel 3.
+    fakeFind.mockResolvedValueOnce({ docs: [], totalDocs: 0 })
+    const winnerRow = { id: 1, tenant: 42, siteName: "Untitled" }
+    const messageOnly: any = new Error(
+      `duplicate key value violates unique constraint "site_settings_tenant_idx"`,
+    )
+    fakeCreate.mockRejectedValueOnce(messageOnly)
+    fakeFind.mockResolvedValueOnce({ docs: [winnerRow], totalDocs: 1 })
+
+    const result = (await getOrCreateSiteSettings(42)) as { id: number }
+    expect(result.id).toBe(1)
   })
 
   it("Case 6c — type confusion: tenantId may be string or number; both must scope correctly to the tenant", async () => {

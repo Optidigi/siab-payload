@@ -7,17 +7,44 @@ import config from "@/payload.config"
 // Two-half fix paired with migration `20260509_site_settings_tenant_unique`
 // (UNIQUE INDEX on site_settings.tenant_id). With the unique constraint,
 // the loser of a concurrent first-load race no longer silently inserts a
-// duplicate row — its `payload.create` rejects with Postgres SQLSTATE 23505.
-// This catch translates that into a re-fetch so the loser's caller observes
-// the winner's row instead of a raw 23505 error.
+// duplicate row — its `payload.create` rejects.
 //
-// Detection by both `.code === "23505"` AND a message regex is intentional
-// defense-in-depth: pg propagates the code, but a future Payload version
-// might wrap or rename the error. The two-channel check survives either.
+// Critical detail: `@payloadcms/drizzle@3.84.1` does NOT propagate the raw
+// pg 23505 to application code. `handleUpsertError`
+// (`node_modules/.pnpm/@payloadcms+drizzle@3.84.1.../upsertRow/handleUpsertError.js:6-62`)
+// intercepts code 23505 (Postgres) / SQLITE_CONSTRAINT_UNIQUE (SQLite) and
+// throws a Payload `ValidationError` with `data.errors[0].message ===
+// "Value must be unique"` (the literal English fallback when `req?.t` is
+// undefined; `getOrCreateSiteSettings` never passes a `req`). The wrapped
+// error has no `.code` property — checking only `err.code === "23505"` would
+// silently let the loser's request fail with HTTP 400 instead of returning
+// the winner's row. This was caught by adversarial review of the first
+// iteration of this fix and verified against the drizzle source.
+//
+// Three channels for defense-in-depth (any one matches → race detected):
+//   1. Payload ValidationError shape (the real production path)
+//   2. Raw pg `.code === "23505"` (defense for direct-driver paths or future
+//      adapter changes)
+//   3. Raw pg message regex (defense for adapters that strip `.code`)
 const isUniqueViolation = (err: unknown): boolean => {
   if (!err || typeof err !== "object") return false
-  const e = err as { code?: unknown; message?: unknown }
+  const e = err as {
+    code?: unknown
+    message?: unknown
+    data?: { errors?: Array<{ message?: unknown; path?: unknown }> }
+  }
+  // Channel 1 — Payload ValidationError thrown by drizzle's handleUpsertError.
+  // The `data.errors[0].message` literal "Value must be unique" is set at
+  // handleUpsertError.js:53 when no req.t translator is available. We do NOT
+  // gate on `path` because the only unique constraint on site_settings is
+  // (tenant_id) — any unique-violation reaching this catch IS the race we
+  // expect. Re-fetching by tenant short-circuits safely if a different
+  // unique constraint is ever added.
+  const firstErr = e.data?.errors?.[0]
+  if (firstErr && firstErr.message === "Value must be unique") return true
+  // Channel 2 — raw pg error code.
   if (e.code === "23505") return true
+  // Channel 3 — raw pg message text fallback.
   if (typeof e.message === "string" && /duplicate key value violates unique constraint/i.test(e.message)) {
     return true
   }
