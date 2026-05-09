@@ -38,7 +38,7 @@ export function OnboardingChecklist({
     { id: "verify", title: "Verify access",
       description: (
         <span>
-          <a href={`https://admin.${tenant.domain}`} className="underline" target="_blank" rel="noreferrer">
+          <a href={`https://admin.${tenant.domain}`} className="underline" target="_blank" rel="noopener noreferrer">
             https://admin.{tenant.domain}
           </a>
         </span>
