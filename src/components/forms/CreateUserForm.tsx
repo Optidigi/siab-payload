@@ -14,10 +14,12 @@ import { toast } from "sonner"
 import { Plus, Copy } from "lucide-react"
 
 const baseSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
+  email: z.string().email("Enter a valid email address"),
+  name: z.string().min(1, "Name is required"),
   password: z.string().min(8, "Min 8 characters"),
-  role: z.enum(["super-admin", "owner", "editor", "viewer"]),
+  role: z.enum(["super-admin", "owner", "editor", "viewer"], {
+    message: "Select a role"
+  }),
   tenantId: z.string().optional(),
   enableAPIKey: z.boolean().default(false)
 })

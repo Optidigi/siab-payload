@@ -14,9 +14,11 @@ import { Plus } from "lucide-react"
 import { inviteUser } from "@/lib/actions/inviteUser"
 
 const schema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  role: z.enum(["owner", "editor", "viewer"])
+  email: z.string().email("Enter a valid email address"),
+  name: z.string().min(1, "Name is required"),
+  role: z.enum(["owner", "editor", "viewer"], {
+    message: "Select a role"
+  })
 })
 type V = z.infer<typeof schema>
 

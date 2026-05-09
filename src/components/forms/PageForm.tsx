@@ -91,9 +91,11 @@ function countLeafErrors(node: unknown): number {
 }
 
 const schema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1, "Title is required"),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(["draft", "published"], {
+    message: "Select draft or published"
+  }),
   blocks: z.array(z.any()),
   // `.nullish()` (T | null | undefined) is load-bearing — Postgres returns
   // `null` for unset optional text columns inside groups, and `payload-types`

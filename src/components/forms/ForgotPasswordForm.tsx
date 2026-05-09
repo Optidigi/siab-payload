@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { toast } from "sonner"
 
-const schema = z.object({ email: z.string().email() })
+const schema = z.object({ email: z.string().email("Enter a valid email address") })
 
 export function ForgotPasswordForm() {
   const [pending, setPending] = useState(false)

@@ -25,6 +25,7 @@ export default function FrontendLayout({ children }: { children: React.ReactNode
           <Toaster
             richColors
             position="bottom-center"
+            duration={6000}
             offset={"calc(max(var(--mini-strip-h, 0px) + env(safe-area-inset-bottom) + 12px, 80px))"}
           />
         </ThemeProvider>

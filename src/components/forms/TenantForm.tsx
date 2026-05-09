@@ -10,9 +10,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "sonner"
 
 const schema = z.object({
-  name: z.string().min(2),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
-  domain: z.string().min(3),
+  domain: z.string().min(3, "Enter a domain (at least 3 characters, e.g. clientasite.nl)"),
   siteRepo: z.string().optional()
 })
 type Values = z.infer<typeof schema>

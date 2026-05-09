@@ -13,6 +13,18 @@ const validateHHMM = (val: unknown, { siblingData }: any) => {
   return true
 }
 
+// FN-2026-0004 — primaryColor accepted any free-text string. Validate as a
+// 3- or 6-digit hex color (with leading '#'). Empty is allowed (field is
+// optional — the renderer falls back to a default when unset).
+const HEX_COLOR_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+const validatePrimaryColor = (val: unknown) => {
+  if (val == null || val === "") return true
+  if (typeof val !== "string" || !HEX_COLOR_REGEX.test(val)) {
+    return "Hex color (e.g. #2563eb or #25b)"
+  }
+  return true
+}
+
 export const SiteSettings: CollectionConfig = {
   slug: "site-settings",
   access: {
@@ -38,7 +50,8 @@ export const SiteSettings: CollectionConfig = {
     { name: "contactEmail", type: "email" },
     { name: "branding", type: "group", fields: [
       { name: "logo", type: "upload", relationTo: "media" },
-      { name: "primaryColor", type: "text", admin: { description: "Hex (e.g. #2563eb)" } }
+      { name: "primaryColor", type: "text", validate: validatePrimaryColor,
+        admin: { description: "Hex (e.g. #2563eb)" } }
     ]},
     { name: "contact", type: "group", fields: [
       { name: "phone", type: "text" },
