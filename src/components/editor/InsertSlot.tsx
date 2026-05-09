@@ -25,7 +25,14 @@ export function InsertSlot({ onClick, label = "Add" }: { onClick: () => void; la
         onClick={onClick}
         aria-label={label}
         className={cn(
-          "absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100",
+          // U8 (UX-2026-0030) — `[@media(hover:none)]:opacity-100` was
+          // unreliable: Chromium reports `hover: hover` even at 375 px
+          // viewport in devtools-mobile mode + on some real touch devices
+          // with mouse-over-touch. Tying visibility to the `md` breakpoint
+          // (`max-md:opacity-100`) captures the actual UX dimension —
+          // phone always shows the affordance; desktop keeps the subtle
+          // hover-reveal per issue #13's design intent.
+          "absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100",
           // U1 — 44-px hit target on mobile via padding above + below the
           // wrapper line. Visual pill (the inner <span>) stays small, but
           // the BUTTON itself is tall enough to tap reliably.
