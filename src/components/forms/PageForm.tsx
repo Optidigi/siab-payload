@@ -303,9 +303,18 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     }
     setSubmitError(null)
     setLastSavedAt(Date.now())
-    // Reset RHF dirty state to the just-saved values so SaveStatusBar
-    // transitions out of "dirty" once the save lands.
-    form.reset(values, { keepValues: true })
+    // FN-2026-0012 — the prior shape passed `{ keepValues: true }`, which
+    // keeps the *current* DOM input values but does NOT advance RHF's dirty
+    // baseline reliably across all field types (RHF's diff is per-renderer
+    // and `keepValues` skips the per-field reset path that updates the
+    // dirty-comparison baseline). Result: `formState.isDirty` could stay
+    // true for the next render tick. The useNavigationGuard hook keys off
+    // that flag, so a hard refresh in the ~1s window after save still
+    // triggered the browser-native "Leave site?" prompt. Resetting WITHOUT
+    // keepValues uses the just-submitted `values` as both the input snapshot
+    // AND the new clean baseline — `isDirty` flips to false synchronously
+    // and the beforeunload listener detaches on the same frame.
+    form.reset(values)
     toast.success(values.status === "published" ? "Published" : "Saved")
     if (!initial) {
       const json = await res.json()
