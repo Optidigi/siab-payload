@@ -5,6 +5,7 @@ import * as migration_20260505_222023_grow_site_settings from './20260505_222023
 import * as migration_20260506_205114_block_presets from './20260506_205114_block_presets';
 import * as migration_20260509_pages_tenant_slug_unique from './20260509_pages_tenant_slug_unique';
 import * as migration_20260509_site_settings_tenant_unique from './20260509_site_settings_tenant_unique';
+import * as migration_20260509_media_tenant_filename_unique from './20260509_media_tenant_filename_unique';
 
 export const migrations = [
   {
@@ -41,5 +42,10 @@ export const migrations = [
     up: migration_20260509_site_settings_tenant_unique.up,
     down: migration_20260509_site_settings_tenant_unique.down,
     name: '20260509_site_settings_tenant_unique'
+  },
+  {
+    up: migration_20260509_media_tenant_filename_unique.up,
+    down: migration_20260509_media_tenant_filename_unique.down,
+    name: '20260509_media_tenant_filename_unique'
   },
 ];

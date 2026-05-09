@@ -426,6 +426,37 @@ ever migrate, replace the autoRun with an external scheduler (k8s
 CronJob, GitHub Actions cron, or system cron on the host) that POSTs
 to a Payload jobs endpoint.
 
+## GraphQL playground env-gate (audit-p3 #16)
+
+Audit-p3 #16 (T10) — defense-in-depth env-gate on `/api/graphql-playground`.
+Payload v3.84.1's built-in `disablePlaygroundInProduction` default already
+returns 404 in production, but a future `payload.config.ts` change setting
+that to `false` would silently re-arm anonymous schema enumeration. The
+in-repo gate (`src/lib/graphql/playgroundGate.ts`) closes that gap.
+
+### Operator knob
+
+- `ENABLE_GRAPHQL_PLAYGROUND` — leave unset for production. The route
+  returns 404 unconditionally when `NODE_ENV === "production"` AND this
+  env var is anything other than the literal string `"1"`.
+- Strict equality. `"true"`, `"yes"`, `"on"`, `" 1 "` (with whitespace),
+  and similar truthy-looking values all keep the playground disabled.
+  Only the exact two-character string `"1"` enables it.
+
+### When to enable in production
+
+Almost never. The intended use case is a one-off debug session against
+prod — set `ENABLE_GRAPHQL_PLAYGROUND=1`, redeploy, debug, unset, and
+redeploy again. Leaving it set keeps `/api/graphql-playground` serving
+the introspectable Apollo HTML to anonymous internet.
+
+### Side effect: closes OBS-3
+
+Out-of-batch observation OBS-3 (graphql-playground iframable: middleware
+matcher excludes `/api/*` from CSP stamping → no `frame-ancestors` on
+the playground HTML) closes as a consequence: in production the route
+no longer serves HTML at all.
+
 ## Future improvements (out of scope for this runbook)
 
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
