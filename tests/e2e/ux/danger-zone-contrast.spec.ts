@@ -108,19 +108,52 @@ async function measureDangerZone(page: import("@playwright/test").Page): Promise
   })
 }
 
-test.describe("UX-2026-0010 — Danger zone color contrast (WCAG 1.4.3 AA)", () => {
-  test("Danger zone heading + paragraph meet WCAG 1.4.3 AA against composited bg", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 })
-    await loginAsSuperAdmin(page)
-    await page.goto("/sites/audit-test/pages/1")
-    const samples = await measureDangerZone(page)
-    expect(samples.length).toBeGreaterThan(0)
-    for (const s of samples) {
-      expect.soft(s.ratio, `${s.selectorText} ratio (threshold ${s.threshold}:1)`).toBeGreaterThanOrEqual(s.threshold)
-    }
-  })
+async function forceTheme(page: import("@playwright/test").Page, theme: "light" | "dark") {
+  await page.emulateMedia({ colorScheme: theme })
+  await page.evaluate((t) => {
+    localStorage.setItem("theme", t)
+    const html = document.documentElement
+    html.classList.remove("light", "dark")
+    html.classList.add(t)
+    html.style.colorScheme = t
+    void html.offsetHeight
+  }, theme)
+}
 
-  test("desktop viewport — same elements still meet AA", async ({ page }) => {
+/**
+ * Three Danger-zone callsites — PageForm (closed by UX-2026-0010 in batch-1),
+ * TenantEditForm (UX-2026-0016), UserEditForm (UX-2026-0018). Each takes the
+ * same `text-destructive` → `text-foreground` swap; the parameterised test
+ * below verifies they all clear AA in BOTH light and dark themes per the
+ * methodology Appendix B 2026-05-09 amendment.
+ */
+const DANGER_ZONE_SURFACES = [
+  { url: "/sites/audit-test/pages/1", label: "PageForm", finding: "UX-2026-0010" },
+  { url: "/sites/audit-test/edit",    label: "TenantEditForm", finding: "UX-2026-0016" },
+  { url: "/users/2/edit",             label: "UserEditForm", finding: "UX-2026-0018" }
+] as const
+
+test.describe("Danger-zone color contrast (WCAG 1.4.3 AA, all callsites, both themes)", () => {
+  for (const surface of DANGER_ZONE_SURFACES) {
+    for (const theme of ["light", "dark"] as const) {
+      test(`${surface.finding} (${surface.label}) — ${theme} mode at 375×667`, async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 667 })
+        await loginAsSuperAdmin(page)
+        await page.goto(surface.url)
+        await forceTheme(page, theme)
+        const samples = await measureDangerZone(page)
+        expect(samples.length, `${surface.label} should have a Danger zone`).toBeGreaterThan(0)
+        for (const s of samples) {
+          expect.soft(
+            s.ratio,
+            `${surface.label} ${theme} — ${s.selectorText} ratio (threshold ${s.threshold}:1)`
+          ).toBeGreaterThanOrEqual(s.threshold)
+        }
+      })
+    }
+  }
+
+  test("UX-2026-0010 (PageForm) at desktop viewport — sanity check", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await loginAsSuperAdmin(page)
     await page.goto("/sites/audit-test/pages/1")

@@ -171,9 +171,12 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
         </form>
       </Form>
 
+      {/* WCAG 1.4.3 — text colours dropped to `foreground` so they meet 4.5:1
+          against bg-destructive/5 over the card. Destructive cue preserved by
+          the section's red border + bg tint + the destructive Delete button. */}
       <section className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-        <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-sm font-semibold text-foreground">Danger zone</h2>
+        <p className="mt-2 text-sm text-foreground">
           Removing <strong>{user.email}</strong> permanently deletes the account and revokes
           access. The user&apos;s tenant-membership rows are removed; tenants and their content stay.
           {user.role !== "super-admin" && (

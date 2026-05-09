@@ -99,7 +99,16 @@ export function ApiKeyManager({ user }: { user: User }) {
                 : "No active API key. Generate one to enable machine access."}
             </span>
           </div>
-          <Switch checked={enabled} disabled={pending} onCheckedChange={(v) => v ? generate(true) : setConfirmOpen(true)} />
+          {/* WCAG 4.1.2 — the visible "API key enabled/disabled" copy beside
+              the Switch carries state, but the trigger itself needs a stable
+              accessible name (current/desired state is conveyed via
+              aria-checked, not via the name). */}
+          <Switch
+            aria-label="API key"
+            checked={enabled}
+            disabled={pending}
+            onCheckedChange={(v) => v ? generate(true) : setConfirmOpen(true)}
+          />
         </div>
 
         {enabled && (
