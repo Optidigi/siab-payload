@@ -20,9 +20,17 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
   const { slug, id } = await params
   const tenant = await getTenantBySlug(slug)
   if (!tenant) notFound()
-  const page = await getPageById(Number(id))
+  // FN-2026-0023 fix — `payload.findByID` throws on missing rows; the prior
+  // shape `await getPageById(Number(id))` propagated the throw through to a
+  // 500 server-component error before the `if (!page) notFound()` guard
+  // could fire. Catch the throw, normalise to null, then let notFound()
+  // render the standard 404 page. Mirror of the same `.catch(() => null)`
+  // pattern already used in this file's `generateMetadata` (UX-2026-0001
+  // batch-1).
+  const page = await getPageById(Number(id)).catch(() => null)
+  if (!page) notFound()
   const pageTenantId = typeof page.tenant === "object" && page.tenant ? page.tenant.id : page.tenant
-  if (!page || pageTenantId !== tenant.id) notFound()
+  if (pageTenantId !== tenant.id) notFound()
   return (
     <div className="flex flex-col gap-4">
       <PageHeader

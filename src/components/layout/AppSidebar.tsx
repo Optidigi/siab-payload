@@ -22,8 +22,17 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
     }
     lastPathRef.current = pathname
   }, [pathname, isMobile, setOpenMobile])
+  // FN-2026-0007 fix — the regex matches any first path segment under
+  // /sites/, including reserved non-tenant routes like /sites/new (the
+  // create-tenant form). Filter those out so the Content group doesn't
+  // render Pages/Media/etc. links pointing at /sites/new/pages (404s).
+  // The set is small and stable; if a new reserved /sites/* route is
+  // added in the future the new sibling under app/(admin)/sites/ should
+  // be added here too.
+  const RESERVED_SITES_SEGMENTS = new Set(["new"])
   const slugMatch = pathname.match(/^\/sites\/([^/]+)/)
-  const tenantSlug = slugMatch?.[1]
+  const rawSlug = slugMatch?.[1]
+  const tenantSlug = rawSlug && !RESERVED_SITES_SEGMENTS.has(rawSlug) ? rawSlug : undefined
   const inTenantView = mode === "super-admin" && !!tenantSlug
   const base = inTenantView ? `/sites/${tenantSlug}` : ""
 

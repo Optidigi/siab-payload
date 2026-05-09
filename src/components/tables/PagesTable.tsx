@@ -41,9 +41,15 @@ export function PagesTable({ data, base, emptyState }: { data: Page[]; base: str
       accessorKey: "title",
       header: "Title",
       cell: ({ row }) => (
-        <Link href={`${base}/${row.original.id}`} className="font-medium hover:underline">
-          {row.getValue("title") as string}
-        </Link>
+        // FN-2026-0006 fix (see TenantsTable for the full reasoning):
+        // span on mobile, Link on desktop, gated by Tailwind so only one
+        // is in the AX tree at a time.
+        <>
+          <span className="md:hidden font-medium">{row.getValue("title") as string}</span>
+          <Link href={`${base}/${row.original.id}`} className="hidden md:inline font-medium hover:underline">
+            {row.getValue("title") as string}
+          </Link>
+        </>
       ),
       meta: { mobilePriority: "primary" }
     },
