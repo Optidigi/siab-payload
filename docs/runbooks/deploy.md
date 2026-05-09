@@ -362,6 +362,70 @@ read_env() {
 }
 ```
 
+## Form-submission retention (GDPR)
+
+Audit-p2 #10 (T11) — Form submissions accumulate PII (name, email, message,
+pageUrl, ipAddress) and need a bounded retention. The codebase ships a
+Payload **task** registered on `payload.config.ts` (`jobs.tasks`) that
+deletes form submissions older than `FORMS_RETENTION_DAYS` (default 90).
+The task is auto-scheduled daily at 02:00 UTC by `jobs.autoRun`, which
+runs an in-process cron worker.
+
+### Operator knobs
+
+- `FORMS_RETENTION_DAYS` — integer days. Default 90 if unset / malformed.
+  Set in `.env` alongside `PAYLOAD_SECRET` and friends. Restart the
+  Payload container after changing.
+- `PAYLOAD_DISABLE_JOBS_AUTORUN=1` — kill switch. Set this to disable
+  the in-process cron entirely (e.g. when running migrations or during
+  a maintenance window). Unset / any other value = jobs run normally.
+
+### Verifying the purge ran
+
+Tail the Payload container logs and grep for `purge-stale-form-submissions`:
+
+```sh
+docker compose logs -f payload | grep purge-stale-form-submissions
+```
+
+Expected line on each daily run:
+
+```
+[purge-stale-form-submissions] deleted=<N> cutoff=<ISO> retentionDays=<N>
+```
+
+### Manual purge (one-off, optional)
+
+If you need to run the purge outside the daily schedule (e.g. after a
+GDPR erasure ticket), invoke the Payload local API from a one-off
+container shell:
+
+```sh
+docker compose exec payload node -e "
+  const { getPayload } = require('payload');
+  const config = require('./dist-runtime/payload.config.js').default;
+  (async () => {
+    const payload = await getPayload({ config });
+    const { purgeStaleFormSubmissions, resolveRetentionDays } =
+      require('./dist-runtime/lib/jobs/purgeStaleForms.js');
+    const r = await purgeStaleFormSubmissions({
+      payload, retentionDays: resolveRetentionDays()
+    });
+    console.log(JSON.stringify(r));
+  })();
+"
+```
+
+### autoRun caveat (read before changing platforms)
+
+`jobs.autoRun` registers a node-cron worker inside the Payload process.
+That requires a long-lived process — i.e. our VPS deployment with
+`node server.js` is fine, but **a serverless deployment (Vercel,
+Cloudflare Workers, Lambda) would silently drop the schedule**. If we
+ever migrate, replace the autoRun with an external scheduler (k8s
+CronJob, GitHub Actions cron, or system cron on the host) that POSTs
+to a Payload jobs endpoint.
+
 ## Future improvements (out of scope for this runbook)
 
 - **Secrets manager.** Move `RESEND_API_KEY` (and eventually
