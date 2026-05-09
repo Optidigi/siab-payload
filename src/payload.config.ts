@@ -13,6 +13,7 @@ import { Pages } from "@/collections/Pages"
 import { SiteSettings } from "@/collections/SiteSettings"
 import { Tenants } from "@/collections/Tenants"
 import { Users } from "@/collections/Users"
+import { purgeStaleFormSubmissionsTask } from "@/lib/jobs/purgeStaleFormsTask"
 import type { Config } from "@/payload-types"
 
 const filename = fileURLToPath(import.meta.url)
@@ -53,6 +54,18 @@ export default buildConfig({
     apiKey: process.env.RESEND_API_KEY || ""
   }),
   collections: [Tenants, Users, Media, Pages, SiteSettings, Forms, BlockPresets],
+  // Audit-p2 #10 (T11) — Forms GDPR retention. The purge task auto-schedules
+  // a daily job at 02:00 UTC; `autoRun` registers an in-process cron worker
+  // that picks up scheduled jobs every minute (default cron: '* * * * *').
+  // The autoRun must NOT be used on serverless platforms; siab-payload runs
+  // as a long-lived Node server on a VPS so this is fine. See
+  // `src/lib/jobs/purgeStaleFormsTask.ts` for the handler and
+  // `audits/10-fix-batch-9-report.md` for the deployment note.
+  jobs: {
+    tasks: [purgeStaleFormSubmissionsTask],
+    autoRun: [{ queue: "default", cron: "* * * * *" }],
+    shouldAutoRun: () => process.env.PAYLOAD_DISABLE_JOBS_AUTORUN !== "1"
+  },
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
   },
