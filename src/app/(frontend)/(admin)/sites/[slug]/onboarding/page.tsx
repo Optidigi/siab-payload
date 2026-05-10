@@ -1,7 +1,8 @@
 import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { notFound } from "next/navigation"
 
 export default async function OnboardingPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -14,7 +15,7 @@ export default async function OnboardingPage({ params }: { params: Promise<{ slu
     <div className="flex flex-col gap-4 max-w-3xl">
       <PageHeader
         title="Onboarding"
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         subtitle={<>Manual steps to bring <code>admin.{tenant.domain}</code> live.</>}
       />
       <OnboardingChecklist

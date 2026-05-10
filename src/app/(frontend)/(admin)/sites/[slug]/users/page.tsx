@@ -3,7 +3,8 @@ import { getTenantBySlug } from "@/lib/queries/tenants"
 import { listUsersForTenant } from "@/lib/queries/users"
 import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { EmptyState } from "@/components/empty-state"
 import { Users } from "lucide-react"
 import { notFound } from "next/navigation"
@@ -19,7 +20,7 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ sl
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Team"
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         action={canManage ? <UserInviteForm tenantId={tenant.id} /> : undefined}
       />
       <UsersTable

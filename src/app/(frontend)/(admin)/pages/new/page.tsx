@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { PageForm } from "@/components/forms/PageForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function NewTenantPage() {
   const { ctx } = await requireAuth()

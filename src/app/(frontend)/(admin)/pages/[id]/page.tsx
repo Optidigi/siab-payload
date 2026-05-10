@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { getPageById } from "@/lib/queries/pages"
 import { PageForm } from "@/components/forms/PageForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function EditTenantPage({ params }: { params: Promise<{ id: string }> }) {
   const { ctx } = await requireAuth()

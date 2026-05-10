@@ -1,7 +1,7 @@
 import "@/styles/globals.css"
 import type { Metadata } from "next"
 import { Poppins, JetBrains_Mono } from "next/font/google"
-import { ThemeProvider } from "@/components/layout/ThemeProvider"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
 const sans = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" })

@@ -3,7 +3,8 @@ import { getTenantBySlug } from "@/lib/queries/tenants"
 import { listPages } from "@/lib/queries/pages"
 import { PagesTable } from "@/components/tables/PagesTable"
 import { Button } from "@/components/ui/button"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { EmptyState } from "@/components/empty-state"
 import { FileText, Plus } from "lucide-react"
 import Link from "next/link"
@@ -19,7 +20,7 @@ export default async function PagesIndex({ params }: { params: Promise<{ slug: s
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Pages"
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         action={<Button asChild><Link href={`/sites/${slug}/pages/new`}><Plus className="mr-1 h-4 w-4"/> New page</Link></Button>}
       />
       <PagesTable

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { getOrCreateSiteSettings } from "@/lib/queries/settings"
 import { SettingsForm } from "@/components/forms/SettingsForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function TenantSettingsPage() {
   const { user, ctx } = await requireAuth()

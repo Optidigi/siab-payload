@@ -3,7 +3,7 @@ import { listAllUsers, listUsersForTenant } from "@/lib/queries/users"
 import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
 import { CreateUserForm } from "@/components/forms/CreateUserForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 import { EmptyState } from "@/components/empty-state"
 import { Users } from "lucide-react"
 

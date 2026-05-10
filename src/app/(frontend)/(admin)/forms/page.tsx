@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { requireAuth } from "@/lib/authGate"
 import { listForms } from "@/lib/queries/forms"
 import { FormsTable } from "@/components/tables/FormsTable"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 import { EmptyState } from "@/components/empty-state"
 import { Inbox } from "lucide-react"
 
