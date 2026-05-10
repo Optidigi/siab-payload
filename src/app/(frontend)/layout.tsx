@@ -1,10 +1,10 @@
 import "@/styles/globals.css"
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
+import { Poppins, JetBrains_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/layout/ThemeProvider"
 import { Toaster } from "@/components/ui/sonner"
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" })
+const sans = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" })
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.
