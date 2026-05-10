@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
@@ -19,9 +19,48 @@ import { toast } from "sonner"
 import { relativeTime } from "@/lib/relativeTime"
 import type { Tenant } from "@/payload-types"
 
+// FN-2026-0041 — Path A (TenantsTable Actions Delete) used generic copy
+// while Path B (TenantEditForm Danger zone) showed live cascade counts.
+// Two paths to the same destructive action shouldn't differ in
+// information density. Lazy-fetch counts when the dialog opens.
+type Counts = { pages: number; media: number; forms: number; siteSettings: number }
+async function fetchTenantCounts(tenantId: number | string): Promise<Counts> {
+  // The count endpoint takes a where filter; bundle 4 parallel calls.
+  // Pre-fix shape would have needed a dedicated /api/tenants/:id/counts
+  // endpoint, but Payload's REST count surface is flexible enough that
+  // we don't need to add one.
+  const where = encodeURIComponent(JSON.stringify({ tenant: { equals: tenantId } }))
+  const fetchOne = (collection: string) =>
+    fetch(`/api/${collection}/count?where=${where}`).then((r) => r.json()).then((j) => j.totalDocs ?? 0)
+  const [pages, media, forms, siteSettings] = await Promise.all([
+    fetchOne("pages"),
+    fetchOne("media"),
+    fetchOne("forms"),
+    fetchOne("site-settings")
+  ])
+  return { pages, media, forms, siteSettings }
+}
+
 export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?: React.ReactNode }) {
   const router = useRouter()
   const [target, setTarget] = useState<Tenant | null>(null)
+  const [counts, setCounts] = useState<Counts | null>(null)
+  // FN-2026-0041 — when the dialog opens, kick off a lazy counts fetch.
+  // Reset on close so a subsequent re-open doesn't show stale data.
+  useEffect(() => {
+    if (!target) {
+      setCounts(null)
+      return
+    }
+    let cancelled = false
+    fetchTenantCounts(target.id).then((c) => {
+      if (!cancelled) setCounts(c)
+    }).catch(() => {
+      // Network failure — leave counts null; the dialog falls back to
+      // generic copy below. Better than blocking the destructive action.
+    })
+    return () => { cancelled = true }
+  }, [target])
 
   const onDelete = async () => {
     if (!target) return
@@ -142,11 +181,22 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
           onOpenChange={(o) => !o && setTarget(null)}
           title={`Delete ${target.name}`}
           description={
-            <>
-              Permanently deletes tenant <strong>{target.name}</strong> ({target.domain}) and
-              cascade-deletes its pages, media, forms, settings, and on-disk dir.{" "}
-              <strong>Irreversible.</strong>
-            </>
+            counts ? (
+              <>
+                About to delete tenant <strong>{target.name}</strong> ({target.domain}). This
+                cascade-deletes <strong>{counts.pages}</strong> page{counts.pages === 1 ? "" : "s"},{" "}
+                <strong>{counts.media}</strong> media file{counts.media === 1 ? "" : "s"},{" "}
+                <strong>{counts.forms}</strong> form submission{counts.forms === 1 ? "" : "s"}, and removes the tenant&apos;s
+                on-disk dir. <strong>Irreversible.</strong>
+              </>
+            ) : (
+              <>
+                About to delete tenant <strong>{target.name}</strong> ({target.domain}). This
+                cascade-deletes the tenant&apos;s pages, media, form submissions, settings, and on-disk dir.{" "}
+                <span className="text-muted-foreground">Loading counts…</span>{" "}
+                <strong>Irreversible.</strong>
+              </>
+            )
           }
           confirmPhrase={target.slug}
           confirmLabel="Delete tenant"

@@ -41,7 +41,15 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
         initial={page as any}
         tenantId={tenant.id}
         baseHref={`/sites/${slug}/pages`}
-        tenantOrigin={`https://${tenant.domain}`}
+        // FN-2026-0047 — preview iframe origin. Production: https://<domain>.
+        // Dev (no /etc/hosts entry, no NPM proxy): operator can set
+        // NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE to a reachable URL (e.g.
+        // http://localhost:5173). The pre-fix shape always built
+        // https://${tenant.domain} and the iframe failed with
+        // ERR_CONNECTION_REFUSED in any non-NPM dev setup.
+        tenantOrigin={
+          process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
+        }
       />
     </div>
   )

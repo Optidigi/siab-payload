@@ -512,7 +512,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         */}
         {showSideInFlow && (
           <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
-            <PageMetaInline control={controlAny} />
+            <PageMetaInline control={controlAny} setValue={form.setValue} getValues={form.getValues} />
             {form.watch("status") === "published" && form.watch("slug") && (
               <>
                 <Button variant="ghost" size="icon" type="button" asChild title="View live">

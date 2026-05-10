@@ -1,8 +1,21 @@
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusPill } from "@/components/shared/StatusPill"
 import { relativeTime } from "@/lib/relativeTime"
 import type { ActivityEntry } from "@/lib/activity"
+
+// FN-2026-0046 — derive a drill-down href from the activity entry where
+// possible. Pages route to /sites/<slug>/pages/<id>; forms route to the
+// tenant's forms list. Returns null when we can't construct a target.
+function entryHref(e: ActivityEntry): string | null {
+  if (!e.tenantSlug) return null
+  if (e.type === "page") return `/sites/${e.tenantSlug}/pages/${e.id}`
+  if (e.type === "form") return `/sites/${e.tenantSlug}/forms`
+  if (e.type === "media") return `/sites/${e.tenantSlug}/media`
+  if (e.type === "settings") return `/sites/${e.tenantSlug}/settings`
+  return null
+}
 
 /**
  * UX-2026-0002 / GitHub issue #15 — Recent activity feed responsively
@@ -35,15 +48,34 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {entries.map((e) => (
-                <TableRow key={`${e.type}:${e.id}`}>
-                  <TableCell className="text-muted-foreground">{relativeTime(e.updatedAt)}</TableCell>
-                  <TableCell>{e.tenantName ?? e.tenantId.slice(0, 8)}</TableCell>
-                  <TableCell>{e.type === "page" ? `Updated ${e.title}` : e.title}</TableCell>
-                  <TableCell className="text-muted-foreground">{e.updatedBy ?? "—"}</TableCell>
-                  <TableCell><StatusPill status={e.status} /></TableCell>
-                </TableRow>
-              ))}
+              {entries.map((e) => {
+                const href = entryHref(e)
+                return (
+                  <TableRow
+                    key={`${e.type}:${e.id}`}
+                    className={href ? "cursor-pointer hover:bg-muted/50 group" : undefined}
+                  >
+                    <TableCell className="text-muted-foreground">{relativeTime(e.updatedAt)}</TableCell>
+                    <TableCell>{e.tenantName ?? e.tenantId.slice(0, 8)}</TableCell>
+                    <TableCell>
+                      {/* FN-2026-0046 — when a drill-down target exists,
+                          wrap the most identifying cell ("What") in a Link
+                          so the row becomes navigable while preserving the
+                          existing 5-column shape. Tailwind group: lets the
+                          row's hover affect the link's underline. */}
+                      {href ? (
+                        <Link href={href} className="hover:underline group-hover:underline">
+                          {e.type === "page" ? `Updated ${e.title}` : e.title}
+                        </Link>
+                      ) : (
+                        <>{e.type === "page" ? `Updated ${e.title}` : e.title}</>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{e.updatedBy ?? "—"}</TableCell>
+                    <TableCell><StatusPill status={e.status} /></TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
@@ -54,12 +86,13 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
             const what = e.type === "page" ? `Updated ${e.title}` : e.title
             const who = e.updatedBy ?? "—"
             const when = relativeTime(e.updatedAt)
-            return (
-              <li
-                key={`${e.type}:${e.id}`}
-                data-slot="activity-row"
-                className="flex flex-col gap-1 px-4 py-3"
-              >
+            const href = entryHref(e)
+            // FN-2026-0046 — wrap the entire mobile row in a Link when a
+            // target exists. Use <Link> as the rendered <li>'s child so
+            // the entire tap target is a single anchor (avoids nested
+            // anchor pitfalls; the row contains no other <a>).
+            const inner = (
+              <>
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <span className="font-medium truncate min-w-0">{what}</span>
                   <StatusPill status={e.status} />
@@ -75,6 +108,17 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
                     </>
                   )}
                 </div>
+              </>
+            )
+            return (
+              <li key={`${e.type}:${e.id}`} data-slot="activity-row">
+                {href ? (
+                  <Link href={href} className="flex flex-col gap-1 px-4 py-3 active:bg-muted/50 hover:bg-muted/30 transition-colors">
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className="flex flex-col gap-1 px-4 py-3">{inner}</div>
+                )}
               </li>
             )
           })}

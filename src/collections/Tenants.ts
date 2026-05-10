@@ -31,6 +31,12 @@ const validateSlug = (val: unknown) => {
 // separated by dots, at least one dot, no leading/trailing dot or hyphen.
 // This accepts production-style domains (clientasite.nl, sub.example.com)
 // AND .localhost / .test dev fixtures (audit.localhost, foo.test).
+//
+// fn-batch-6 follow-up — also reject all-numeric TLDs (e.g. 1.2.3.4).
+// RFC 1123 / RFC 3696 require the right-most label to contain at least
+// one alphabetic character; the prior regex would have accepted "1.2"
+// or "1.2.3.4" as valid hostnames, which would silently never match a
+// real Host header lookup.
 const DOMAIN_REGEX = /^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/
 const validateDomain = (val: unknown) => {
   if (val == null || val === "") return "Domain is required"
@@ -38,6 +44,10 @@ const validateDomain = (val: unknown) => {
   if (val.length > 253) return "Domain too long (max 253 chars)"
   if (!DOMAIN_REGEX.test(val)) {
     return "Use a valid hostname (e.g. clientasite.nl). Lowercase letters, digits, hyphens; at least one dot."
+  }
+  const tld = val.split(".").pop() ?? ""
+  if (!/[a-z]/.test(tld)) {
+    return "Domain TLD must contain at least one letter (e.g. .com, .nl, .localhost)."
   }
   return true
 }

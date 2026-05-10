@@ -18,7 +18,10 @@ export default async function NewPage({ params }: { params: Promise<{ slug: stri
       <PageForm
         tenantId={tenant.id}
         baseHref={`/sites/${slug}/pages`}
-        tenantOrigin={`https://${tenant.domain}`}
+        // FN-2026-0047 — see /pages/[id]/page.tsx for the env override note.
+        tenantOrigin={
+          process.env.NEXT_PUBLIC_PREVIEW_ORIGIN_OVERRIDE ?? `https://${tenant.domain}`
+        }
       />
     </div>
   )
