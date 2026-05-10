@@ -94,6 +94,10 @@ export function UserEditForm({ user, tenants }: { user: User; tenants: TenantLit
       }
       return
     }
+    // FN-2026-0031 — sister of FN-2026-0012: advance RHF's dirty
+    // baseline synchronously so useNavigationGuard detaches its
+    // beforeunload listener before the next nav can race.
+    form.reset(values)
     toast.success("User updated")
     router.refresh()
   }

@@ -19,12 +19,36 @@ export function ForgotPasswordForm() {
 
   const onSubmit = async (values: z.infer<typeof schema>) => {
     setPending(true)
-    await fetch("/api/users/forgot-password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(values)
-    })
+    // FN-2026-0037 — pre-fix shape called .ok-blind: await fetch then
+    // setSent(true) + success toast UNCONDITIONALLY. A 400/500/429/network
+    // error left the user thinking the email was queued. Branch on
+    // res.ok and surface a real error toast otherwise. We intentionally
+    // keep the SUCCESS copy generic ("If that email exists...") to
+    // preserve user-enumeration resistance — but only when the server
+    // actually accepted the request.
+    let res: Response | null = null
+    try {
+      res = await fetch("/api/users/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(values)
+      })
+    } catch {
+      // Network error — distinct from 4xx/5xx
+      setPending(false)
+      toast.error("Network error — please try again")
+      return
+    }
     setPending(false)
+    if (!res.ok) {
+      // 429 (rate limit) gets a distinct message; everything else generic.
+      if (res.status === 429) {
+        toast.error("Too many requests — please wait a minute and try again")
+      } else {
+        toast.error(`Could not send reset link (HTTP ${res.status})`)
+      }
+      return
+    }
     setSent(true)
     toast.success("If that email exists, a reset link has been sent.")
   }

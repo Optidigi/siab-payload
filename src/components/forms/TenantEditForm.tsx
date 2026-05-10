@@ -80,6 +80,13 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
       }
       return
     }
+    // FN-2026-0030 — same fix as FN-2026-0012's PageForm patch (commit
+    // 0033768): advance RHF's dirty baseline synchronously so
+    // useNavigationGuard detaches the beforeunload listener within the
+    // same frame. Without `form.reset(values)`, isDirty stays true
+    // through the next render tick and a hard refresh in the ~1s window
+    // after save still triggers the OS-native "Leave site?" prompt.
+    form.reset(values)
     toast.success("Tenant updated")
     if (values.slug !== tenant.slug) {
       // Slug change moves the tenant to a new URL — replace so back button

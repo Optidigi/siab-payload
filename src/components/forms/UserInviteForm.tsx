@@ -33,13 +33,35 @@ export function UserInviteForm({ tenantId }: { tenantId: number | string }) {
 
   const onSubmit = async (v: V) => {
     setPending(true)
-    const res = await inviteUser({ ...v, tenantId })
-    setPending(false)
-    if (!res.ok) { toast.error("Invite failed"); return }
-    toast.success("Invitation sent")
-    setOpen(false)
-    form.reset()
-    router.refresh()
+    // FN-2026-0036 — inviteUser is a server action that THROWS on failure
+    // (Forbidden, duplicate email, validation). Without try/catch the
+    // exception propagates past `setPending(false)` and the button stays
+    // disabled in "Sending..." state forever. Wrap and surface a toast.
+    try {
+      const res = await inviteUser({ ...v, tenantId })
+      if (!res.ok) {
+        // Distinguish field-level error from generic; surface inline if
+        // the server returned a path. Today inviteUser returns { ok, error?, field? } shape.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const r = res as any
+        if (r.field === "email" || r.field === "name") {
+          form.setError(r.field as "email" | "name", { message: r.error || "Invalid" })
+          toast.error(`${r.field}: ${r.error || "Invalid"}`)
+        } else {
+          toast.error(r.error || "Invite failed")
+        }
+        return
+      }
+      toast.success("Invitation sent")
+      setOpen(false)
+      form.reset()
+      router.refresh()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Invite failed"
+      toast.error(msg)
+    } finally {
+      setPending(false)
+    }
   }
 
   return (

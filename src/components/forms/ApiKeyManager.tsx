@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch"
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
 import { Copy, Key } from "lucide-react"
 import { toast } from "sonner"
+import { parsePayloadError } from "@/lib/api"
 import type { User } from "@/payload-types"
 
 export function ApiKeyManager({ user }: { user: User }) {
@@ -26,8 +27,9 @@ export function ApiKeyManager({ user }: { user: User }) {
     })
     setPending(false)
     if (!res.ok) {
-      const txt = await res.text()
-      toast.error("Failed: " + txt.slice(0, 100))
+      // FN-2026-0054 — parsed Payload error message instead of raw text slice
+      const detail = await parsePayloadError(res)
+      toast.error(`Generate failed: ${detail.message}`)
       return
     }
     // FN-2026-0001/0002 fix — surface the generated key IMMEDIATELY before
@@ -53,8 +55,9 @@ export function ApiKeyManager({ user }: { user: User }) {
     })
     setPending(false)
     if (!res.ok) {
-      const txt = await res.text()
-      const msg = "Failed: " + txt.slice(0, 100)
+      // FN-2026-0054 — parsed Payload error message instead of raw text slice
+      const detail = await parsePayloadError(res)
+      const msg = `Disable failed: ${detail.message}`
       toast.error(msg)
       throw new Error(msg)
     }

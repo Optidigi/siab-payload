@@ -1,11 +1,16 @@
 "use client"
 import { useState } from "react"
 import { useForm, FormProvider } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { FieldRenderer } from "@/components/editor/FieldRenderer"
+import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
+import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
+import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import { Settings as SettingsIcon, Palette, Mail, Compass } from "lucide-react"
 
@@ -42,21 +47,86 @@ const navigationFields = [
   ]}
 ]
 
+// FN-2026-0034 — minimal zod schema covering the required + format-validated
+// fields. Other fields (.passthrough so the form doesn't strip optional
+// nested data on save). The collection's server-side validators remain the
+// authority on shape; this gives the user immediate inline feedback for
+// the obvious failures (empty siteName, malformed contactEmail, malformed
+// hex color) without waiting for a server round-trip.
+const settingsSchema = z.object({
+  siteName: z.string().min(1, "Site name is required"),
+  siteUrl: z.string().url("Enter a valid URL (e.g. https://clientasite.nl)"),
+  contactEmail: z.union([
+    z.string().email("Enter a valid email address"),
+    z.literal(""),
+    z.null()
+  ]).optional(),
+  branding: z.object({
+    primaryColor: z.union([
+      z.string().regex(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i, "Hex color (e.g. #2563eb or #25b)"),
+      z.literal(""),
+      z.null()
+    ]).optional()
+  }).passthrough().optional()
+}).passthrough()
+
+type Values = z.infer<typeof settingsSchema>
+
 export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: boolean }) {
   const router = useRouter()
-  const form = useForm({ defaultValues: initial })
+  const form = useForm<Values>({
+    resolver: zodResolver(settingsSchema),
+    defaultValues: initial
+  })
   const [pending, setPending] = useState(false)
+
+  // FN-2026-0050 — guard against accidental nav loss with unsaved settings.
+  // Same shape every other form in the admin uses.
+  const guard = useNavigationGuard(form.formState.isDirty || pending)
 
   const onSubmit = form.handleSubmit(async (values) => {
     setPending(true)
-    const tenantId = initial.tenant?.id ?? initial.tenant
-    const res = await fetch(`/api/site-settings/${initial.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ ...values, tenant: tenantId })
-    })
+    // FN-2026-0056 — never send `tenant` on PATCH. Pre-fix the form spread
+    // `{ ...values, tenant: tenantId }` into the body, which (a) the server
+    // rejects with 500 for any non-matching tenant id (cross-tenant write),
+    // and (b) is meaningless for in-place updates: the row's tenant is
+    // already the current tenant. Strip it.
+    const { tenant: _ignore, id: _idIgnore, ...patchBody } = values as Values & {
+      tenant?: unknown
+      id?: unknown
+    }
+    let res: Response
+    try {
+      res = await fetch(`/api/site-settings/${initial.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patchBody)
+      })
+    } catch {
+      setPending(false)
+      toast.error("Network error — please try again")
+      return
+    }
     setPending(false)
-    if (!res.ok) { toast.error("Save failed"); return }
+    if (!res.ok) {
+      // FN-2026-0034 — surface the field-tied error inline + a useful toast.
+      const detail = await parsePayloadError(res)
+      if (detail.field) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          form.setError(detail.field as any, { type: "server", message: detail.message })
+        } catch {
+          // RHF rejects unknown paths — just toast.
+        }
+        toast.error(`${detail.field}: ${detail.message}`)
+      } else {
+        toast.error(`Save failed: ${detail.message}`)
+      }
+      return
+    }
+    // FN-2026-0051 — clear dirty baseline post-save so navigationGuard
+    // detaches; mirrors PageForm / TenantEditForm post-fix shape.
+    form.reset(values)
     toast.success("Saved")
     router.refresh()
   })
@@ -84,14 +154,6 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
             {/* U1 + U8 / GitHub issue #11 — on mobile, the tablist now spans
                 full width as a 4-col grid with the label visible alongside the
                 icon (was icon-only at 34×29). Desktop keeps the centered
-                w-max layout for density. */}
-            {/* U1 + U8 / GitHub issue #11 — on mobile, the tablist now spans
-                full width as a 4-col grid with the label visible alongside the
-                icon (was icon-only at 34×29). Trigger uses `min-w-0` so the
-                4 columns share width cleanly at the 320 px U2 floor; label
-                `truncate` handles the longest label ("Navigation" ≈ 62 px on
-                a ~71 px cell) by clipping into an ellipsis rather than
-                overflowing into the adjacent tab. Desktop keeps the centered
                 w-max layout for density. */}
             <CardHeader className="border-b p-0">
               <div className="md:flex md:justify-center md:px-0 md:mx-0">
@@ -125,6 +187,11 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
           )}
         </Card>
       </form>
+      <UnsavedChangesDialog
+        open={guard.pending !== null}
+        onCancel={guard.cancel}
+        onConfirm={guard.confirm}
+      />
     </FormProvider>
   )
 }
