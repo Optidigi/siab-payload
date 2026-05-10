@@ -116,29 +116,61 @@ export function MediaGrid({
     )
   }
 
+  const allSelected = items.length > 0 && selectedIds.size === items.length
+  const partialSelected = selectedIds.size > 0 && !allSelected
+
+  const toggleSelectAll = () => {
+    if (allSelected || partialSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(items.map((m) => m.id as number | string)))
+    }
+  }
+
   return (
     <>
-      {!selectable && selectedIds.size > 0 && (
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border bg-background/95 backdrop-blur px-3 py-2 mb-3">
-          <span className="text-sm font-medium">{selectedIds.size} selected</span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              Clear
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              type="button"
-              onClick={() => setBulkConfirmOpen(true)}
-            >
-              Delete {selectedIds.size}
-            </Button>
-          </div>
+      {!selectable && items.length > 0 && (
+        <div
+          className={cn(
+            "sticky top-0 z-10 flex items-center justify-between gap-2 rounded-md border bg-background/95 backdrop-blur px-3 py-2 mb-3",
+            selectedIds.size === 0 && "border-dashed"
+          )}
+        >
+          <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+            <Checkbox
+              checked={allSelected ? true : partialSelected ? "indeterminate" : false}
+              onCheckedChange={toggleSelectAll}
+              aria-label={
+                allSelected
+                  ? "Deselect all media items"
+                  : partialSelected
+                    ? `Deselect all ${selectedIds.size} selected items`
+                    : `Select all ${items.length} media items`
+              }
+            />
+            <span>
+              {allSelected
+                ? `All ${items.length} selected`
+                : partialSelected
+                  ? `${selectedIds.size} of ${items.length} selected`
+                  : "Select all"}
+            </span>
+          </label>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" type="button" onClick={() => setSelectedIds(new Set())}>
+                Clear
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                type="button"
+                onClick={() => setBulkConfirmOpen(true)}
+              >
+                Delete {selectedIds.size}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
