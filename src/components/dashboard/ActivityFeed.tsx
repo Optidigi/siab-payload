@@ -1,7 +1,8 @@
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { StatusPill } from "@/components/shared/StatusPill"
+import { Badge } from "@/components/ui/badge"
+import { statusVariant } from "@/lib/badge-helpers"
 import { relativeTime } from "@/lib/relativeTime"
 import type { ActivityEntry } from "@/lib/activity"
 
@@ -89,7 +90,7 @@ export function ActivityFeed({ entries, mode = "super-admin" }: { entries: Activ
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{e.updatedBy ?? "—"}</TableCell>
-                    <TableCell><StatusPill status={e.status} /></TableCell>
+                    <TableCell><Badge variant={statusVariant(e.status)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{e.status}</Badge></TableCell>
                   </TableRow>
                 )
               })}
@@ -112,7 +113,7 @@ export function ActivityFeed({ entries, mode = "super-admin" }: { entries: Activ
               <>
                 <div className="flex items-center justify-between gap-3 min-w-0">
                   <span className="font-medium truncate min-w-0">{what}</span>
-                  <StatusPill status={e.status} />
+                  <Badge variant={statusVariant(e.status)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{e.status}</Badge>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
                   <span className="truncate min-w-0">{who}</span>

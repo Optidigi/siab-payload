@@ -4,7 +4,8 @@ import { getDashboardStats, getEditsTimeseries, getRecentActivity } from "@/lib/
 import { StatCards } from "@/components/dashboard/StatCards"
 import { EditsChart } from "@/components/dashboard/EditsChart"
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed"
-import { StatusPill } from "@/components/shared/StatusPill"
+import { Badge } from "@/components/ui/badge"
+import { statusVariant } from "@/lib/badge-helpers"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header"
 import { Pencil, FileCheck2, Activity, Inbox, BadgeCheck } from "lucide-react"
@@ -37,7 +38,7 @@ export default async function TenantOverviewPage({ params }: { params: Promise<{
         title={tenant.name}
         subtitle={
           <span className="inline-flex items-center gap-2">
-            <span>{tenant.domain}</span> · <StatusPill status={tenant.status as string} />
+            <span>{tenant.domain}</span> · <Badge variant={statusVariant(tenant.status as string)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{tenant.status as string}</Badge>
           </span>
         }
         action={

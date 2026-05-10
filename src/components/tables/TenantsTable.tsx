@@ -4,7 +4,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table"
-import { StatusPill } from "@/components/shared/StatusPill"
+import { Badge } from "@/components/ui/badge"
+import { statusVariant } from "@/lib/badge-helpers"
 import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -112,7 +113,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => <StatusPill status={getValue() as string} />,
+      cell: ({ getValue }) => { const s = getValue() as string; return <Badge variant={statusVariant(s)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{s}</Badge> },
       meta: { mobilePriority: "secondary" }
     },
     {
