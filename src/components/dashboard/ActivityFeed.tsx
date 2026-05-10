@@ -5,10 +5,27 @@ import { StatusPill } from "@/components/shared/StatusPill"
 import { relativeTime } from "@/lib/relativeTime"
 import type { ActivityEntry } from "@/lib/activity"
 
-// FN-2026-0046 — derive a drill-down href from the activity entry where
-// possible. Pages route to /sites/<slug>/pages/<id>; forms route to the
-// tenant's forms list. Returns null when we can't construct a target.
-function entryHref(e: ActivityEntry): string | null {
+// FN-2026-0046 + FN-2026-0057 — derive a drill-down href from the
+// activity entry where possible. Pages route to /pages/<id>; forms
+// route to /forms; etc.
+//
+// CRITICAL mode awareness (sister of the StatCards FN-0045 reviewer-
+// downgrade in fn-batch-6 — same regression class missed in the same
+// batch on this component): tenant-mode operators (owner/editor/viewer)
+// must NOT be linked to /sites/<slug>/* — those routes gate with
+// `requireRole(["super-admin"])` and would 1s-META-refresh redirect
+// them to /?error=forbidden. For tenant-mode the canonical paths are
+// the slugless host-resolved routes /pages/<id>, /forms, /media,
+// /settings. Super-admin keeps the /sites/<slug>/... shape.
+type Mode = "super-admin" | "tenant"
+function entryHref(e: ActivityEntry, mode: Mode): string | null {
+  if (mode === "tenant") {
+    if (e.type === "page") return `/pages/${e.id}`
+    if (e.type === "form") return "/forms"
+    if (e.type === "media") return "/media"
+    if (e.type === "settings") return "/settings"
+    return null
+  }
   if (!e.tenantSlug) return null
   if (e.type === "page") return `/sites/${e.tenantSlug}/pages/${e.id}`
   if (e.type === "form") return `/sites/${e.tenantSlug}/forms`
@@ -28,7 +45,7 @@ function entryHref(e: ActivityEntry): string | null {
  *   - tenant name surfaced inline when present (super-admin views)
  * The desktop Table preserves the existing 5-column shape.
  */
-export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
+export function ActivityFeed({ entries, mode = "super-admin" }: { entries: ActivityEntry[]; mode?: Mode }) {
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Recent activity</CardTitle></CardHeader>
@@ -49,7 +66,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
             </TableHeader>
             <TableBody>
               {entries.map((e) => {
-                const href = entryHref(e)
+                const href = entryHref(e, mode)
                 return (
                   <TableRow
                     key={`${e.type}:${e.id}`}
@@ -86,7 +103,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
             const what = e.type === "page" ? `Updated ${e.title}` : e.title
             const who = e.updatedBy ?? "—"
             const when = relativeTime(e.updatedAt)
-            const href = entryHref(e)
+            const href = entryHref(e, mode)
             // FN-2026-0046 — wrap the entire mobile row in a Link when a
             // target exists. Use <Link> as the rendered <li>'s child so
             // the entire tap target is a single anchor (avoids nested

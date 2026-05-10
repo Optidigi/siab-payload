@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -104,6 +105,7 @@ export const SiteSettings: CollectionConfig = {
     ]}
   ],
   hooks: {
+    beforeValidate: [validateTenantExists],
     afterChange: [projectSettingsToDisk]
   }
 }

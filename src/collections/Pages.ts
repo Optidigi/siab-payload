@@ -10,6 +10,7 @@ import { RichText } from "@/blocks/RichText"
 import { ContactSection } from "@/blocks/ContactSection"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
 import { deletePageFile } from "@/hooks/deleteFileFromDisk"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
 
 // FN-2026-0004 — same client-server validation gap as Tenants.slug. Direct
 // PATCH /api/pages/:id bypassed the form's zod regex; persisted "BAD SLUG!"
@@ -132,7 +133,7 @@ export const Pages: CollectionConfig = {
       admin: { readOnly: true, hidden: false } }
   ],
   hooks: {
-    beforeValidate: [ensureUniqueTenantSlug],
+    beforeValidate: [validateTenantExists, ensureUniqueTenantSlug],
     beforeChange: [({ data, req }) => {
       if (req.user) data.updatedBy = req.user.id
       return data

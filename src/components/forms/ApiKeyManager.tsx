@@ -82,7 +82,7 @@ export function ApiKeyManager({ user }: { user: User }) {
       <Card>
         <CardHeader>
           <CardTitle>New API key</CardTitle>
-          <CardDescription>Copy now — it won&apos;t be shown again. Store it in a password manager or secrets vault.</CardDescription>
+          <CardDescription>Copy now — the admin API will not return this key again. Store it in a password manager or secrets vault.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 rounded-md border bg-muted p-3">
@@ -107,7 +107,7 @@ export function ApiKeyManager({ user }: { user: User }) {
       <CardHeader>
         <CardTitle>API key</CardTitle>
         <CardDescription>
-          API keys let machine clients (e.g. the orchestrator) authenticate as you. Keys are write-once: Payload stores only a hash, so you&apos;ll need to copy each new key the moment it&apos;s generated.
+          API keys let machine clients (e.g. the orchestrator) authenticate as you. Keys are encrypted at rest and the admin API refuses to return them on read — copy each new key the moment it&apos;s generated, since you can&apos;t retrieve it later.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -74,7 +74,7 @@ export default async function DashboardPage({
         }
       ]}/>
       <EditsChart data={series} />
-      <ActivityFeed entries={activity} />
+      <ActivityFeed entries={activity} mode={ctx.mode} />
     </div>
   )
 }
