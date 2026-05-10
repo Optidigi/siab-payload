@@ -13,7 +13,8 @@
     "generate:types": "payload generate:types",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "registry:check": "pnpm dlx shadcn@latest add @siab/avatar @siab/badge @siab/breadcrumb @siab/button @siab/card @siab/chart @siab/checkbox @siab/dialog @siab/dropdown-menu @siab/form @siab/input @siab/label @siab/select @siab/separator @siab/sheet @siab/sidebar @siab/skeleton @siab/sonner @siab/switch @siab/table @siab/tabs @siab/textarea @siab/toggle @siab/toggle-group @siab/tooltip @siab/empty-state @siab/confirm-dialog @siab/typed-confirm-dialog @siab/data-table @siab/page-header @siab/theme-provider @siab/theme-toggle --overwrite --silent && git diff --exit-code src/components/ui src/components/empty-state.tsx src/components/confirm-dialog.tsx src/components/typed-confirm-dialog.tsx src/components/data-table.tsx src/components/page-header.tsx src/components/theme-provider.tsx src/components/theme-toggle.tsx src/styles/globals.css"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

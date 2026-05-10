@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-and-registry-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      # registry:check pulls every @siab item the migration installs, then
+      # asserts no diff. A failing diff means someone hand-edited a registry
+      # primitive (or the registry shipped an update). Either fix in
+      # ~/Desktop/design-systems source + redeploy, or `pnpm registry:check`
+      # locally to bake the update into this PR.
+      - name: Registry drift check
+        run: pnpm registry:check
