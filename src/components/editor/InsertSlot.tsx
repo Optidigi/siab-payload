@@ -14,16 +14,30 @@ import { cn } from "@/lib/utils"
  */
 export function InsertSlot({ onClick, label = "Add" }: { onClick: () => void; label?: string }) {
   return (
+    // Wrapper height stays small (h-2 desktop, h-2.5 mobile) so the visual
+    // gap between blocks remains the "very thin small" affordance issue #13
+    // asks for. The absolutely positioned button extends OUTSIDE the wrapper
+    // line on mobile to give a 44-px tap target (U1 floor) without inflating
+    // the visual gap. On desktop the original hover-reveal pill height stays.
     <div className="group relative flex h-2 max-md:h-2.5 items-center">
       <button
         type="button"
         onClick={onClick}
         aria-label={label}
-        // Hover-reveal on pointer devices; permanently visible on touch (no
-        // hover state to trigger the reveal). Without this, touch users
-        // would only have the trailing "+ Add block" button and couldn't
-        // insert between existing blocks at all.
-        className="absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+        className={cn(
+          // U8 (UX-2026-0030) — `[@media(hover:none)]:opacity-100` was
+          // unreliable: Chromium reports `hover: hover` even at 375 px
+          // viewport in devtools-mobile mode + on some real touch devices
+          // with mouse-over-touch. Tying visibility to the `md` breakpoint
+          // (`max-md:opacity-100`) captures the actual UX dimension —
+          // phone always shows the affordance; desktop keeps the subtle
+          // hover-reveal per issue #13's design intent.
+          "absolute inset-x-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100 focus-visible:opacity-100 max-md:opacity-100",
+          // U1 — 44-px hit target on mobile via padding above + below the
+          // wrapper line. Visual pill (the inner <span>) stays small, but
+          // the BUTTON itself is tall enough to tap reliably.
+          "max-md:h-11 max-md:-my-4"
+        )}
       >
         <span className={cn(
           "inline-flex items-center gap-1 rounded-full border border-dashed border-border bg-background px-2 py-0.5 text-xs text-muted-foreground shadow-sm hover:border-primary hover:text-primary",

@@ -90,10 +90,39 @@ function countLeafErrors(node: unknown): number {
   return total
 }
 
+/**
+ * FN-2026-0065 (operator-flagged) — RHF's `dirtyFields` is a nested
+ * object that mirrors the form schema:
+ *   { title: true, blocks: [{ headline: true }, { subheadline: true }],
+ *     seo: { title: true } }
+ * Counting top-level keys (`Object.keys(dirtyFields).length`) collapses
+ * every block-level edit under a single `blocks` key — so editing 5
+ * fields inside blocks shows "1 unsaved" forever, looking exactly like
+ * the dirty tracker is broken. Recurse to leaf-count instead, mirroring
+ * `countLeafErrors` above.
+ */
+function countLeafDirty(node: unknown): number {
+  if (node === undefined || node === null) return 0
+  if (node === true) return 1
+  if (node === false) return 0
+  if (typeof node !== "object") return 0
+  let total = 0
+  if (Array.isArray(node)) {
+    for (const item of node) total += countLeafDirty(item)
+  } else {
+    for (const v of Object.values(node as Record<string, unknown>)) {
+      total += countLeafDirty(v)
+    }
+  }
+  return total
+}
+
 const schema = z.object({
-  title: z.string().min(1),
+  title: z.string().min(1, "Title is required"),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(["draft", "published"], {
+    message: "Select draft or published"
+  }),
   blocks: z.array(z.any()),
   // `.nullish()` (T | null | undefined) is load-bearing — Postgres returns
   // `null` for unset optional text columns inside groups, and `payload-types`
@@ -126,15 +155,34 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const [previewMode, setPreviewMode] = useState<PreviewMode>(() => {
-    if (typeof window === "undefined") return "hidden"
-    const stored = window.localStorage.getItem("page-editor:preview-mode")
-    return stored === "side" || stored === "fullscreen" ? stored : "hidden"
-  })
+  // FN-2026-0066 — pre-fix `useState(() => localStorage.getItem(...))` was
+  // a classic SSR/CSR hydration mismatch source: server returns "hidden"
+  // (no localStorage), client returns the persisted "side" or "fullscreen"
+  // value → server's DOM has no side-preview / splitter; client's DOM
+  // does → throwOnHydrationMismatch fires on first render. The trigger
+  // the operator observed ("after saving") is actually downstream:
+  // router.refresh() after save re-runs the server component which emits
+  // the SSR shape again, then a click triggers selective hydration which
+  // hits the mismatch.
+  //
+  // Fix: render with the SSR default ("hidden" / 40) on first mount,
+  // then load localStorage in a post-mount useEffect. The brief flash
+  // of "hidden" before localStorage applies (~1 frame) is the price of
+  // hydration consistency. `previewModeHydrated` flag prevents the
+  // localStorage-write effect from clobbering the user's saved value
+  // before we've actually loaded it.
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("hidden")
+  const previewModeHydrated = useRef(false)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("page-editor:preview-mode", previewMode)
+    const stored = window.localStorage.getItem("page-editor:preview-mode")
+    if (stored === "side" || stored === "fullscreen") {
+      setPreviewMode(stored)
     }
+    previewModeHydrated.current = true
+  }, [])
+  useEffect(() => {
+    if (!previewModeHydrated.current) return
+    window.localStorage.setItem("page-editor:preview-mode", previewMode)
   }, [previewMode])
 
   // Split percentage: how much of the editor-area width the preview
@@ -142,22 +190,26 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // different splits; global key acts as a fallback for unsaved pages.
   // Clamp to [20, 60] — 40 is the default.
   const splitStorageKey = `page-editor:preview-split:${initial?.id ?? "new"}`
-  const [splitPct, setSplitPct] = useState<number>(() => {
-    if (typeof window === "undefined") return 40
+  // Same SSR-safe pattern as previewMode above: default 40, hydrate
+  // from localStorage in a post-mount effect.
+  const [splitPct, setSplitPct] = useState<number>(40)
+  const splitPctHydrated = useRef(false)
+  useEffect(() => {
     const perPage = window.localStorage.getItem(splitStorageKey)
     const global = window.localStorage.getItem("page-editor:preview-split")
     const raw = perPage ?? global
-    if (!raw) return 40
-    const n = parseInt(raw, 10)
-    return Number.isFinite(n) && n >= 20 && n <= 60 ? n : 40
-  })
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Write per-page key for precise memory; also update the global key
-      // so new pages inherit the last-used split as a sensible default.
-      window.localStorage.setItem(splitStorageKey, String(splitPct))
-      window.localStorage.setItem("page-editor:preview-split", String(splitPct))
+    if (raw) {
+      const n = parseInt(raw, 10)
+      if (Number.isFinite(n) && n >= 20 && n <= 60) setSplitPct(n)
     }
+    splitPctHydrated.current = true
+  }, [splitStorageKey])
+  useEffect(() => {
+    if (!splitPctHydrated.current) return
+    // Write per-page key for precise memory; also update the global key
+    // so new pages inherit the last-used split as a sensible default.
+    window.localStorage.setItem(splitStorageKey, String(splitPct))
+    window.localStorage.setItem("page-editor:preview-split", String(splitPct))
   }, [splitPct, splitStorageKey])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
@@ -303,9 +355,18 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
     }
     setSubmitError(null)
     setLastSavedAt(Date.now())
-    // Reset RHF dirty state to the just-saved values so SaveStatusBar
-    // transitions out of "dirty" once the save lands.
-    form.reset(values, { keepValues: true })
+    // FN-2026-0012 — the prior shape passed `{ keepValues: true }`, which
+    // keeps the *current* DOM input values but does NOT advance RHF's dirty
+    // baseline reliably across all field types (RHF's diff is per-renderer
+    // and `keepValues` skips the per-field reset path that updates the
+    // dirty-comparison baseline). Result: `formState.isDirty` could stay
+    // true for the next render tick. The useNavigationGuard hook keys off
+    // that flag, so a hard refresh in the ~1s window after save still
+    // triggered the browser-native "Leave site?" prompt. Resetting WITHOUT
+    // keepValues uses the just-submitted `values` as both the input snapshot
+    // AND the new clean baseline — `isDirty` flips to false synchronously
+    // and the beforeunload listener detaches on the same frame.
+    form.reset(values)
     toast.success(values.status === "published" ? "Published" : "Saved")
     if (!initial) {
       const json = await res.json()
@@ -370,7 +431,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // { blocks: [{ headline: { message } }, ...] }, so a top-level
   // Object.keys() count would collapse all block errors to 1.
   const errorCount = countLeafErrors(form.formState.errors)
-  const dirtyCount = Object.keys(form.formState.dirtyFields).length
+  const dirtyCount = countLeafDirty(form.formState.dirtyFields)
   let saveStatus: SaveStatus = "idle"
   if (pending) saveStatus = "saving"
   else if (errorCount > 0) saveStatus = "error"
@@ -432,10 +493,15 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   )
 
   // Danger zone section — reused in both side-mode column and hidden-mode grid.
+  // WCAG 1.4.3 — text colours dropped to `foreground` so they meet the 4.5:1
+  // ratio against the `bg-destructive/5` composited card. The destructive cue
+  // is still conveyed by the section's red border, the destructive Button, and
+  // the surrounding bg tint — moving the heading off `text-destructive` does
+  // not weaken the affordance for sighted users.
   const dangerZone = (
     <section className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
-      <h2 className="text-base font-semibold text-destructive">Danger zone</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
+      <h2 className="text-base font-semibold text-foreground">Danger zone</h2>
+      <p className="mt-2 text-sm text-foreground">
         {initial ? (
           <>
             Deleting page <strong>{initial.title}</strong> removes the page and any
@@ -496,7 +562,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
         */}
         {showSideInFlow && (
           <header className="hidden md:flex shrink-0 items-end gap-4 border-b bg-background px-4 py-3">
-            <PageMetaInline control={controlAny} />
+            <PageMetaInline control={controlAny} setValue={form.setValue} getValues={form.getValues} />
             {form.watch("status") === "published" && form.watch("slug") && (
               <>
                 <Button variant="ghost" size="icon" type="button" asChild title="View live">
@@ -530,22 +596,11 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             !showSideInFlow && "flex-1",
           )}
         >
-          {/*
-            Snap guide lines. Render during drag only in side mode so the
-            operator can see where the four snap points (30/40/50/60%) land.
-            Positioned as absolute children against the container row (which
-            has `position: relative`). The guide lines are at X = pct% from
-            the RIGHT edge (preview occupies the right side), so left =
-            (100 - p)%.
-          */}
-          {showSideInFlow && isDragging && [30, 40, 50, 60].map((p) => (
-            <span
-              key={p}
-              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-[9]"
-              style={{ left: `${100 - p}%` }}
-              aria-hidden
-            />
-          ))}
+          {/* FN-2026-0064 — operator: the snap-guide vertical lines that
+              appeared during drag (30/40/50/60% positions) were ugly and
+              counterintuitive. Removed entirely. The snap behaviour itself
+              still fires on release; the visual hint that the snap was about
+              to happen is gone. */}
           {/*
             Editor column. `min-w-0` is mandatory to break the flex
             min-content chain — without it, intrinsic widths of nested
@@ -614,7 +669,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                               <FormControl>
                                 <Input
                                   inputMode="url"
-                                  autoCapitalize="off"
+                                  autoCapitalize="none"
                                   autoCorrect="off"
                                   spellCheck={false}
                                   {...field}
@@ -651,7 +706,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                               <FormControl>
                                 <Input
                                   inputMode="url"
-                                  autoCapitalize="off"
+                                  autoCapitalize="none"
                                   autoCorrect="off"
                                   spellCheck={false}
                                   {...field}

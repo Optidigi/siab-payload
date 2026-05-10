@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check, Copy } from "lucide-react"
@@ -7,10 +7,48 @@ import { toast } from "sonner"
 
 type Step = { id: string; title: string; description: React.ReactNode; copy?: string }
 
+// FN-2026-0008 — persist checklist state in localStorage so the multi-day,
+// multi-system onboarding work survives reloads. Per-browser, per-tenant.
+// Cross-device persistence (e.g. operator switches machines) would require
+// a backing store on Tenant; that's the appropriate next step but out of
+// scope for this incremental fix.
+const lsKey = (tenantId: number | string) => `siab.onboarding.${tenantId}`
+
+const SEED: Record<string, boolean> = { "tenant-record": true }
+
 export function OnboardingChecklist({
   tenant, vpsIp
 }: { tenant: { domain: string; slug: string; id: number | string }; vpsIp: string }) {
-  const [done, setDone] = useState<Record<string, boolean>>({ "tenant-record": true })
+  // Initial state ALWAYS uses SEED — localStorage is unavailable during the
+  // SSR pass and the first client render must match the server output to
+  // avoid a hydration mismatch warning. The useEffect below merges in the
+  // persisted state immediately after mount.
+  const [done, setDone] = useState<Record<string, boolean>>(SEED)
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(lsKey(tenant.id))
+      if (!raw) return
+      const parsed = JSON.parse(raw)
+      if (parsed && typeof parsed === "object") {
+        // SEED's "tenant-record": true is non-overridable — that step is
+        // implicitly done by virtue of the tenant existing. Other steps
+        // come from the persisted shape.
+        setDone({ ...SEED, ...parsed })
+      }
+    } catch {
+      // Quota / corrupt JSON — ignore; user keeps the seed.
+    }
+  }, [tenant.id])
+  const toggle = (id: string) =>
+    setDone((d) => {
+      const next = { ...d, [id]: !d[id] }
+      try {
+        window.localStorage.setItem(lsKey(tenant.id), JSON.stringify(next))
+      } catch {
+        // Quota exceeded — toggle stays in memory; no toast (low value).
+      }
+      return next
+    })
 
   const npmConfig = JSON.stringify({
     domain_names: [`admin.${tenant.domain}`],
@@ -52,7 +90,7 @@ export function OnboardingChecklist({
           <CardContent className="p-4 flex items-start gap-3">
             <button
               type="button"
-              onClick={() => setDone((d) => ({ ...d, [s.id]: !d[s.id] }))}
+              onClick={() => toggle(s.id)}
               className={`mt-0.5 h-5 w-5 rounded-full border flex items-center justify-center ${done[s.id] ? "bg-emerald-500/20 border-emerald-500/30 text-emerald-500" : "border-muted-foreground"}`}
               aria-label={done[s.id] ? "Mark incomplete" : "Mark done"}
             >

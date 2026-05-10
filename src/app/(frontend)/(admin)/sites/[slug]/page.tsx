@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getDashboardStats, getEditsTimeseries, getRecentActivity } from "@/lib/activity"
 import { StatCards } from "@/components/dashboard/StatCards"
@@ -10,6 +11,12 @@ import { Pencil, FileCheck2, Activity, Inbox, BadgeCheck } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireRole } from "@/lib/authGate"
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const tenant = await getTenantBySlug(slug)
+  return { title: tenant?.name ?? "Tenant" }
+}
 
 export default async function TenantOverviewPage({ params }: { params: Promise<{ slug: string }> }) {
   await requireRole(["super-admin"])

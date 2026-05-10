@@ -4,6 +4,7 @@ import path from "path"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { projectMediaToDisk } from "@/hooks/projectToDisk"
 import { deleteMediaFile } from "@/hooks/deleteFileFromDisk"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
 
 // Audit finding #15 (P3, T8) — pre-empt the (tenant_id, filename) unique-index
 // violation surfaced by `20260509_media_tenant_filename_unique` with a clean
@@ -107,7 +108,7 @@ export const Media: CollectionConfig = {
     { name: "caption", type: "text" }
   ],
   hooks: {
-    beforeValidate: [ensureUniqueTenantFilename],
+    beforeValidate: [validateTenantExists, ensureUniqueTenantFilename],
     afterChange: [projectMediaToDisk],
     afterDelete: [deleteMediaFile]
   }

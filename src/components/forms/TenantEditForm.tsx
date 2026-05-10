@@ -21,10 +21,12 @@ import type { Tenant } from "@/payload-types"
 // (lowercase ASCII + digits + hyphens) — keep in sync with src/collections/Tenants.ts
 // if that ever validates more strictly.
 const schema = z.object({
-  name: z.string().min(2),
+  name: z.string().min(2, "Name must be at least 2 characters"),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
-  domain: z.string().min(3),
-  status: z.enum(["provisioning", "active", "suspended", "archived"]),
+  domain: z.string().min(3, "Enter a domain (at least 3 characters, e.g. clientasite.nl)"),
+  status: z.enum(["provisioning", "active", "suspended", "archived"], {
+    message: "Select a status"
+  }),
   siteRepo: z.string().optional(),
   notes: z.string().optional()
 })
@@ -78,6 +80,13 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
       }
       return
     }
+    // FN-2026-0030 — same fix as FN-2026-0012's PageForm patch (commit
+    // 0033768): advance RHF's dirty baseline synchronously so
+    // useNavigationGuard detaches the beforeunload listener within the
+    // same frame. Without `form.reset(values)`, isDirty stays true
+    // through the next render tick and a hard refresh in the ~1s window
+    // after save still triggers the OS-native "Leave site?" prompt.
+    form.reset(values)
     toast.success("Tenant updated")
     if (values.slug !== tenant.slug) {
       // Slug change moves the tenant to a new URL — replace so back button
@@ -117,7 +126,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
               <FormControl>
                 <Input
                   inputMode="url"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
                   {...field}
@@ -134,7 +143,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
                 <Input
                   type="url"
                   inputMode="url"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   placeholder="clientasite.nl"
                   {...field}
@@ -170,17 +179,20 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
         </form>
       </Form>
 
+      {/* WCAG 1.4.3 — text colours dropped to `foreground` so they meet 4.5:1
+          against bg-destructive/5 over the card. Destructive cue preserved by
+          the section's red border + bg tint + the destructive Delete button. */}
       <section className="rounded-md border border-destructive/40 bg-destructive/5 p-4">
-        <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h2 className="text-sm font-semibold text-foreground">Danger zone</h2>
+        <p className="mt-2 text-sm text-foreground">
           Deleting <strong>{tenant.name}</strong> permanently removes the tenant and{" "}
           <span className="font-medium">all associated content</span> (cascades at the
           database level). This cannot be undone.
         </p>
-        <p className="mt-3 text-xs text-muted-foreground">
+        <p className="mt-3 text-xs text-foreground">
           Counts at page load — anything added since may also be wiped:
         </p>
-        <ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">
+        <ul className="mt-1 list-disc pl-5 text-sm text-foreground">
           <li>{counts.pages} page{counts.pages === 1 ? "" : "s"}</li>
           <li>{counts.media} media file{counts.media === 1 ? "" : "s"}</li>
           <li>{counts.forms} form submission{counts.forms === 1 ? "" : "s"}</li>
@@ -205,9 +217,9 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
         description={
           <>
             About to delete tenant <strong>{tenant.name}</strong> ({tenant.domain}). This
-            cascade-deletes <strong>{counts.pages}</strong> pages,{" "}
-            <strong>{counts.media}</strong> media files,{" "}
-            <strong>{counts.forms}</strong> form submissions, and removes the tenant's
+            cascade-deletes <strong>{counts.pages}</strong> page{counts.pages === 1 ? "" : "s"},{" "}
+            <strong>{counts.media}</strong> media file{counts.media === 1 ? "" : "s"},{" "}
+            <strong>{counts.forms}</strong> form submission{counts.forms === 1 ? "" : "s"}, and removes the tenant's
             on-disk dir. Irreversible.
           </>
         }

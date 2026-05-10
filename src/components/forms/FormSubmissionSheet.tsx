@@ -41,7 +41,22 @@ export function FormSubmissionSheet({
             </Select>
           </div>
           <div><div className="text-muted-foreground">Form</div><div>{form.formName}</div></div>
-          {form.pageUrl && <div><div className="text-muted-foreground">Page</div><div className="truncate">{form.pageUrl}</div></div>}
+          {form.pageUrl && (
+            <div>
+              <div className="text-muted-foreground">Page</div>
+              {/* FN-2026-0040 — wrap pageUrl in an anchor so triage can
+                  click through to the source page. External (cross-
+                  origin) link — open in new tab + noopener for safety. */}
+              <a
+                href={form.pageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="truncate block underline hover:text-foreground"
+              >
+                {form.pageUrl}
+              </a>
+            </div>
+          )}
           <div><div className="text-muted-foreground">Name</div><div>{form.name ?? "—"}</div></div>
           <div><div className="text-muted-foreground">Email</div><div>{form.email ?? "—"}</div></div>
           <div><div className="text-muted-foreground">Message</div><pre className="whitespace-pre-wrap text-xs bg-muted p-2 rounded">{form.message ?? ""}</pre></div>

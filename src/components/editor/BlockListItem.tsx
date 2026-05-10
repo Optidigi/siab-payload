@@ -159,27 +159,41 @@ export function BlockListItem({
   }
 
   return (
+    // WCAG 4.1.2 — outer container is a non-interactive <div>. dnd-kit's
+    // `attributes` (which include role="button" + aria-roledescription="sortable"
+    // + aria-describedby for kbd-drag descriptions) move down to the explicit
+    // drag-handle button per dnd-kit's drag-handle pattern. ArrowUp/Down kbd
+    // reorder still fires from `onKeyDown` here because keydown bubbles up
+    // from any focused inner element (drag handle, collapse, actions) and the
+    // hook ignores keys originating in INPUT/TEXTAREA/SELECT/contenteditable.
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border bg-card outline-none focus-visible:ring-2 focus-visible:ring-ring transition-transform",
+        "rounded-md border bg-card transition-transform",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-muted/40",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
       data-dragging={isDragging || undefined}
       data-pressed={isPressed || undefined}
-      {...attributes}
       onKeyDown={kbd.onKeyDown}
-      tabIndex={kbd.tabIndex}
       aria-label={`Block ${index + 1}: ${typeof typedConfig?.labels?.singular === "string" ? typedConfig.labels.singular : blockSlug}`}
     >
-      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-3 max-md:py-2.5 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
+      {/* Header layout: drag handle + icon + name on the LEFT; collapse
+          chevron + Actions menu on the RIGHT. Per GitHub issue #14, the
+          chevron belongs adjacent to the Actions menu, not in the leftmost
+          cluster — visually groups "controls" together and gives the name
+          its own breathing room. */}
+      {/* UX-2026-0027 — header strip tightened on mobile (px-2, py-2) so the
+          right-cluster (chevron + Actions) sits flush against the card edge,
+          mirroring the left-cluster's tightness. */}
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] bg-background rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
-            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
+            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             aria-label="Drag to reorder block"
+            {...attributes}
             {...restListeners}
             onPointerDown={combinedPointerDown}
             onPointerUp={cancelPress}
@@ -187,14 +201,6 @@ export function BlockListItem({
             onPointerMove={onHandlePointerMove}
           >
             <GripVertical className="h-4 w-4"/>
-          </button>
-          <button
-            type="button"
-            onClick={() => setOpenPersist(!open)}
-            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
-            aria-label={open ? "Collapse block" : "Expand block"}
-          >
-            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
           </button>
           {typedConfig?.icon && (
             <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
@@ -211,33 +217,43 @@ export function BlockListItem({
             </span>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="max-md:size-11 size-8 shrink-0"
-              aria-label="Block actions"
-            >
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => setSaveAsPresetOpen(true)}>
-              <BookmarkPlus className="h-4 w-4 mr-2" />
-              Save as preset
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onRemove}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete block
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-0 shrink-0">
+          <button
+            type="button"
+            onClick={() => setOpenPersist(!open)}
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
+            aria-label={open ? "Collapse block" : "Expand block"}
+          >
+            {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="max-md:size-11 size-8 shrink-0"
+                aria-label="Block actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => setSaveAsPresetOpen(true)}>
+                <BookmarkPlus className="h-4 w-4 mr-2" />
+                Save as preset
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onRemove}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete block
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       {open && (
         <div className="border-t p-3 space-y-3">

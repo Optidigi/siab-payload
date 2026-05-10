@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canUpdateSettings } from "@/access/roleHelpers"
 import { projectSettingsToDisk } from "@/hooks/projectToDisk"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
 
 // HH:MM 24h matcher. Accepts 00:00–23:59.
 const TIME_HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -10,6 +11,18 @@ const validateHHMM = (val: unknown, { siblingData }: any) => {
   if (siblingData?.closed) return true
   if (val == null || val === "") return "Required when the day is not closed"
   if (typeof val !== "string" || !TIME_HHMM.test(val)) return "Use HH:MM 24h format (e.g. 09:00)"
+  return true
+}
+
+// FN-2026-0004 — primaryColor accepted any free-text string. Validate as a
+// 3- or 6-digit hex color (with leading '#'). Empty is allowed (field is
+// optional — the renderer falls back to a default when unset).
+const HEX_COLOR_REGEX = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i
+const validatePrimaryColor = (val: unknown) => {
+  if (val == null || val === "") return true
+  if (typeof val !== "string" || !HEX_COLOR_REGEX.test(val)) {
+    return "Hex color (e.g. #2563eb or #25b)"
+  }
   return true
 }
 
@@ -38,7 +51,8 @@ export const SiteSettings: CollectionConfig = {
     { name: "contactEmail", type: "email" },
     { name: "branding", type: "group", fields: [
       { name: "logo", type: "upload", relationTo: "media" },
-      { name: "primaryColor", type: "text", admin: { description: "Hex (e.g. #2563eb)" } }
+      { name: "primaryColor", type: "text", validate: validatePrimaryColor,
+        admin: { description: "Hex (e.g. #2563eb)" } }
     ]},
     { name: "contact", type: "group", fields: [
       { name: "phone", type: "text" },
@@ -91,6 +105,7 @@ export const SiteSettings: CollectionConfig = {
     ]}
   ],
   hooks: {
+    beforeValidate: [validateTenantExists],
     afterChange: [projectSettingsToDisk]
   }
 }

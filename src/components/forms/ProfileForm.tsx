@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { RoleBadge } from "@/components/shared/RoleBadge"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
+import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -58,10 +59,17 @@ export function ProfileForm({ user }: { user: User }) {
     })
     setNamePending(false)
     if (!res.ok) {
-      const txt = await res.text()
-      toast.error("Update failed: " + txt.slice(0, 100))
+      // FN-2026-0055 — surface a parsed Payload error instead of a raw
+      // response.text().slice. Same `parsePayloadError` helper used
+      // everywhere else.
+      const detail = await parsePayloadError(res)
+      toast.error(`Update failed: ${detail.message}`)
       return
     }
+    // FN-2026-0032 — advance RHF dirty baseline synchronously (sister of
+    // FN-2026-0012). The password-form path already calls passwordForm.
+    // reset(); the name-form path was missing the equivalent.
+    nameForm.reset(v)
     toast.success("Profile updated")
     router.refresh()
   }

@@ -142,6 +142,19 @@ export function MediaGrid({
         </div>
       )}
 
+      {/* FN-2026-0039 — empty-state. Pre-fix the grid rendered an empty
+          div with no message, no Upload CTA. Show a friendly placeholder
+          when there are no items so a fresh tenant communicates "no media
+          yet" rather than "broken page". The PageHeader's Upload button
+          remains the canonical upload affordance. */}
+      {items.length === 0 ? (
+        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <div className="font-medium text-foreground">No media yet</div>
+          <p className="mt-1">
+            Upload images, video, or PDFs using the Upload button at the top of the page.
+          </p>
+        </div>
+      ) : (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {items.map((m) => {
           const count = usageCount(m)
@@ -215,6 +228,7 @@ export function MediaGrid({
           )
         })}
       </div>
+      )}
 
       {usageFor && (
         <MediaUsageDialog

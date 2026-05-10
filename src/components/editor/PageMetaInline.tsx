@@ -1,11 +1,20 @@
 "use client"
 import { useRef } from "react"
-import type { Control } from "react-hook-form"
+import type { Control, UseFormSetValue, UseFormGetValues } from "react-hook-form"
 import { FormField, FormItem, FormControl, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { slugify } from "@/lib/slugify"
 
-type Props = { control: Control<any> }
+type Props = {
+  control: Control<any>
+  // FN-2026-0042 — auto-derive slug from title on Title onBlur, but ONLY
+  // before the user has manually edited the slug. Caller passes set/get
+  // bindings so we can read the current title + write a derived slug
+  // without needing the entire form's useForm result.
+  setValue?: UseFormSetValue<any>
+  getValues?: UseFormGetValues<any>
+}
 
 /**
  * Tailwind classes for the floating error pill in the TopBar variant.
@@ -31,7 +40,17 @@ const FLOATING_ERROR_CLASS =
  * Field names and Input props mirror the existing PageForm hidden-mode cards
  * exactly — no extra autoComplete or onBlur beyond what spread-field provides.
  */
-export function PageMetaInline({ control }: Props) {
+export function PageMetaInline({ control, setValue, getValues }: Props) {
+  // FN-2026-0042 — slug-touched ref persists across renders.
+  const slugTouched = useRef(false)
+  const onTitleBlur = () => {
+    if (!setValue || !getValues) return
+    if (slugTouched.current) return
+    const currentSlug = getValues("slug")
+    if (currentSlug && currentSlug !== "") return
+    const derived = slugify(getValues("title") ?? "")
+    if (derived) setValue("slug", derived, { shouldDirty: true, shouldValidate: true })
+  }
   return (
     <div className="flex flex-1 min-w-0 items-end gap-3">
       <FormField
@@ -40,7 +59,16 @@ export function PageMetaInline({ control }: Props) {
         render={({ field }) => (
           <FormItem className="relative flex-1 min-w-0">
             <FormControl>
-              <Input placeholder="Page title" {...field} value={field.value ?? ""} />
+              <Input
+                placeholder="Page title"
+                {...field}
+                value={field.value ?? ""}
+                onBlur={(e) => {
+                  field.onBlur()
+                  onTitleBlur()
+                  e.preventDefault?.()
+                }}
+              />
             </FormControl>
             <FormMessage className={FLOATING_ERROR_CLASS} />
           </FormItem>
@@ -85,10 +113,14 @@ export function PageMetaInline({ control }: Props) {
                     value={field.value ?? ""}
                     aria-invalid={fieldState.invalid || undefined}
                     inputMode="url"
-                    autoCapitalize="off"
+                    autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
                     className={cn("pl-6")}
+                    onChange={(e) => {
+                      slugTouched.current = true
+                      field.onChange(e)
+                    }}
                   />
                 </div>
               </FormControl>

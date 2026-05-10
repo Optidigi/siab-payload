@@ -99,7 +99,7 @@ export function TypedConfirmDialog({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             autoComplete="off"
-            autoCapitalize="off"
+            autoCapitalize="none"
             spellCheck={false}
             disabled={pending}
             onKeyDown={(e) => {

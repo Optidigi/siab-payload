@@ -6,6 +6,10 @@ export type ActivityEntry = {
   type: "page" | "media" | "settings" | "form"
   id: string
   tenantId: string
+  // FN-2026-0046 — surface tenantSlug so ActivityFeed rows can construct
+  // /sites/<slug>/pages/<id> hrefs. The activity row references a
+  // specific page or form; clicking through is the natural triage action.
+  tenantSlug?: string
   tenantName?: string
   title: string
   status?: string
@@ -27,6 +31,7 @@ export async function getRecentActivity(opts: { tenantId?: string | number | nul
     type: "page",
     id: String(p.id),
     tenantId: String(typeof p.tenant === "object" && p.tenant ? p.tenant.id : p.tenant),
+    tenantSlug: typeof p.tenant === "object" && p.tenant ? p.tenant.slug : undefined,
     tenantName: typeof p.tenant === "object" && p.tenant ? p.tenant.name : undefined,
     title: p.title,
     status: p.status,
@@ -37,6 +42,7 @@ export async function getRecentActivity(opts: { tenantId?: string | number | nul
     type: "form",
     id: String(f.id),
     tenantId: String(typeof f.tenant === "object" && f.tenant ? f.tenant.id : f.tenant),
+    tenantSlug: typeof f.tenant === "object" && f.tenant ? f.tenant.slug : undefined,
     tenantName: typeof f.tenant === "object" && f.tenant ? f.tenant.name : undefined,
     title: `Form submission from ${f.email || "unknown"}`,
     status: f.status,

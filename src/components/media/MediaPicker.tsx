@@ -53,28 +53,55 @@ export function MediaPicker({ value, onChange, tenantId }: Props) {
 
   useEffect(() => { if (open) reload() }, [open, reload])
 
-  // Boundary normalization: if a parent passes us a populated Media object
-  // (e.g. from a depth>=1 fetch), reduce it to its id so the form holds a
-  // primitive. Prevents Payload upstream bug on next submit (see
-  // PageForm.normalizeUploadId for the matching belt).
+  // FN-2026-0062 — pre-fix this useEffect eagerly normalized a populated
+  // Media object to its bare id by calling `onChange(value.id)` on mount.
+  // Two consequences:
+  //   1. RHF marks the field dirty the moment the form renders, even
+  //      though the user hasn't touched anything — the unsaved-changes
+  //      badge ticks up on page load.
+  //   2. The form value becomes a bare number while the picker's `items`
+  //      list is empty (it only loads when the user opens the sheet), so
+  //      the display lookup `items.find(m => m.id === id)` returns
+  //      undefined and the image visually clears.
+  // The submit-side `normalizeUploadId` in PageForm already handles the
+  // populated→id conversion at PATCH/POST time, which is the ONLY moment
+  // the conversion needs to happen. Eager mount-time normalization was
+  // belt-on-a-belt and harmful.
   //
-  // Loop safety: RHF's `field.onChange` from <Controller> is NOT guaranteed
-  // stable across renders, but the typeof-object guard is what stops the
-  // effect from re-firing — once we've called onChange(value.id), `value`
-  // becomes a primitive and the if-condition is false on the next render.
-  // Do NOT remove that guard; identity churn on `onChange` alone would
-  // otherwise loop forever.
-  useEffect(() => {
-    if (value && typeof value === "object" && "id" in value) {
-      const id = (value as { id: unknown }).id
-      if (typeof id === "number" || typeof id === "string") onChange(id)
-    }
-  }, [value, onChange])
-
-  // The form stores either a Media id (number) OR a populated Media object.
-  // Resolve to a display object if we can find it.
+  // Lazy fetch fallback: when the form value is a bare id (e.g. user
+  // picked an image, saved, server returned id, RSC re-render passed
+  // it back as a number), look up the Media doc once so the display
+  // can render. Cached in resolvedById state so we don't refetch on
+  // every render.
+  const [resolvedById, setResolvedById] = useState<Media | null>(null)
   const valueId = typeof value === "object" && value ? (value as any).id : value
-  const current = items.find((m) => (m.id as any) === valueId) ?? (typeof value === "object" ? (value as Media) : null)
+  useEffect(() => {
+    if (valueId == null) {
+      if (resolvedById !== null) setResolvedById(null)
+      return
+    }
+    // Skip lookup if the form already holds the populated object OR if
+    // the items grid already has it.
+    if (typeof value === "object" && value) return
+    if (items.find((m) => (m.id as any) === valueId)) return
+    if (resolvedById && (resolvedById.id as any) === valueId) return
+    let cancelled = false
+    ;(async () => {
+      const res = await fetch(`/api/media/${valueId}`)
+      if (!res.ok) return
+      const doc = (await res.json()) as Media
+      if (!cancelled) setResolvedById(doc)
+    })()
+    return () => { cancelled = true }
+  }, [valueId, value, items, resolvedById])
+
+  // Resolve display media: prefer the populated object on the form,
+  // then the items grid (after the user has opened the picker), then
+  // the lazy by-id fetch above.
+  const current =
+    (typeof value === "object" && value ? (value as Media) : null) ??
+    items.find((m) => (m.id as any) === valueId) ??
+    (resolvedById && (resolvedById.id as any) === valueId ? resolvedById : null)
 
   return (
     <div className="space-y-2">

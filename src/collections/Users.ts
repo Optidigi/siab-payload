@@ -379,7 +379,34 @@ export const Users: CollectionConfig = {
     // db.updateOne). The hook empties sessions[] when it sees a password-
     // rotation signature, invalidating every pre-rotation JWT for the user
     // (audit-p1 #7 sub-fix B).
-    beforeValidate: [clearSessionsOnPasswordChange]
+    beforeValidate: [clearSessionsOnPasswordChange],
+    // FN-2026-0049 — `sessions` is auto-injected by Payload when
+    // `useSessions: true`. Field-level overrides via the standard `fields`
+    // declaration don't reliably attach (the auto-inject happens AFTER
+    // mergeBaseFields runs; the field-override pattern that works for
+    // apiKey/apiKeyIndex doesn't catch sessions here). Cleanest reliable
+    // fix: an afterRead hook that strips `sessions` from any external
+    // response. Internal session validation runs against the DB row
+    // directly (Payload's jwt strategy reads `user.sessions` from a
+    // findByID(overrideAccess:true) result, not via the REST/GraphQL
+    // surface), so stripping from the public response shape doesn't
+    // break login or session rotation.
+    afterRead: [
+      ({ doc, req }) => {
+        // `req.payloadAPI` is "REST" / "GraphQL" / "local" — Payload sets
+        // this on every request handled by its operation pipeline. Local-
+        // API callers (the JWT strategy's session lookup, our own
+        // server-component queries, etc.) get "local" and must keep the
+        // sessions array intact for sid verification. External REST/
+        // GraphQL callers get the array stripped from the response shape.
+        const api = (req as { payloadAPI?: string } | undefined)?.payloadAPI
+        if (api === "local") return doc
+        if (doc && typeof doc === "object" && "sessions" in doc) {
+          delete (doc as Record<string, unknown>).sessions
+        }
+        return doc
+      }
+    ]
   },
   endpoints: [
     // Audit-p1 #7 sub-fix A (T5) — verified self-service password change.
@@ -522,7 +549,20 @@ export const Users: CollectionConfig = {
     // Do not relax this for self-rotation pressure; that re-arms AMD-2
     // sub-vector B (persistent backdoor across credential rotation).
     { name: "enableAPIKey", type: "checkbox", access: { create: isSuperAdminField, update: isSuperAdminField } },
-    { name: "apiKey",       type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } },
-    { name: "apiKeyIndex",  type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField } }
+    // FN-2026-0029 (BLOCKER) — `apiKey` and `apiKeyIndex` had no field-level
+    // `read` access, so the auto-injected base field's encrypt/decrypt hooks
+    // ran on every external read and the plaintext UUID was returned in
+    // /api/users/me, /api/users/:id, and /api/users responses. Any session
+    // cookie could re-read the key indefinitely from any browser DevTools
+    // network tab — making the ApiKeyManager's "write-once" / "won't be
+    // shown again" copy false.
+    //
+    // Fix: `read: () => false` on both fields. External callers (REST,
+    // GraphQL) get the field stripped. Internal Local-API calls with
+    // `overrideAccess: true` (Payload's authentication strategy itself,
+    // when matching incoming Authorization: users API-Key headers against
+    // apiKeyIndex) bypass field-level access and continue to work.
+    { name: "apiKey",       type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField, read: () => false } },
+    { name: "apiKeyIndex",  type: "text",     access: { create: isSuperAdminField, update: isSuperAdminField, read: () => false } },
   ]
 }

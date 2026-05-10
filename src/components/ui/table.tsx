@@ -5,10 +5,15 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  // WCAG 2.1.1 — when the wrapper overflows horizontally, kbd-only users need
+  // a tabstop on the scroll region itself to reach off-screen columns. Native
+  // ArrowRight then scrolls. tabIndex=0 + a visible focus ring is the
+  // documented axe-core `scrollable-region-focusable` resolution.
   return (
     <div
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={0}
+      className="relative w-full overflow-x-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
     >
       <table
         data-slot="table"

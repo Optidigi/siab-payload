@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { Plus, Copy } from "lucide-react"
+import { parsePayloadError } from "@/lib/api"
 
 const baseSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
+  email: z.string().email("Enter a valid email address"),
+  name: z.string().min(1, "Name is required"),
   password: z.string().min(8, "Min 8 characters"),
-  role: z.enum(["super-admin", "owner", "editor", "viewer"]),
+  role: z.enum(["super-admin", "owner", "editor", "viewer"], {
+    message: "Select a role"
+  }),
   tenantId: z.string().optional(),
   enableAPIKey: z.boolean().default(false)
 })
@@ -74,8 +77,15 @@ export function CreateUserForm() {
     })
     if (!createRes.ok) {
       setPending(false)
-      const txt = await createRes.text()
-      toast.error("Create failed: " + txt.slice(0, 100))
+      // FN-2026-0048 — surface parsed Payload error message instead of
+      // raw JSON envelope. If the error is field-tied, set inline.
+      const detail = await parsePayloadError(createRes)
+      if (detail.field === "email" || detail.field === "name" || detail.field === "password") {
+        form.setError(detail.field as "email" | "name" | "password", { message: detail.message })
+        toast.error(`${detail.field}: ${detail.message}`)
+      } else {
+        toast.error(`Create failed: ${detail.message}`)
+      }
       return
     }
     const createJson = await createRes.json()
@@ -91,8 +101,9 @@ export function CreateUserForm() {
       })
       setPending(false)
       if (!patchRes.ok) {
-        const txt = await patchRes.text()
-        toast.error("User created, but API key set failed: " + txt.slice(0, 80))
+        // FN-2026-0048 — parsed message instead of raw text slice.
+        const detail = await parsePayloadError(patchRes)
+        toast.error(`User created, but API key set failed: ${detail.message}`)
         // Still show what we tried so the operator can retry the PATCH manually
         setCreatedKey({ apiKey: "(failed to set — open the user record and regenerate)", email: v.email })
         return
@@ -154,7 +165,7 @@ export function CreateUserForm() {
                       type="email"
                       autoComplete="email"
                       inputMode="email"
-                      autoCapitalize="off"
+                      autoCapitalize="none"
                       autoCorrect="off"
                       spellCheck={false}
                       enterKeyHint="next"

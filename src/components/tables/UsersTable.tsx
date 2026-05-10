@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import type { User } from "@/payload-types"
 
@@ -75,13 +75,13 @@ export function UsersTable({ data, canManage, emptyState }: { data: User[]; canM
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    size="icon-sm"
+                    size="icon"
                     variant="ghost"
                     type="button"
                     aria-label={`Actions for ${u.email}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <MoreHorizontal className="h-4 w-4" />
+                    <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">

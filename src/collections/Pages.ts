@@ -10,6 +10,19 @@ import { RichText } from "@/blocks/RichText"
 import { ContactSection } from "@/blocks/ContactSection"
 import { projectPageToDisk } from "@/hooks/projectToDisk"
 import { deletePageFile } from "@/hooks/deleteFileFromDisk"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
+
+// FN-2026-0004 — same client-server validation gap as Tenants.slug. Direct
+// PATCH /api/pages/:id bypassed the form's zod regex; persisted "BAD SLUG!"
+// in the audit. Mirror of `src/components/forms/PageForm.tsx` + `TenantForm`.
+const PAGE_SLUG_REGEX = /^[a-z0-9-]+$/
+const validatePageSlug = (val: unknown) => {
+  if (val == null || val === "") return "Slug is required"
+  if (typeof val !== "string" || !PAGE_SLUG_REGEX.test(val)) {
+    return "Lowercase, digits, hyphens only"
+  }
+  return true
+}
 
 // Audit finding #8 (P1, T8) — pre-empt the (tenant_id, slug) unique-index
 // violation surfaced by `20260509_pages_tenant_slug_unique` with a clean
@@ -102,7 +115,7 @@ export const Pages: CollectionConfig = {
   admin: { useAsTitle: "title", defaultColumns: ["title", "slug", "status", "updatedAt"] },
   fields: [
     { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: true,
+    { name: "slug", type: "text", required: true, validate: validatePageSlug,
       admin: { description: "URL slug. Unique per tenant. 'home' for the root page." } },
     { name: "status", type: "select", required: true, defaultValue: "draft",
       options: [
@@ -120,7 +133,7 @@ export const Pages: CollectionConfig = {
       admin: { readOnly: true, hidden: false } }
   ],
   hooks: {
-    beforeValidate: [ensureUniqueTenantSlug],
+    beforeValidate: [validateTenantExists, ensureUniqueTenantSlug],
     beforeChange: [({ data, req }) => {
       if (req.user) data.updatedBy = req.user.id
       return data

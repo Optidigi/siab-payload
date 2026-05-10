@@ -64,7 +64,44 @@ export default buildConfig({
   jobs: {
     tasks: [purgeStaleFormSubmissionsTask],
     autoRun: [{ queue: "default", cron: "* * * * *" }],
-    shouldAutoRun: () => process.env.PAYLOAD_DISABLE_JOBS_AUTORUN !== "1"
+    shouldAutoRun: () => process.env.PAYLOAD_DISABLE_JOBS_AUTORUN !== "1",
+    // FN-2026-0061 — Payload's auto-registered `payload-jobs` collection
+    // ships with NO `access` block, defaulting to "all logged-in users."
+    // Pre-fix any tenant editor / owner / viewer could:
+    //   - GET /api/payload-jobs (list the system queue)
+    //   - POST /api/payload-jobs (queue arbitrary tasks; the configured
+    //     `purgeStaleFormSubmissionsTask` runs with overrideAccess:true
+    //     and crosses tenant scope, so a viewer queueing it forces an
+    //     off-schedule mass-delete of stale form submissions)
+    //   - DELETE /api/payload-jobs/:id (delete the live scheduled job;
+    //     autoRun cron self-heals within ~60s but transient damage is
+    //     real)
+    //
+    // Two layers (BOTH required — they cover different surfaces):
+    //   1. `access` here gates the named endpoints `/api/payload-jobs/run`,
+    //      `/api/payload-jobs/queue`, `/api/payload-jobs/cancel`.
+    //   2. `jobsCollectionOverrides.access` gates the auto-generated
+    //      collection-CRUD surface (the actual exploit path).
+    //
+    // The autoRun cron itself bypasses these gates because it goes
+    // through Payload's runJobs operation with overrideAccess:true
+    // (req.user is null in the cron path; the access functions return
+    // false but Payload's internal scheduler ignores access checks for
+    // its own jobs).
+    access: {
+      run: ({ req }) => req.user?.role === "super-admin",
+      queue: ({ req }) => req.user?.role === "super-admin",
+      cancel: ({ req }) => req.user?.role === "super-admin"
+    },
+    jobsCollectionOverrides: ({ defaultJobsCollection }) => ({
+      ...defaultJobsCollection,
+      access: {
+        read: ({ req }) => req.user?.role === "super-admin",
+        create: ({ req }) => req.user?.role === "super-admin",
+        update: ({ req }) => req.user?.role === "super-admin",
+        delete: ({ req }) => req.user?.role === "super-admin"
+      }
+    })
   },
   typescript: {
     outputFile: path.resolve(dirname, "payload-types.ts")
