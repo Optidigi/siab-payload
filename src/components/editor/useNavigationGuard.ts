@@ -51,6 +51,7 @@ import { useRouter } from "next/navigation"
 export type Pending =
   | { kind: "click"; href: string }
   | { kind: "popstate"; href: string }
+  | { kind: "reload" }
   | null
 
 export type NavigationGuard = {
@@ -71,15 +72,43 @@ export function useNavigationGuard(
   // came from a popstate confirm; the popstate listener will skip its
   // restore-and-reblock branch on the next firing.
   const bypassPopstate = useRef(false)
+  // Set true immediately before our own programmatic `location.reload()`
+  // (after the user clicks "Discard changes" on a keyboard-reload
+  // intercept). The beforeunload listener checks this flag and skips its
+  // preventDefault when set, so the OS-native dialog does NOT fire on top
+  // of our custom one.
+  const bypassUnload = useRef(false)
 
   useEffect(() => {
     if (!when) return
 
     const beforeUnload = (e: BeforeUnloadEvent) => {
+      // Programmatic reload triggered by our own confirm(reload) flow —
+      // suppress the OS-native prompt so the custom dialog is the only
+      // one the user sees.
+      if (bypassUnload.current) return
       e.preventDefault()
       // returnValue is the load-bearing piece; the string is ignored by
       // most browsers but some legacy ones still surface it.
       e.returnValue = message
+    }
+
+    // Intercept keyboard reload (Cmd+R / Ctrl+R / F5) BEFORE the browser
+    // fires its own reload. preventDefault on a keydown for these keys
+    // cancels the reload entirely; we then surface the custom dialog so
+    // the user can confirm or keep editing. The browser TOOLBAR refresh
+    // button is NOT interceptable from JS — beforeunload remains the
+    // only signal there, and the OS-native dialog is mandatory. So this
+    // covers the keyboard path only; it's the most common reload UX.
+    const onReloadKeydown = (e: KeyboardEvent) => {
+      if (!when) return
+      const isCtrlOrCmdR =
+        (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "r"
+      const isF5 = e.key === "F5" && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey
+      if (!isCtrlOrCmdR && !isF5) return
+      e.preventDefault()
+      e.stopPropagation()
+      setPending({ kind: "reload" })
     }
 
     const onClick = (e: MouseEvent) => {
@@ -182,10 +211,14 @@ export function useNavigationGuard(
     // own click handler that intercepts before any document-level
     // bubble-phase listener can run.
     document.addEventListener("click", onClick, true)
+    // keydown for reload-shortcut intercept. Capture phase so we run
+    // before any in-page handler that might stop propagation.
+    document.addEventListener("keydown", onReloadKeydown, true)
     window.addEventListener("popstate", onPopState)
     return () => {
       window.removeEventListener("beforeunload", beforeUnload)
       document.removeEventListener("click", onClick, true)
+      document.removeEventListener("keydown", onReloadKeydown, true)
       window.removeEventListener("popstate", onPopState)
     }
     // `router` is stable across renders in Next.js 13+ App Router —
@@ -197,6 +230,14 @@ export function useNavigationGuard(
 
   const confirm = () => {
     if (!pending) return
+    if (pending.kind === "reload") {
+      // Suppress beforeunload during our own programmatic reload so the
+      // OS-native prompt does NOT show on top of the (now-confirming)
+      // custom dialog.
+      bypassUnload.current = true
+      window.location.reload()
+      return
+    }
     if (pending.kind === "popstate") {
       bypassPopstate.current = true
       // Two cases — both leave us sitting on a fresh sentinel above the
@@ -225,8 +266,12 @@ export function useNavigationGuard(
 
   const cancel = () => {
     // For popstate the URL is already restored by the listener's
-    // pushState; for click we never navigated. Either way, just clear
-    // the pending state.
+    // pushState; for click we never navigated; for reload we never
+    // called location.reload. Either way, clear pending state. Reset
+    // bypassUnload defensively — it's only ever set inside confirm()'s
+    // reload branch, but make the invariant ("true only between
+    // confirm-reload and the actual unload") explicit.
+    bypassUnload.current = false
     setPending(null)
   }
 
