@@ -1,10 +1,11 @@
 import "@/styles/globals.css"
 import type { Metadata } from "next"
-import { JetBrains_Mono } from "next/font/google"
+import { Roboto, IBM_Plex_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" })
+const sans = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-sans" })
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.
 // Pages without a `metadata.title` export inherit `default`. Pages with one
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={mono.variable}>
+    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
