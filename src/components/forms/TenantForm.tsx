@@ -83,7 +83,7 @@ export function TenantForm() {
             <FormControl>
               <Input
                 inputMode="url"
-                autoCapitalize="off"
+                autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
                 {...field}
@@ -105,7 +105,7 @@ export function TenantForm() {
               <Input
                 type="url"
                 inputMode="url"
-                autoCapitalize="off"
+                autoCapitalize="none"
                 autoCorrect="off"
                 placeholder="clientasite.nl"
                 {...field}

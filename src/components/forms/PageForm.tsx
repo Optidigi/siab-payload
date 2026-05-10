@@ -155,15 +155,34 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
-  const [previewMode, setPreviewMode] = useState<PreviewMode>(() => {
-    if (typeof window === "undefined") return "hidden"
-    const stored = window.localStorage.getItem("page-editor:preview-mode")
-    return stored === "side" || stored === "fullscreen" ? stored : "hidden"
-  })
+  // FN-2026-0066 — pre-fix `useState(() => localStorage.getItem(...))` was
+  // a classic SSR/CSR hydration mismatch source: server returns "hidden"
+  // (no localStorage), client returns the persisted "side" or "fullscreen"
+  // value → server's DOM has no side-preview / splitter; client's DOM
+  // does → throwOnHydrationMismatch fires on first render. The trigger
+  // the operator observed ("after saving") is actually downstream:
+  // router.refresh() after save re-runs the server component which emits
+  // the SSR shape again, then a click triggers selective hydration which
+  // hits the mismatch.
+  //
+  // Fix: render with the SSR default ("hidden" / 40) on first mount,
+  // then load localStorage in a post-mount useEffect. The brief flash
+  // of "hidden" before localStorage applies (~1 frame) is the price of
+  // hydration consistency. `previewModeHydrated` flag prevents the
+  // localStorage-write effect from clobbering the user's saved value
+  // before we've actually loaded it.
+  const [previewMode, setPreviewMode] = useState<PreviewMode>("hidden")
+  const previewModeHydrated = useRef(false)
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem("page-editor:preview-mode", previewMode)
+    const stored = window.localStorage.getItem("page-editor:preview-mode")
+    if (stored === "side" || stored === "fullscreen") {
+      setPreviewMode(stored)
     }
+    previewModeHydrated.current = true
+  }, [])
+  useEffect(() => {
+    if (!previewModeHydrated.current) return
+    window.localStorage.setItem("page-editor:preview-mode", previewMode)
   }, [previewMode])
 
   // Split percentage: how much of the editor-area width the preview
@@ -171,22 +190,26 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // different splits; global key acts as a fallback for unsaved pages.
   // Clamp to [20, 60] — 40 is the default.
   const splitStorageKey = `page-editor:preview-split:${initial?.id ?? "new"}`
-  const [splitPct, setSplitPct] = useState<number>(() => {
-    if (typeof window === "undefined") return 40
+  // Same SSR-safe pattern as previewMode above: default 40, hydrate
+  // from localStorage in a post-mount effect.
+  const [splitPct, setSplitPct] = useState<number>(40)
+  const splitPctHydrated = useRef(false)
+  useEffect(() => {
     const perPage = window.localStorage.getItem(splitStorageKey)
     const global = window.localStorage.getItem("page-editor:preview-split")
     const raw = perPage ?? global
-    if (!raw) return 40
-    const n = parseInt(raw, 10)
-    return Number.isFinite(n) && n >= 20 && n <= 60 ? n : 40
-  })
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Write per-page key for precise memory; also update the global key
-      // so new pages inherit the last-used split as a sensible default.
-      window.localStorage.setItem(splitStorageKey, String(splitPct))
-      window.localStorage.setItem("page-editor:preview-split", String(splitPct))
+    if (raw) {
+      const n = parseInt(raw, 10)
+      if (Number.isFinite(n) && n >= 20 && n <= 60) setSplitPct(n)
     }
+    splitPctHydrated.current = true
+  }, [splitStorageKey])
+  useEffect(() => {
+    if (!splitPctHydrated.current) return
+    // Write per-page key for precise memory; also update the global key
+    // so new pages inherit the last-used split as a sensible default.
+    window.localStorage.setItem(splitStorageKey, String(splitPct))
+    window.localStorage.setItem("page-editor:preview-split", String(splitPct))
   }, [splitPct, splitStorageKey])
   const [isDragging, setIsDragging] = useState(false)
   const previewWrapperRef = useRef<HTMLDivElement>(null)
@@ -646,7 +669,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                               <FormControl>
                                 <Input
                                   inputMode="url"
-                                  autoCapitalize="off"
+                                  autoCapitalize="none"
                                   autoCorrect="off"
                                   spellCheck={false}
                                   {...field}
@@ -683,7 +706,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
                               <FormControl>
                                 <Input
                                   inputMode="url"
-                                  autoCapitalize="off"
+                                  autoCapitalize="none"
                                   autoCorrect="off"
                                   spellCheck={false}
                                   {...field}

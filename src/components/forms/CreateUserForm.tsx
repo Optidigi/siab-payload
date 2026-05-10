@@ -165,7 +165,7 @@ export function CreateUserForm() {
                       type="email"
                       autoComplete="email"
                       inputMode="email"
-                      autoCapitalize="off"
+                      autoCapitalize="none"
                       autoCorrect="off"
                       spellCheck={false}
                       enterKeyHint="next"

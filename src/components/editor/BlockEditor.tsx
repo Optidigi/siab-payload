@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useState } from "react"
+import { Fragment, useId, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { toast } from "sonner"
 import {
@@ -120,6 +120,15 @@ export function BlockEditor({
     })
   }
 
+  // FN-2026-0066b — pass a stable `id` to DndContext. dnd-kit's
+  // accessibility describer IDs (`DndDescribedBy-N`) auto-increment from
+  // a module-level counter, which diverges between SSR and the client
+  // hydration pass — yielding `aria-describedby="DndDescribedBy-3"` on
+  // server vs `aria-describedby="DndDescribedBy-0"` on client. Passing
+  // an explicit id prefixes those announcement IDs deterministically.
+  // Using React.useId so the prefix is unique per BlockEditor instance
+  // (matters for any future page that mounts multiple editors).
+  const dndId = useId()
   return (
     <div className="space-y-3">
       {fields.length > 0 && (
@@ -129,7 +138,7 @@ export function BlockEditor({
           </Button>
         </div>
       )}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
+      <DndContext id={dndId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} onDragStart={() => tinyVibrate(10)}>
         <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
           {fields.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-4 py-12 px-4 max-md:px-2 text-center border border-dashed rounded-lg">

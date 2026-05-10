@@ -57,7 +57,7 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
             onChange={(e) => setFilter(e.target.value)}
             inputMode="search"
             enterKeyHint="search"
-            autoCapitalize="off"
+            autoCapitalize="none"
             autoCorrect="off"
             className="pl-8 pr-9"
           />

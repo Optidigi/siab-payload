@@ -113,7 +113,7 @@ export function PageMetaInline({ control, setValue, getValues }: Props) {
                     value={field.value ?? ""}
                     aria-invalid={fieldState.invalid || undefined}
                     inputMode="url"
-                    autoCapitalize="off"
+                    autoCapitalize="none"
                     autoCorrect="off"
                     spellCheck={false}
                     className={cn("pl-6")}

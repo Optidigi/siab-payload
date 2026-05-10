@@ -126,7 +126,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
               <FormControl>
                 <Input
                   inputMode="url"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
                   {...field}
@@ -143,7 +143,7 @@ export function TenantEditForm({ tenant, counts }: { tenant: Tenant; counts: Cou
                 <Input
                   type="url"
                   inputMode="url"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   placeholder="clientasite.nl"
                   {...field}

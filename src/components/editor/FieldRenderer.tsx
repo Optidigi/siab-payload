@@ -28,7 +28,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
                   type="email"
                   autoComplete="email"
                   inputMode="email"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
                   {...f}
@@ -38,7 +38,7 @@ export function FieldRenderer({ field, namePrefix = "" }: { field: AnyField; nam
                 <Input
                   type="url"
                   inputMode="url"
-                  autoCapitalize="off"
+                  autoCapitalize="none"
                   autoCorrect="off"
                   {...f}
                   value={f.value ?? ""}
