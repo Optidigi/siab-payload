@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/authGate"
 import { ProfileForm } from "@/components/forms/ProfileForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function ProfilePage() {
   const { user } = await requireAuth()

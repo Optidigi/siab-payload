@@ -5,10 +5,10 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
-  // WCAG 2.1.1 — when the wrapper overflows horizontally, kbd-only users need
-  // a tabstop on the scroll region itself to reach off-screen columns. Native
-  // ArrowRight then scrolls. tabIndex=0 + a visible focus ring is the
-  // documented axe-core `scrollable-region-focusable` resolution.
+  // WCAG 2.1.1 (Level A) — when the wrapper overflows horizontally, kbd-only
+  // users need a tabstop on the scroll region itself to reach off-screen
+  // columns. Native ArrowRight then scrolls. tabIndex=0 + a visible focus
+  // ring is the documented axe-core `scrollable-region-focusable` resolution.
   return (
     <div
       data-slot="table-container"
@@ -119,3 +119,4 @@ export {
   TableCell,
   TableCaption,
 }
+

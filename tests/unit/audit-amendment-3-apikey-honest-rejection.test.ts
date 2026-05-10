@@ -336,7 +336,7 @@ vi.mock("@/lib/authGate", () => ({
   requireAuth: vi.fn(),
   requireRole: vi.fn(),
 }))
-vi.mock("@/components/layout/PageHeader", () => ({
+vi.mock("@/components/page-header", () => ({
   PageHeader: function PageHeaderMock() {
     return null
   },

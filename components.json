@@ -17,5 +17,9 @@
     "lib": "@/lib",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "registries": {
+    "@siab": "https://registries.optidigi.nl/r/v1/siab/{name}.json",
+    "@siab-local": "file:///home/shimmy/Desktop/design-systems/public/r/v1/siab/{name}.json"
+  }
 }

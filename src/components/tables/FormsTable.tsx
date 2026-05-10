@@ -1,8 +1,9 @@
 "use client"
 import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "./DataTable"
-import { StatusPill } from "@/components/shared/StatusPill"
+import { DataTable } from "@/components/data-table"
+import { Badge } from "@/components/ui/badge"
+import { statusVariant } from "@/lib/badge-helpers"
 import { relativeTime } from "@/lib/relativeTime"
 import { FormSubmissionSheet } from "@/components/forms/FormSubmissionSheet"
 import type { Form as FormDoc } from "@/payload-types"
@@ -35,7 +36,7 @@ export function FormsTable({ data, emptyState }: { data: FormDoc[]; emptyState?:
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => <StatusPill status={getValue() as string} />,
+      cell: ({ getValue }) => { const s = getValue() as string; return <Badge variant={statusVariant(s)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{s}</Badge> },
       meta: { mobilePriority: "secondary" }
     }
   ]

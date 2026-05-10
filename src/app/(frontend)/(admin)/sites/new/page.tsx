@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/authGate"
 import { TenantForm } from "@/components/forms/TenantForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function NewTenantPage() {
   await requireRole(["super-admin"])

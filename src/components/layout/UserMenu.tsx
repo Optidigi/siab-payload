@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Key, User } from "lucide-react"
 import { toast } from "sonner"
-import { ThemeSwitcher } from "./ThemeToggle"
+import { ThemeSwitcher } from "@/components/theme-toggle"
 
 type Props = {
   user: { email: string; name?: string | null; role: "super-admin" | "owner" | "editor" | "viewer" }

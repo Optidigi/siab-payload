@@ -16,10 +16,8 @@ type Props = {
 }
 
 /**
- * Shadcn-aligned empty state for tables, lists, and content areas.
- * Use as the empty-rows render of DataTable, the no-blocks state of
- * BlockEditor (already uses this pattern inline), or any "no items"
- * surface across the admin.
+ * Empty state for tables, lists, and content areas. Use as the empty-rows
+ * render of DataTable or any "no items" surface.
  */
 export function EmptyState({ icon, title, description, action, className }: Props) {
   return (

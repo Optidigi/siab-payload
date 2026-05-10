@@ -3,7 +3,8 @@ import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { getPageById } from "@/lib/queries/pages"
 import { PageForm } from "@/components/forms/PageForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { notFound } from "next/navigation"
 
 export async function generateMetadata(
@@ -35,7 +36,7 @@ export default async function EditPage({ params }: { params: Promise<{ slug: str
     <div className="flex flex-col gap-4">
       <PageHeader
         title={page.title}
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
       />
       <PageForm
         initial={page as any}

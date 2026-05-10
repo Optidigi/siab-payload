@@ -1,6 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
-import { ThemeToggle } from "./ThemeToggle"
+import { ThemeToggle } from "@/components/theme-toggle"
 import { UserMenu } from "./UserMenu"
 import type { User } from "@/payload-types"
 

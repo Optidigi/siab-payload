@@ -4,7 +4,7 @@ import { listMedia } from "@/lib/queries/media"
 import { getMediaUsage } from "@/lib/queries/mediaUsage"
 import { MediaGrid } from "@/components/media/MediaGrid"
 import { MediaUploader } from "@/components/media/MediaUploader"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 
 export default async function TenantMediaPage() {
   const { ctx } = await requireAuth()

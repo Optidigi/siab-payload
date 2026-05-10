@@ -8,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { RoleBadge } from "@/components/shared/RoleBadge"
+import { Badge } from "@/components/ui/badge"
+import { roleVariant } from "@/lib/badge-helpers"
 import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
@@ -122,7 +123,7 @@ export function ProfileForm({ user }: { user: User }) {
           </div>
           <div className="grid gap-1">
             <span className="text-sm text-muted-foreground">Role</span>
-            <div><RoleBadge role={user.role}/></div>
+            <div><Badge variant={roleVariant(user.role)}>{user.role}</Badge></div>
           </div>
         </CardContent>
       </Card>

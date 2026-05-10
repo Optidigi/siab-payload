@@ -3,9 +3,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "./DataTable"
-import { StatusPill } from "@/components/shared/StatusPill"
-import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { DataTable } from "@/components/data-table"
+import { Badge } from "@/components/ui/badge"
+import { statusVariant } from "@/lib/badge-helpers"
+import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -40,17 +41,7 @@ export function PagesTable({ data, base, emptyState }: { data: Page[]; base: str
     {
       accessorKey: "title",
       header: "Title",
-      cell: ({ row }) => (
-        // FN-2026-0006 fix (see TenantsTable for the full reasoning):
-        // span on mobile, Link on desktop, gated by Tailwind so only one
-        // is in the AX tree at a time.
-        <>
-          <span className="md:hidden font-medium">{row.getValue("title") as string}</span>
-          <Link href={`${base}/${row.original.id}`} className="hidden md:inline font-medium hover:underline">
-            {row.getValue("title") as string}
-          </Link>
-        </>
-      ),
+      cell: ({ row }) => <span className="font-medium">{row.getValue("title") as string}</span>,
       meta: { mobilePriority: "primary" }
     },
     {
@@ -62,7 +53,7 @@ export function PagesTable({ data, base, emptyState }: { data: Page[]; base: str
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ getValue }) => <StatusPill status={getValue() as string}/>,
+      cell: ({ getValue }) => { const s = getValue() as string; return <Badge variant={statusVariant(s)}><span className="size-1.5 rounded-full bg-current" aria-hidden />{s}</Badge> },
       meta: { mobilePriority: "secondary" }
     },
     {

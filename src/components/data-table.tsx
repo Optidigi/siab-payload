@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, FileQuestion, Search, X } from "lucide-react"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { EmptyState } from "@/components/empty-state"
 import { cn } from "@/lib/utils"
 
 type Props<T> = {
@@ -193,13 +193,39 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 ))}
               </TableHeader>
               <TableBody>
-                {table.getRowModel().rows.map((r) => (
-                  <TableRow key={r.id} data-id={(r.original as any).id}>
-                    {r.getVisibleCells().map((c) => (
-                      <TableCell key={c.id}>{flexRender(c.column.columnDef.cell, c.getContext())}</TableCell>
-                    ))}
-                  </TableRow>
-                ))}
+                {table.getRowModel().rows.map((r) => {
+                  const rHref = getRowHref?.(r.original)
+                  const cells = r.getVisibleCells()
+                  // Identify the row's "primary" cell (the column marked for
+                  // mobile-card primary slot). When getRowHref is provided,
+                  // we wrap that ONE cell's content in a Link — that Link is
+                  // the row's keyboard tabstop and visual nav affordance.
+                  // Callers should NOT render their own <Link> inside the
+                  // primary cell (would nest <a>); render plain text/span.
+                  const primaryColIdx = cells.findIndex(
+                    (c) => c.column.columnDef.meta?.mobilePriority === "primary"
+                  )
+                  return (
+                    <TableRow key={r.id} data-id={(r.original as any).id}>
+                      {cells.map((c, i) => {
+                        const content = flexRender(c.column.columnDef.cell, c.getContext())
+                        const isPrimary = i === primaryColIdx
+                        return (
+                          <TableCell key={c.id}>
+                            {rHref && isPrimary ? (
+                              <Link
+                                href={rHref}
+                                className="block w-full font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                              >
+                                {content}
+                              </Link>
+                            ) : content}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
@@ -243,3 +269,4 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
     </div>
   )
 }
+

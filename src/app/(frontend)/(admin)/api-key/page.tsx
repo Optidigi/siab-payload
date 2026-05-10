@@ -1,6 +1,6 @@
 import { requireAuth } from "@/lib/authGate"
 import { ApiKeyManager } from "@/components/forms/ApiKeyManager"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 // AMD-3 — UI half of the honest-rejection fix. The server hook in

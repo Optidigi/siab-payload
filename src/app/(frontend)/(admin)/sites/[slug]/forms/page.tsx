@@ -2,8 +2,9 @@ import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { listForms } from "@/lib/queries/forms"
 import { FormsTable } from "@/components/tables/FormsTable"
-import { PageHeader } from "@/components/layout/PageHeader"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
+import { EmptyState } from "@/components/empty-state"
 import { Inbox } from "lucide-react"
 import { notFound } from "next/navigation"
 
@@ -17,7 +18,7 @@ export default async function FormsPage({ params }: { params: Promise<{ slug: st
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Forms"
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
       />
       <FormsTable
         data={forms.docs as any}

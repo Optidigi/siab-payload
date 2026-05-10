@@ -3,9 +3,10 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "./DataTable"
-import { RoleBadge } from "@/components/shared/RoleBadge"
-import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { DataTable } from "@/components/data-table"
+import { Badge } from "@/components/ui/badge"
+import { roleVariant } from "@/lib/badge-helpers"
+import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -61,7 +62,7 @@ export function UsersTable({ data, canManage, emptyState }: { data: User[]; canM
     {
       accessorKey: "role",
       header: "Role",
-      cell: ({ getValue }) => <RoleBadge role={getValue() as string} />,
+      cell: ({ getValue }) => { const r = getValue() as string; return <Badge variant={roleVariant(r)}>{r}</Badge> },
       meta: { mobilePriority: "secondary" }
     },
     ...(canManage

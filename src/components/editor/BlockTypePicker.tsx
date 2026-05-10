@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { ConfirmDialog } from "@/components/shared/ConfirmDialog"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { Plus, ChevronDown, ChevronRight, Trash2 } from "lucide-react"
 import { BLOCKS } from "@/blocks/registry"
 import { sanitizePresetData } from "@/lib/blockPresets/sanitize"

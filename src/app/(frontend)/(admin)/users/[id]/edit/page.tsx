@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/authGate"
 import { listTenants } from "@/lib/queries/tenants"
 import { UserEditForm } from "@/components/forms/UserEditForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
 import { notFound } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"

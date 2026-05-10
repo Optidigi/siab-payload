@@ -4,7 +4,8 @@ import { listMedia } from "@/lib/queries/media"
 import { getMediaUsage } from "@/lib/queries/mediaUsage"
 import { MediaGrid } from "@/components/media/MediaGrid"
 import { MediaUploader } from "@/components/media/MediaUploader"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { notFound } from "next/navigation"
 
 export default async function MediaPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -20,7 +21,7 @@ export default async function MediaPage({ params }: { params: Promise<{ slug: st
     <div className="flex flex-col gap-4">
       <PageHeader
         title="Media"
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
         action={<MediaUploader tenantId={tenant.id} />}
       />
       <MediaGrid items={items.docs as any} usage={usage} pagesBaseHref={`/sites/${slug}/pages`} />

@@ -1,11 +1,11 @@
 import "@/styles/globals.css"
 import type { Metadata } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
-import { ThemeProvider } from "@/components/layout/ThemeProvider"
+import { Roboto, IBM_Plex_Mono } from "next/font/google"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
-const sans = Inter({ subsets: ["latin"], variable: "--font-sans" })
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" })
+const sans = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], variable: "--font-sans" })
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.
 // Pages without a `metadata.title` export inherit `default`. Pages with one

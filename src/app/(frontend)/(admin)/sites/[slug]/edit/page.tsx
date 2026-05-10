@@ -1,7 +1,8 @@
 import { requireRole } from "@/lib/authGate"
 import { getTenantBySlug } from "@/lib/queries/tenants"
 import { TenantEditForm } from "@/components/forms/TenantEditForm"
-import { PageHeader } from "@/components/layout/PageHeader"
+import { PageHeader } from "@/components/page-header"
+import { TenantPill } from "@/components/layout/TenantPill"
 import { notFound } from "next/navigation"
 import { getPayload } from "payload"
 import config from "@/payload.config"
@@ -29,7 +30,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ slu
       <PageHeader
         title="Edit tenant"
         subtitle={`${tenant.name} · ${tenant.domain}`}
-        tenant={{ name: tenant.name, slug: tenant.slug }}
+        beforeTitle={<TenantPill tenant={{ name: tenant.name, slug: tenant.slug }} />}
       />
       <TenantEditForm
         // Defensive: force a fresh client form mount when slug changes
