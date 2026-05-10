@@ -546,22 +546,11 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
             !showSideInFlow && "flex-1",
           )}
         >
-          {/*
-            Snap guide lines. Render during drag only in side mode so the
-            operator can see where the four snap points (30/40/50/60%) land.
-            Positioned as absolute children against the container row (which
-            has `position: relative`). The guide lines are at X = pct% from
-            the RIGHT edge (preview occupies the right side), so left =
-            (100 - p)%.
-          */}
-          {showSideInFlow && isDragging && [30, 40, 50, 60].map((p) => (
-            <span
-              key={p}
-              className="absolute top-0 bottom-0 w-px bg-primary/40 pointer-events-none z-[9]"
-              style={{ left: `${100 - p}%` }}
-              aria-hidden
-            />
-          ))}
+          {/* FN-2026-0064 — operator: the snap-guide vertical lines that
+              appeared during drag (30/40/50/60% positions) were ugly and
+              counterintuitive. Removed entirely. The snap behaviour itself
+              still fires on release; the visual hint that the snap was about
+              to happen is gone. */}
           {/*
             Editor column. `min-w-0` is mandatory to break the flex
             min-content chain — without it, intrinsic widths of nested
