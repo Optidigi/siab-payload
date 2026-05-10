@@ -78,25 +78,7 @@ export function TenantsTable({ data, emptyState }: { data: Tenant[]; emptyState?
     {
       accessorKey: "name",
       header: "Name",
-      // FN-2026-0006 fix — DataTable's mobile-card branch wraps the row in
-      // a `<Link aria-label="Open">`, so a nested `<Link>` in the Name cell
-      // produced "<a> cannot be a descendant of <a>" hydration errors on
-      // every page load. Render the cell as a plain `<span>` on mobile (the
-      // row Link captures the click) and `<Link>` on desktop where there's
-      // no row wrapper. Both branches sit in the DOM gated by Tailwind
-      // `md:hidden` / `hidden md:inline`; the inactive one has display:none
-      // so it's removed from the accessibility tree (no double-announce).
-      cell: ({ row }) => {
-        const name = row.getValue("name") as string
-        return (
-          <>
-            <span className="md:hidden font-medium">{name}</span>
-            <Link href={`/sites/${row.original.slug}`} className="hidden md:inline font-medium hover:underline">
-              {name}
-            </Link>
-          </>
-        )
-      },
+      cell: ({ row }) => <span className="font-medium">{row.getValue("name") as string}</span>,
       meta: { mobilePriority: "primary" }
     },
     {
