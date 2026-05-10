@@ -28,6 +28,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Payload types
+        run: |
+          pnpm payload generate:types
+          pnpm payload generate:importmap
+        env:
+          PAYLOAD_SECRET: ci-placeholder
+          DATABASE_URI: postgres://placeholder@placeholder/placeholder
+
       - name: Type check
         run: pnpm typecheck
 
