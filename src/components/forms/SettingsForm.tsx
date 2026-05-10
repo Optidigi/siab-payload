@@ -12,7 +12,7 @@ import { useNavigationGuard } from "@/components/editor/useNavigationGuard"
 import { UnsavedChangesDialog } from "@/components/editor/UnsavedChangesDialog"
 import { parsePayloadError } from "@/lib/api"
 import { toast } from "sonner"
-import { Settings as SettingsIcon, Palette, Mail, Compass } from "lucide-react"
+import { Settings as SettingsIcon, Mail } from "lucide-react"
 
 const generalFields = [
   { name: "siteName", type: "text", label: "Site name", required: true },
@@ -21,35 +21,29 @@ const generalFields = [
   { name: "contactEmail", type: "email", label: "Contact email" }
 ]
 
-// FN-2026-0063 (operator request) — Logo upload removed from the
-// Settings UI: the whitelabel feature is out of scope for current
-// clients, and pre-fix the upload field didn't actually persist (sister
-// of FN-2026-0062 MediaPicker eager-normalize bug). The schema field
-// remains in `src/collections/SiteSettings.ts` for backwards-compat with
-// any persisted data; a future migration may drop the column when the
-// audit-trail is satisfied.
-const brandingFields = [
-  { type: "group", name: "branding", label: "Branding", fields: [
-    { name: "primaryColor", type: "text", label: "Primary color (hex)" }
-  ]}
-]
-
-const contactFields = [
-  { type: "group", name: "contact", label: "Contact", fields: [
+// FN-2026-0067 (operator request) — Branding tab removed entirely. Logo
+// already came out in fn-batch-10 (FN-2026-0063); primaryColor was the
+// only remaining field, and the whitelabel feature is out of scope for
+// current clients. Schema fields in src/collections/SiteSettings.ts kept
+// for backwards-compat with any persisted data; future migration may
+// drop the columns.
+//
+// FN-2026-0067 — Navigation tab removed; nav management is moving to a
+// dedicated /sites/<slug>/nav route (header + footer scopes, page-driven
+// + external link entries). The schema's `navigation` array stays for
+// now until the new nav surface lands.
+//
+// FN-2026-0067 — Contact tab renamed to "Details" since the visible
+// surface is just phone + address + social links representing the
+// site's NAP-style contact info, not a generic "contact us" form.
+const detailsFields = [
+  { type: "group", name: "contact", label: "Details", fields: [
     { name: "phone", type: "tel", label: "Phone" },
     { name: "address", type: "textarea", label: "Address" },
     { type: "array", name: "social", label: "Social links", singularLabel: "link", fields: [
       { name: "platform", type: "text", label: "Platform", required: true },
       { name: "url", type: "url", label: "URL", required: true }
     ]}
-  ]}
-]
-
-const navigationFields = [
-  { type: "array", name: "navigation", label: "Navigation", singularLabel: "menu item", fields: [
-    { name: "label", type: "text", label: "Label", required: true },
-    { name: "href", type: "text", label: "Href", required: true },
-    { name: "external", type: "checkbox", label: "External" }
   ]}
 ]
 
@@ -138,10 +132,8 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
   })
 
   const tabs = [
-    { key: "general",    label: "General",    Icon: SettingsIcon, fields: generalFields },
-    { key: "branding",   label: "Branding",   Icon: Palette,      fields: brandingFields },
-    { key: "contact",    label: "Contact",    Icon: Mail,         fields: contactFields },
-    { key: "navigation", label: "Navigation", Icon: Compass,      fields: navigationFields },
+    { key: "general", label: "General", Icon: SettingsIcon, fields: generalFields },
+    { key: "details", label: "Details", Icon: Mail,         fields: detailsFields },
   ]
 
   return (
@@ -163,7 +155,7 @@ export function SettingsForm({ initial, canEdit }: { initial: any; canEdit: bool
                 w-max layout for density. */}
             <CardHeader className="border-b p-0">
               <div className="md:flex md:justify-center md:px-0 md:mx-0">
-                <TabsList className="max-md:w-full max-md:grid max-md:grid-cols-4 md:mx-auto md:w-max">
+                <TabsList className="max-md:w-full max-md:grid max-md:grid-cols-2 md:mx-auto md:w-max">
                   {tabs.map(({ key, label, Icon }) => (
                     <TabsTrigger
                       key={key}
