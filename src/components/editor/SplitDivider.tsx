@@ -1,6 +1,5 @@
 "use client"
 import { useRef } from "react"
-import { GripVertical } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -13,8 +12,6 @@ type Props = {
 }
 
 const SNAP_POINTS = [30, 40, 50, 60]
-const MIN_PCT = 20
-const MAX_PCT = 60
 
 /**
  * Snap-on-release. Each of the four snap points has a uniform ±2pp deadband:
@@ -29,26 +26,6 @@ function snapTo(pct: number): number {
 }
 
 /**
- * FN-2026-0064 — SplitDivider redesign. Pre-fix the divider was a thin
- * 8px column with a 48px gray pill always in the center; while dragging
- * the entire 8px column tinted in primary/30 — fat tinted bar with no
- * indication of WHERE the divider line will land. Operator feedback:
- * "ugly and works counterintuitively."
- *
- * Post-fix UX:
- *   - Always-visible thin (1px) center line so the operator can see the
- *     editor/preview boundary at a glance.
- *   - Center grip dot using shadcn's GripVertical icon — a clear
- *     "drag me" affordance instead of an ambiguous gray pill.
- *   - Hover: the line thickens to 2px and tints with `bg-primary/40`,
- *     grip dot tints with `text-primary`. No fat full-column shading.
- *   - Drag: the line is solid `bg-primary`, plus a small tooltip-style
- *     pill near the top showing the current percentage (e.g. "42%")
- *     so the operator knows EXACTLY where the divider will land before
- *     releasing.
- *   - Snap-point markers (4 small dots along the line) fade in during
- *     drag at 30/40/50/60% — visual hints for the snap deadbands.
- *
  * Vertical drag-to-resize divider for the side-by-side preview. Lives
  * in-flow as a flex-shrink-0 column between the editor and preview, so
  * its position is determined by sibling widths rather than a `fixed`
@@ -63,7 +40,7 @@ function snapTo(pct: number): number {
  * window.innerWidth) so a fixed-width sidebar or future zoom doesn't
  * skew the percent math.
  *
- * Keyboard a11y: Arrow keys nudge ±5% within the [MIN_PCT, MAX_PCT] clamp.
+ * Keyboard a11y: Arrow keys nudge ±5% within the [20, 60] clamp.
  */
 export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDragging, setIsDragging }: Props) {
   const dragStateRef = useRef<{ startX: number; startPct: number; lastPct: number } | null>(null)
@@ -84,7 +61,7 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     // means a higher pct.
     const containerWidth = containerRef.current?.getBoundingClientRect().width ?? window.innerWidth
     const deltaPct = (deltaX / containerWidth) * -100
-    const next = Math.max(MIN_PCT, Math.min(MAX_PCT, dragStateRef.current.startPct + deltaPct))
+    const next = Math.max(20, Math.min(60, dragStateRef.current.startPct + deltaPct))
     dragStateRef.current.lastPct = next
     setPct(next)
   }
@@ -93,9 +70,9 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     if (!dragStateRef.current) return
     const finalPct = dragStateRef.current.lastPct
     ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
-    // Clamp the snapped result too so a snap target outside [MIN_PCT,MAX_PCT]
+    // Clamp the snapped result too so a snap target outside [20,60]
     // never escapes the new range.
-    setPct(Math.max(MIN_PCT, Math.min(MAX_PCT, snapTo(finalPct))))
+    setPct(Math.max(20, Math.min(60, snapTo(finalPct))))
     dragStateRef.current = null
     setIsDragging(false)
     if (iframeWrapperRef.current) iframeWrapperRef.current.style.pointerEvents = ""
@@ -105,7 +82,7 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
     if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
       e.preventDefault()
       const delta = e.key === "ArrowLeft" ? 5 : -5
-      setPct(Math.max(MIN_PCT, Math.min(MAX_PCT, pct + delta)))
+      setPct(Math.max(20, Math.min(60, pct + delta)))
     }
   }
 
@@ -114,76 +91,20 @@ export function SplitDivider({ pct, setPct, iframeWrapperRef, containerRef, isDr
       role="separator"
       aria-orientation="vertical"
       aria-valuenow={Math.round(pct)}
-      aria-valuemin={MIN_PCT}
-      aria-valuemax={MAX_PCT}
+      aria-valuemin={20}
+      aria-valuemax={60}
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onKeyDown={onKeyDown}
-      // Hit area is wider than the visible line for forgiving targeting,
-      // but pointer-cursor and visuals stay precisely on the line itself.
       className={cn(
-        "group relative w-3 self-stretch flex-shrink-0 z-10 cursor-col-resize",
-        "outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm",
+        "relative w-2 self-stretch flex-shrink-0 z-10 flex items-center justify-center cursor-col-resize",
+        "hover:bg-primary/20 transition-colors",
+        isDragging && "bg-primary/30",
       )}
     >
-      {/* Always-visible thin center line — the actual divider. */}
-      <div
-        className={cn(
-          "absolute inset-y-0 left-1/2 -translate-x-1/2 transition-all",
-          isDragging
-            ? "w-[2px] bg-primary"
-            : "w-px bg-border group-hover:w-[2px] group-hover:bg-primary/60 group-focus-visible:w-[2px] group-focus-visible:bg-primary/60",
-        )}
-        aria-hidden
-      />
-      {/* Snap-point ticks along the line. Hidden by default; fade in
-          while dragging so the operator sees where the snaps are. */}
-      <div
-        className={cn(
-          "absolute inset-y-0 left-1/2 -translate-x-1/2 w-[2px] pointer-events-none transition-opacity",
-          isDragging ? "opacity-100" : "opacity-0",
-        )}
-        aria-hidden
-      >
-        {SNAP_POINTS.map((p) => (
-          <span
-            key={p}
-            className="absolute left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-primary/60"
-            style={{ top: `${100 - p}%` }}
-          />
-        ))}
-      </div>
-      {/* Center grip — visible affordance hint that this column is
-          interactive. Tints on hover/focus to read as "draggable". */}
-      <span
-        className={cn(
-          "absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-          "flex items-center justify-center h-12 w-5 rounded-md",
-          "bg-background border border-transparent transition-colors",
-          isDragging
-            ? "border-primary text-primary bg-background"
-            : "text-muted-foreground/70 group-hover:text-primary group-hover:border-primary/40 group-focus-visible:text-primary group-focus-visible:border-primary/40",
-        )}
-        aria-hidden
-      >
-        <GripVertical className="h-4 w-4" />
-      </span>
-      {/* Live percentage pill while dragging. Sits above the grip so the
-          operator sees the exact split they're about to commit. */}
-      {isDragging && (
-        <div
-          className={cn(
-            "absolute top-2 left-1/2 -translate-x-1/2",
-            "rounded-md border bg-background px-2 py-0.5 text-xs font-medium shadow-sm",
-            "pointer-events-none whitespace-nowrap",
-          )}
-          aria-hidden
-        >
-          {Math.round(pct)}%
-        </div>
-      )}
+      <div className="h-12 w-[3px] rounded-full bg-border" />
     </div>
   )
 }
