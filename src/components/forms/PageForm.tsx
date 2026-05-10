@@ -90,6 +90,33 @@ function countLeafErrors(node: unknown): number {
   return total
 }
 
+/**
+ * FN-2026-0065 (operator-flagged) — RHF's `dirtyFields` is a nested
+ * object that mirrors the form schema:
+ *   { title: true, blocks: [{ headline: true }, { subheadline: true }],
+ *     seo: { title: true } }
+ * Counting top-level keys (`Object.keys(dirtyFields).length`) collapses
+ * every block-level edit under a single `blocks` key — so editing 5
+ * fields inside blocks shows "1 unsaved" forever, looking exactly like
+ * the dirty tracker is broken. Recurse to leaf-count instead, mirroring
+ * `countLeafErrors` above.
+ */
+function countLeafDirty(node: unknown): number {
+  if (node === undefined || node === null) return 0
+  if (node === true) return 1
+  if (node === false) return 0
+  if (typeof node !== "object") return 0
+  let total = 0
+  if (Array.isArray(node)) {
+    for (const item of node) total += countLeafDirty(item)
+  } else {
+    for (const v of Object.values(node as Record<string, unknown>)) {
+      total += countLeafDirty(v)
+    }
+  }
+  return total
+}
+
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
   slug: z.string().regex(/^[a-z0-9-]+$/, "Lowercase, digits, hyphens only"),
@@ -381,7 +408,7 @@ export function PageForm({ initial, tenantId, baseHref, tenantOrigin }: { initia
   // { blocks: [{ headline: { message } }, ...] }, so a top-level
   // Object.keys() count would collapse all block errors to 1.
   const errorCount = countLeafErrors(form.formState.errors)
-  const dirtyCount = Object.keys(form.formState.dirtyFields).length
+  const dirtyCount = countLeafDirty(form.formState.dirtyFields)
   let saveStatus: SaveStatus = "idle"
   if (pending) saveStatus = "saving"
   else if (errorCount > 0) saveStatus = "error"
