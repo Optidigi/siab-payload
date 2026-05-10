@@ -1,10 +1,9 @@
 import "@/styles/globals.css"
 import type { Metadata } from "next"
-import { Poppins, JetBrains_Mono } from "next/font/google"
+import { JetBrains_Mono } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 
-const sans = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-sans" })
 const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono" })
 
 // WCAG 2.4.2 (Page Titled, Level A) — every route gets a non-empty <title>.
@@ -18,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${sans.variable} ${mono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={mono.variable}>
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           {children}
