@@ -1,6 +1,7 @@
 import type { CollectionConfig } from "payload"
 import { canRead, canWrite } from "@/access/roleHelpers"
 import { BLOCKS } from "@/blocks/registry"
+import { validateTenantExists } from "@/hooks/validateTenantExists"
 
 /**
  * Block presets — tenant-scoped, reusable templates for one configured block.
@@ -85,6 +86,7 @@ export const BlockPresets: CollectionConfig = {
     }
   ],
   hooks: {
+    beforeValidate: [validateTenantExists],
     beforeChange: [
       ({ data, req, operation }) => {
         // Only stamp on insert; update operations cannot rewrite createdBy

@@ -56,6 +56,53 @@ test.describe("fn-batch-7 — audit-3 closure", () => {
     expect(result.status).toBeLessThan(500)
   })
 
+  test("FN-2026-0060 — cross-tenant PATCH on Forms returns 400 (audit-4 sister regression)", async ({ page }) => {
+    await loginAsSuperAdmin(page)
+    // First find any forms doc; if none, this test is a smoke check that
+    // the endpoint at least exists (the validate hook only fires when a
+    // doc is actually being PATCHed).
+    const result = await page.evaluate(async () => {
+      const list = await fetch("/api/forms?limit=1")
+      const j = await list.json()
+      const id = j?.docs?.[0]?.id
+      if (id == null) return { skip: true as const }
+      const res = await fetch(`/api/forms/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tenant: 999999 })
+      })
+      return { skip: false as const, status: res.status, body: (await res.text()).slice(0, 500) }
+    })
+    if (result.skip) {
+      test.skip(true, "no forms doc to test against in this env")
+      return
+    }
+    expect(result.status, `Forms cross-tenant PATCH must be 400 (was: ${result.status})`).toBeGreaterThanOrEqual(400)
+    expect(result.status).toBeLessThan(500)
+  })
+
+  test("FN-2026-0060 — cross-tenant PATCH on BlockPresets returns 400", async ({ page }) => {
+    await loginAsSuperAdmin(page)
+    const result = await page.evaluate(async () => {
+      const list = await fetch("/api/block-presets?limit=1")
+      const j = await list.json()
+      const id = j?.docs?.[0]?.id
+      if (id == null) return { skip: true as const }
+      const res = await fetch(`/api/block-presets/${id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ tenant: 999999 })
+      })
+      return { skip: false as const, status: res.status, body: (await res.text()).slice(0, 500) }
+    })
+    if (result.skip) {
+      test.skip(true, "no block-presets doc to test against in this env")
+      return
+    }
+    expect(result.status, `BlockPresets cross-tenant PATCH must be 400 (was: ${result.status})`).toBeGreaterThanOrEqual(400)
+    expect(result.status).toBeLessThan(500)
+  })
+
   test("FN-2026-0058 — same-tenant PATCH still works (regression guard)", async ({ page }) => {
     await loginAsSuperAdmin(page)
     const result = await page.evaluate(async () => {
