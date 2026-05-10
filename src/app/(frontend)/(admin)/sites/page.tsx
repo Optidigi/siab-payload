@@ -3,7 +3,7 @@ import { listTenants } from "@/lib/queries/tenants"
 import { TenantsTable } from "@/components/tables/TenantsTable"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { EmptyState } from "@/components/empty-state"
 import Link from "next/link"
 import { Globe, Plus } from "lucide-react"
 

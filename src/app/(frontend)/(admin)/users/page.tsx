@@ -4,7 +4,7 @@ import { UsersTable } from "@/components/tables/UsersTable"
 import { UserInviteForm } from "@/components/forms/UserInviteForm"
 import { CreateUserForm } from "@/components/forms/CreateUserForm"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { EmptyState } from "@/components/empty-state"
 import { Users } from "lucide-react"
 
 export default async function UsersPage() {

@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ChevronLeft, ChevronRight, FileQuestion, Search, X } from "lucide-react"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { EmptyState } from "@/components/empty-state"
 import { cn } from "@/lib/utils"
 
 type Props<T> = {
@@ -57,7 +57,7 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
             onChange={(e) => setFilter(e.target.value)}
             inputMode="search"
             enterKeyHint="search"
-            autoCapitalize="none"
+            autoCapitalize="off"
             autoCorrect="off"
             className="pl-8 pr-9"
           />
@@ -103,20 +103,35 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                 return p !== "primary" && p !== "action" && p !== "hidden"
               })
               const href = getRowHref?.(row.original)
-              {/* U1 / U8 fix — row-Open Link is now a flex sibling of the
-                  Action column instead of an absolutely positioned overlay.
-                  Two consequences: (a) the Link's bounding box no longer
-                  spans behind the Action button (UX-2026-0006 anchored by
-                  GitHub issue #10), and (b) the layout no longer needs
-                  pointer-events-none / z-index tricks to keep clicks on the
-                  Action column from triggering the Link. The Action button's
-                  own size bump (icon-sm → icon) lands separately in
-                  PagesTable / TenantsTable / UsersTable. */}
-              const inner = (
-                <>
-                  <div className={cn("flex-1 min-w-0 space-y-1", href && "[&_a]:text-inherit [&_a]:no-underline")}>
+              return (
+                <Card
+                  key={row.id}
+                  data-id={(row.original as any).id}
+                  className={cn(
+                    "p-3 flex items-start gap-2 transition-shadow",
+                    href && "relative hover:shadow-md active:scale-[0.99]",
+                  )}
+                >
+                  {href && (
+                    <Link
+                      href={href}
+                      className="absolute inset-0 z-0 rounded-[inherit]"
+                      aria-label="Open"
+                    />
+                  )}
+                  <div
+                    className={cn(
+                      "flex-1 min-w-0 space-y-1",
+                      href && "relative z-[1] pointer-events-none",
+                    )}
+                  >
                     {primary && (
-                      <div className="font-medium truncate">
+                      <div
+                        className={cn(
+                          "font-medium truncate",
+                          href && "[&_a]:pointer-events-none [&_a]:text-inherit [&_a]:no-underline",
+                        )}
+                      >
                         {flexRender(primary.column.columnDef.cell, primary.getContext())}
                       </div>
                     )}
@@ -131,47 +146,14 @@ export function DataTable<T>({ columns, data, filterColumn, filterPlaceholder, e
                       </div>
                     )}
                   </div>
-                </>
-              )
-              return (
-                // UX-2026-0029 — shadcn Card primitive ships with
-                // `flex flex-col gap-6 ... py-6` baked in (its default is
-                // vertical content stacks: header → content → footer). For a
-                // list-row pattern we override:
-                //   • `flex-row items-center gap-2` to lay out horizontally
-                //     (text left, action right) — `flex-row` resolves the
-                //     direction conflict with the Card's `flex-col` via
-                //     tailwind-merge (later wins).
-                //   • `!gap-2` and `!py-3` to override Card's `gap-6` / `py-6`
-                //     defaults — these resolve via tailwind-merge naturally
-                //     since `gap`/`p`/`py` utilities are in their own
-                //     property groups; later wins.
-                // tldr: this Card behaves like a row primitive, not a
-                // structured-content card. shadcn convention for "list of
-                // simple rows" is closer to a plain <div> with card
-                // styling, but we keep Card here for the tokenized hover/
-                // shadow behaviour and `data-slot="card"` attachments.
-                <Card
-                  key={row.id}
-                  data-id={(row.original as any).id}
-                  className={cn(
-                    "flex-row items-center gap-2 px-3 py-3",
-                    href && "hover:shadow-md active:scale-[0.99] transition-shadow",
-                  )}
-                >
-                  {href ? (
-                    <Link
-                      href={href}
-                      aria-label="Open"
-                      className="flex-1 min-w-0 rounded-[inherit] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {inner}
-                    </Link>
-                  ) : (
-                    inner
-                  )}
                   {action && (
-                    <div className="shrink-0">
+                    <div
+                      className={cn(
+                        "shrink-0",
+                        href && "relative z-[2]",
+                      )}
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {flexRender(action.column.columnDef.cell, action.getContext())}
                     </div>
                   )}

@@ -3,9 +3,9 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "./DataTable"
+import { DataTable } from "@/components/data-table"
 import { StatusPill } from "@/components/shared/StatusPill"
-import { TypedConfirmDialog } from "@/components/shared/TypedConfirmDialog"
+import { TypedConfirmDialog } from "@/components/typed-confirm-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,

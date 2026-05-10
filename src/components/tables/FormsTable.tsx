@@ -1,7 +1,7 @@
 "use client"
 import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
-import { DataTable } from "./DataTable"
+import { DataTable } from "@/components/data-table"
 import { StatusPill } from "@/components/shared/StatusPill"
 import { relativeTime } from "@/lib/relativeTime"
 import { FormSubmissionSheet } from "@/components/forms/FormSubmissionSheet"

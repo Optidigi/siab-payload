@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/authGate"
 import { listForms } from "@/lib/queries/forms"
 import { FormsTable } from "@/components/tables/FormsTable"
 import { PageHeader } from "@/components/layout/PageHeader"
-import { EmptyState } from "@/components/shared/EmptyState"
+import { EmptyState } from "@/components/empty-state"
 import { Inbox } from "lucide-react"
 
 export default async function TenantFormsPage() {
