@@ -21,9 +21,15 @@ const generalFields = [
   { name: "contactEmail", type: "email", label: "Contact email" }
 ]
 
+// FN-2026-0063 (operator request) — Logo upload removed from the
+// Settings UI: the whitelabel feature is out of scope for current
+// clients, and pre-fix the upload field didn't actually persist (sister
+// of FN-2026-0062 MediaPicker eager-normalize bug). The schema field
+// remains in `src/collections/SiteSettings.ts` for backwards-compat with
+// any persisted data; a future migration may drop the column when the
+// audit-trail is satisfied.
 const brandingFields = [
   { type: "group", name: "branding", label: "Branding", fields: [
-    { name: "logo", type: "upload", relationTo: "media", label: "Logo" },
     { name: "primaryColor", type: "text", label: "Primary color (hex)" }
   ]}
 ]
