@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `sitegen-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-20). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-30).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-21). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-30).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -148,6 +148,47 @@ Make the entire header row clickable for expand/collapse:
 4. Drag-and-drop semantics must not break: clicking the grip handle to start a drag must NOT trigger the toggle. Verify with the existing `data-[dragging]` and `data-[pressed]` state machinery.
 
 Constraint: registry-pure, token-only.
+
+---
+
+### FE-21 — Animate currently-instant transitions using existing shadcn / tw-animate-css utilities
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (post editor-polish-round-2 smoke)
+**File:** `src/components/editor/BlockListItem.tsx` (open/close mount), `src/components/forms/PageForm.tsx` (preview overlay mount), other instant-toggle surfaces in the editor
+
+#### Description
+Several editor transitions currently snap with no animation:
+- Block expand/collapse — the form pane is conditionally rendered (`{open && <FormPane />}`), so it pops in/out instantly. The outer's `transition-all duration-150` only animates surface colours, not mount/unmount.
+- Preview overlay open/close — switching `previewMode` instantly mounts or unmounts the preview pane.
+- Other modal/sheet toggles that don't use the registry's `Sheet`/`Dialog` (which animate for free).
+
+#### Existing tooling
+`tw-animate-css` is imported in `src/styles/globals.css:2`, exposing utilities like `animate-in`, `animate-out`, `fade-in-0`, `fade-out-0`, `slide-in-from-top-2`, `slide-in-from-bottom-2`, `zoom-in-95`, etc. shadcn `Dialog` and `Sheet` primitives already use these via `data-[state=open]:` / `data-[state=closed]:` classes.
+
+No `Collapsible` primitive in `src/components/ui/` currently — if a proper data-state-driven collapse animation is wanted, pull it from the registry (`pnpm dlx shadcn@latest add @siab/collapsible --overwrite` once available, or upstream contribute to the `@siab/*` registry).
+
+#### Suggested fix shape
+
+Pick one or both:
+
+1. **Block expand/collapse** — easiest path: add `tw-animate-css` mount classes to the form pane:
+   ```tsx
+   {open && (
+     <div className="p-3 space-y-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+       ...
+     </div>
+   )}
+   ```
+   Limitations: this only animates the IN direction (mount). React unmounts immediately on `open=false`, so the OUT direction can't be animated this way without keeping the element mounted. For proper open/close animation, swap to the registry's `Collapsible` primitive (Radix-based, handles both directions via `data-[state=open]:animate-... data-[state=closed]:animate-...`).
+
+2. **Preview overlay** — depending on how `previewMode === "side" | "fullscreen" | "hidden"` is rendered today, either:
+   - Use the existing `Sheet` primitive (already animated) when in side or fullscreen mode.
+   - Or add `animate-in slide-in-from-right duration-200` to the preview pane's container className.
+
+3. **Other surfaces** — audit `src/components/editor/` and `src/components/forms/` for any conditional `{condition && <X />}` rendering of significant visual elements. Each is a candidate for either fade-in/slide animation OR migration to a proper Radix-backed primitive.
+
+Constraint: registry-pure (no edits to `src/components/ui/`), token-only durations/easings if any are added beyond `tw-animate-css` defaults. Prefer registry primitives (`Collapsible`, `Sheet`, `Dialog`) over hand-rolled animations where they already exist.
 
 ---
 
