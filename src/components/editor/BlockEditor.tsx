@@ -73,7 +73,13 @@ export function BlockEditor({
   // sessionStorage hydration runs in the useEffect below; `setBlockOpen`
   // and `setAllOpen` both write through to storage so refresh persists.
   type OpenMap = Record<string, boolean>
-  const [openMap, setOpenMap] = useState<OpenMap>({})
+  const [openMap, setOpenMap] = useState<OpenMap>(() => {
+    const next: OpenMap = {}
+    for (const [i, f] of fields.entries()) {
+      next[f.id] = !isPhone && i === 0
+    }
+    return next
+  })
 
   // Hydrate from sessionStorage when fields change identity (mount, add, delete).
   useEffect(() => {
