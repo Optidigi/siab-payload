@@ -10,8 +10,7 @@ import { Login04 } from "@/components/login-04"
  * Departures from a generic login-04:
  *   - No OAuth (Apple/Google) section — siab-payload is invite-only.
  *   - No "Don't have an account? Sign up" footer — invite-only.
- *   - Right panel uses an inline brand mark (Globe icon + name + tagline)
- *     until a real logo SVG ships from the design team.
+ *   - Right panel uses the real SVG logo with dark/light CSS switching.
  */
 export default function LoginPage() {
   return (
