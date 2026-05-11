@@ -75,8 +75,8 @@ export function BlockEditor({
   type OpenMap = Record<string, boolean>
   const [openMap, setOpenMap] = useState<OpenMap>(() => {
     const next: OpenMap = {}
-    for (const [i, f] of fields.entries()) {
-      next[f.id] = !isPhone && i === 0
+    for (const f of fields) {
+      next[f.id] = false
     }
     return next
   })
@@ -85,10 +85,10 @@ export function BlockEditor({
   useEffect(() => {
     setOpenMap(() => {
       const next: OpenMap = {}
-      for (const [i, f] of fields.entries()) {
+      for (const f of fields) {
         const stored = sessionStorage.getItem(getSessionKey(pageId, f.id))
         if (stored !== null) next[f.id] = stored === "1"
-        else next[f.id] = !isPhone && i === 0
+        else next[f.id] = false
       }
       return next
     })
