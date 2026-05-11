@@ -83,7 +83,7 @@ export function SaveStatusBar({
   const previewToggle =
     setPreviewMode && previewMode !== undefined ? (
       <Button
-        variant="ghost"
+        variant="default"
         size="icon"
         type="button"
         onClick={() => {
