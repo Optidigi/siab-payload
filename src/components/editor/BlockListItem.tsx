@@ -128,11 +128,8 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border overflow-hidden transition-all duration-150",
-        open
-          ? "bg-card text-foreground border-muted-foreground"
-          : "bg-foreground text-background border-foreground",
-        "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg",
+        "rounded-md border-2 border-foreground/50 overflow-hidden bg-muted transition-all duration-150",
+        "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
       data-dragging={isDragging || undefined}
@@ -148,14 +145,11 @@ export function BlockListItem({
       {/* UX-2026-0027 — header strip tightened on mobile (px-2, py-2) so the
           right-cluster (chevron + Actions) sits flush against the card edge,
           mirroring the left-cluster's tightness. */}
-      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] bg-muted rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
-            className={cn(
-              "cursor-grab touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm",
-              open ? "text-muted-foreground" : "text-background/70",
-            )}
+            className="cursor-grab text-muted-foreground touch-none active:cursor-grabbing h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
             aria-label="Drag to reorder block"
             {...attributes}
             {...restListeners}
@@ -167,13 +161,7 @@ export function BlockListItem({
             <GripVertical className="h-4 w-4"/>
           </button>
           {typedConfig?.icon && (
-            <typedConfig.icon
-              className={cn(
-                "h-4 w-4 shrink-0",
-                open ? "text-muted-foreground" : "text-background/70",
-              )}
-              aria-hidden
-            />
+            <typedConfig.icon className="h-4 w-4 text-muted-foreground shrink-0" aria-hidden />
           )}
           <span className={cn(
             "font-medium truncate",
@@ -182,10 +170,7 @@ export function BlockListItem({
             {typeof typedConfig?.labels?.singular === "string" ? typedConfig.labels.singular : blockSlug}
           </span>
           {summaryText && (
-            <span className={cn(
-              "text-xs truncate min-w-0",
-              open ? "text-muted-foreground" : "text-background/70",
-            )}>
+            <span className="text-xs text-muted-foreground truncate min-w-0">
               · {summaryText}
             </span>
           )}
@@ -194,10 +179,7 @@ export function BlockListItem({
           <button
             type="button"
             onClick={() => onOpenChange(!open)}
-            className={cn(
-              "h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0",
-              open ? "text-muted-foreground" : "text-background/70",
-            )}
+            className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label={open ? "Collapse block" : "Expand block"}
           >
             {open ? <ChevronDown className="h-4 w-4"/> : <ChevronRight className="h-4 w-4"/>}
