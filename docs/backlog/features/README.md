@@ -15,20 +15,6 @@ Cross-reference: security findings at `../security/README.md`, infra items at `.
 
 ## Active — frontend
 
-### FE-1 — Blocks collapsed by default in page editor
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #29
-**File:** `src/components/editor/BlockEditor.tsx`
-
-#### Description
-All block cards in the page editor are expanded by default. As blocks accumulate, the editor becomes noisy. Blocks should render collapsed with a click to expand.
-
-#### Suggested fix shape
-Add per-block `collapsed` state (local, no persistence). Render a compact summary row when collapsed showing block type + headline/title preview. Pairs with FE-8 (block visual contrast).
-
----
-
 ### FE-2 — Delete modals — insufficient spacing between body text and buttons
 
 **Status:** Active · **Layer:** frontend
@@ -54,20 +40,6 @@ The unsaved changes indicator badge doesn't integrate well with the editor chrom
 
 #### Suggested fix shape
 Redesign using a `Badge` or `Alert` primitive. Consider a subtle animated dot indicator for less visual noise.
-
----
-
-### FE-4 — Add block button should be visually distinct
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #13
-**File:** `src/components/editor/BlockEditor.tsx`
-
-#### Description
-The button to add a new block doesn't stand out enough, making the primary action hard to discover.
-
-#### Suggested fix shape
-Use a dashed-border or full-width `Button` with `PlusCircle` icon. Make it clearly an insertion point rather than a generic action.
 
 ---
 
@@ -110,20 +82,6 @@ Pages are listed in a static table. Users want drag-and-drop reordering. Per the
 
 #### Suggested fix shape
 Replace or augment the pages `DataTable` with a `@dnd-kit/sortable` list. The issue also suggests richer cards on desktop. If persistence is added later, a `sortOrder` field on `Pages` + migration will be needed (open a new OBS-N at that point).
-
----
-
-### FE-8 — Block cards — insufficient visual contrast from background
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #26
-**File:** `src/components/editor/BlockListItem.tsx`, `src/components/editor/BlockEditor.tsx`
-
-#### Description
-Block/section cards don't stand out clearly from the page background. Content inside is not named or styled intuitively enough for operators to understand block structure at a glance.
-
-#### Suggested fix shape
-Increase border contrast (`border-border` with slightly elevated `bg-card` or `bg-muted`). Add visible block-type label and key field preview (e.g. hero headline) to each card header. Pairs with FE-1 (collapsed state).
 
 ---
 
@@ -172,27 +130,6 @@ The desktop preview eye-icon button is currently low-contrast against both light
 
 #### Suggested fix shape
 Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap to a higher-contrast registry variant (e.g. `variant="default"` filled, vs the current ghost/outline) or apply explicit token classes that flip with theme (`text-foreground` on `bg-background` will auto-invert via the `.dark` variant). No hex, no inline styles — token-only as per CLAUDE.md Layer 2 discipline.
-
----
-
-### FE-13 — Block-card outline tweak for additional visual definition
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (after FE-8 ship)
-**File:** `src/components/editor/BlockListItem.tsx` (outer container at line ~172)
-
-#### Description
-After FE-8 ships, block cards sit on `bg-muted` with a `border` (which uses `--border` token, a light gray that's quite subtle). User wants to spar on adding a stronger outline — light outline on dark theme, dark outline on light — to further define block boundaries.
-
-Open question whether this can be done purely with shadcn tokens and registry primitives without diverging from the registry's intended visual language.
-
-#### Suggested fix shape
-Brainstorm options:
-1. **Keep current `border` but bump to `border-2`** — heavier weight using the same token. Cheapest.
-2. **Token swap to a more-contrast border colour** — explore whether shadcn ships a `--border-strong` or similar (likely not; would need to add to globals.css OR reuse `--ring`, `--input`, etc. but those have other semantics).
-3. **Add `outline` with theme-aware tokens** (`outline outline-1 outline-foreground/10` — `/10` is the alpha modifier, valid Tailwind, theme-aware via `.dark`'s `--foreground` override).
-
-Constraint: must remain registry-pure (no edits to `src/components/ui/`), no hex, no arbitrary Tailwind values. Brainstorm should also weigh whether this is *additive* to FE-8's contrast (good) or *redundant* (drop it).
 
 ---
 
@@ -410,3 +347,15 @@ Operators want a dashboard analytics view powered by Plausible or Matomo. The tr
 
 ### FE-CLOSED-11 — Media library — select all images
 **Resolved via:** GitHub #18 (closed 2026-05-10) · `src/app/(frontend)/(admin)/sites/[slug]/media/`
+
+### FE-CLOSED-12 — Blocks collapsed by default in page editor
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `79f301a` (FE-1) · `src/components/editor/BlockListItem.tsx`, `src/components/editor/BlockEditor.tsx`
+
+### FE-CLOSED-13 — Add block button visual distinction
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `bf75921` (FE-4) · `src/components/editor/BlockEditor.tsx`
+
+### FE-CLOSED-14 — Block cards visual contrast from background
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `fb6597c` (FE-8) · `src/components/editor/BlockListItem.tsx`
+
+### FE-CLOSED-15 — Block-card theme-aware outline
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `63edcb0` (FE-13, bundled mid-flight after smoke) · `src/components/editor/BlockListItem.tsx`
