@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `sitegen-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-19). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-30).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-20). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-30).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -148,6 +148,26 @@ Make the entire header row clickable for expand/collapse:
 4. Drag-and-drop semantics must not break: clicking the grip handle to start a drag must NOT trigger the toggle. Verify with the existing `data-[dragging]` and `data-[pressed]` state machinery.
 
 Constraint: registry-pure, token-only.
+
+---
+
+### FE-20 — Move phone Save FAB from bottom-right to top-right
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (post editor-polish-round-2 smoke)
+**File:** `src/components/forms/PageForm.tsx` lines ~875-893
+
+#### Description
+The phone-only Save FAB currently sits at the bottom-right of the viewport (`fixed z-30 right-4`, vertical position set via inline `style={{ bottom: calc(var(--mini-strip-h, 56px) + env(safe-area-inset-bottom) + 0.75rem) }}`). Operators want it at the top-right instead — closer to the natural "page actions" position. Must NOT overlap the sticky site header.
+
+#### Suggested fix shape
+1. Change `right-4` placement to anchor at `top-N` instead of `bottom-...`. The sticky `SiteHeader` is z-10 and 48px tall — anchor the FAB at `top-[64px]` (matches the desktop SaveStatusBar's `md:top-16` = 64px) plus `env(safe-area-inset-top)` for notch devices.
+2. Drop the inline `style` for the bottom calc; use Tailwind utilities only (`fixed top-16 right-4 z-30` or similar). Add safe-area handling via the project's existing `pt-[calc(env(safe-area-inset-top)+...)]` pattern if needed.
+3. The mobile editor's tabbar (which currently hosts the Save state dot via FE-CLOSED-* work) lives below the FAB now — verify no z-index conflict.
+4. Verify the FAB still doesn't overlap the SaveStatusBar's preview-toggle pill (also top-right). The preview pill is `hidden md:flex` so it's invisible on phone — no conflict in practice.
+5. Verify the floating-keyboard-open state (`html[data-kb-open]`) still hides the FAB correctly via `.phone-fab` class.
+
+Constraint: registry-pure, token-only, no inline `style` props for colour/position (the existing inline `style` for bottom calc is the candidate to remove — replace with Tailwind utilities or globals.css adjustments).
 
 ---
 
