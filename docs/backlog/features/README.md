@@ -15,20 +15,6 @@ Cross-reference: security findings at `../security/README.md`, infra items at `.
 
 ## Active — frontend
 
-### FE-1 — Blocks collapsed by default in page editor
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #29
-**File:** `src/components/editor/BlockEditor.tsx`
-
-#### Description
-All block cards in the page editor are expanded by default. As blocks accumulate, the editor becomes noisy. Blocks should render collapsed with a click to expand.
-
-#### Suggested fix shape
-Add per-block `collapsed` state (local, no persistence). Render a compact summary row when collapsed showing block type + headline/title preview. Pairs with FE-8 (block visual contrast).
-
----
-
 ### FE-2 — Delete modals — insufficient spacing between body text and buttons
 
 **Status:** Active · **Layer:** frontend
@@ -54,20 +40,6 @@ The unsaved changes indicator badge doesn't integrate well with the editor chrom
 
 #### Suggested fix shape
 Redesign using a `Badge` or `Alert` primitive. Consider a subtle animated dot indicator for less visual noise.
-
----
-
-### FE-4 — Add block button should be visually distinct
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #13
-**File:** `src/components/editor/BlockEditor.tsx`
-
-#### Description
-The button to add a new block doesn't stand out enough, making the primary action hard to discover.
-
-#### Suggested fix shape
-Use a dashed-border or full-width `Button` with `PlusCircle` icon. Make it clearly an insertion point rather than a generic action.
 
 ---
 
@@ -113,20 +85,6 @@ Replace or augment the pages `DataTable` with a `@dnd-kit/sortable` list. The is
 
 ---
 
-### FE-8 — Block cards — insufficient visual contrast from background
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** GitHub #26
-**File:** `src/components/editor/BlockListItem.tsx`, `src/components/editor/BlockEditor.tsx`
-
-#### Description
-Block/section cards don't stand out clearly from the page background. Content inside is not named or styled intuitively enough for operators to understand block structure at a glance.
-
-#### Suggested fix shape
-Increase border contrast (`border-border` with slightly elevated `bg-card` or `bg-muted`). Add visible block-type label and key field preview (e.g. hero headline) to each card header. Pairs with FE-1 (collapsed state).
-
----
-
 ### FE-9 — Mobile page editor — separate views per section
 
 **Status:** Active · **Layer:** frontend
@@ -138,6 +96,40 @@ On mobile the editor packs page info, all blocks, SEO settings, and controls int
 
 #### Suggested fix shape
 Mobile-only tabbed or card-nav layout (`Sheet`, `Tabs`, or custom bottom-nav) wrapping existing form sections. Desktop unchanged. Use `useIsMobile()` (`src/hooks/use-mobile.ts`) to branch rendering. Incomplete-state signalling via `Badge` or icon overlays.
+
+---
+
+### FE-11 — Toolbar "Expand all / Collapse all" label drifts from actual block states
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (during FE-1 smoke test)
+**File:** `src/components/editor/BlockEditor.tsx` (toolbar at lines ~136-140), `src/components/editor/BlockListItem.tsx` (per-block `open` state)
+
+#### Description
+The toolbar `allCollapsed` flag is a stateless local toggle — clicking "Expand all" sets it to `false` (button now reads "Collapse all"), but if the user then manually expands/collapses individual blocks via the chevron, the toolbar label does not update. Result: button can read "Expand all" while every block is already open, or vice-versa.
+
+Pre-existing behaviour, exposed more visibly now that FE-1 makes the default state predominantly collapsed.
+
+#### Suggested fix shape
+Compute the toolbar label from the *actual* block states rather than a local toggle. Two approaches:
+1. **Lift the per-block `open` state up** to `BlockEditor` (or a context), drop sessionStorage-per-block in favour of a single map keyed by `blockFieldId`. Then `allCollapsed = useMemo(() => Object.values(openMap).every(v => !v), [openMap])`.
+2. **Listen for a "block state changed" event** from each `BlockListItem` so `BlockEditor` can recompute `allCollapsed` without owning the state. Cheaper migration but adds another CustomEvent dance.
+
+Option 1 is cleaner long-term; option 2 is minimal-disruption. Decide during brainstorm.
+
+---
+
+### FE-12 — PreviewToolbar eye button needs higher contrast
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (during FE-1/4/8 smoke test)
+**File:** `src/components/editor/PreviewToolbar.tsx`
+
+#### Description
+The desktop preview eye-icon button is currently low-contrast against both light and dark themes — it blends into the toolbar background. Operators reported difficulty spotting it.
+
+#### Suggested fix shape
+Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap to a higher-contrast registry variant (e.g. `variant="default"` filled, vs the current ghost/outline) or apply explicit token classes that flip with theme (`text-foreground` on `bg-background` will auto-invert via the `.dark` variant). No hex, no inline styles — token-only as per CLAUDE.md Layer 2 discipline.
 
 ---
 
@@ -355,3 +347,15 @@ Operators want a dashboard analytics view powered by Plausible or Matomo. The tr
 
 ### FE-CLOSED-11 — Media library — select all images
 **Resolved via:** GitHub #18 (closed 2026-05-10) · `src/app/(frontend)/(admin)/sites/[slug]/media/`
+
+### FE-CLOSED-12 — Blocks collapsed by default in page editor
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `79f301a` (FE-1) · `src/components/editor/BlockListItem.tsx`, `src/components/editor/BlockEditor.tsx`
+
+### FE-CLOSED-13 — Add block button visual distinction
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `bf75921` (FE-4) · `src/components/editor/BlockEditor.tsx`
+
+### FE-CLOSED-14 — Block cards visual contrast from background
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `fb6597c` (FE-8) · `src/components/editor/BlockListItem.tsx`
+
+### FE-CLOSED-15 — Block-card theme-aware outline
+**Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `63edcb0` (FE-13, bundled mid-flight after smoke) · `src/components/editor/BlockListItem.tsx`
