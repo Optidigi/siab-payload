@@ -58,9 +58,17 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/" className="flex items-center gap-2 px-2 py-1.5 font-semibold group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs">S</span>
-          <span className="group-data-[collapsible=icon]:hidden">SiteInABox</span>
+        <Link href="/" className="flex items-center px-2 py-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+          {/* Expanded: full wordmark logo */}
+          <span className="group-data-[collapsible=icon]:hidden">
+            <img src="/logos/logo-light.svg" alt="SiteInABox" className="h-7 w-auto dark:hidden" />
+            <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="hidden dark:block h-7 w-auto" />
+          </span>
+          {/* Collapsed: icon mark only */}
+          <span className="hidden group-data-[collapsible=icon]:flex items-center justify-center">
+            <img src="/logos/icon-light.svg" alt="" className="h-6 w-6 dark:hidden" />
+            <img src="/logos/icon-dark.svg"  alt="" className="hidden dark:block h-6 w-6" />
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
