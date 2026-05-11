@@ -18,14 +18,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm md:max-w-4xl">
         <Login04
           media={
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-primary text-primary-foreground p-8 text-center">
-              <div>
-                <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="h-20 w-auto dark:hidden" />
-                <img src="/logos/logo-light.svg" alt="SiteInABox" className="hidden dark:block h-20 w-auto" />
-              </div>
-              <p className="text-sm text-primary-foreground/70 max-w-xs">
-                Multi-tenant CMS — manage sites, pages, forms, and media in one place.
-              </p>
+            <div className="absolute inset-0 flex items-center justify-center bg-primary p-8">
+              <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="h-32 w-auto max-w-full dark:hidden" />
+              <img src="/logos/logo-light.svg" alt="SiteInABox" className="hidden dark:block h-32 w-auto max-w-full" />
             </div>
           }
         >
