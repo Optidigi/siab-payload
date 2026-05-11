@@ -128,7 +128,7 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md ring-2 ring-inset ring-foreground/50 overflow-hidden bg-muted transition-all duration-150",
+        "rounded-md ring-2 ring-muted-foreground overflow-hidden bg-card transition-all duration-150",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
@@ -145,7 +145,7 @@ export function BlockListItem({
       {/* UX-2026-0027 — header strip tightened on mobile (px-2, py-2) so the
           right-cluster (chevron + Actions) sits flush against the card edge,
           mirroring the left-cluster's tightness. */}
-      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] bg-muted rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"

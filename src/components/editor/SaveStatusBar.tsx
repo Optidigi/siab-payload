@@ -83,7 +83,7 @@ export function SaveStatusBar({
   const previewToggle =
     setPreviewMode && previewMode !== undefined ? (
       <Button
-        variant="ghost"
+        variant="default"
         size="icon"
         type="button"
         onClick={() => {
@@ -129,12 +129,7 @@ export function SaveStatusBar({
   if (status === "idle" || (status === "saved" && !showSaved)) {
     if (!previewToggle) return null
     return (
-      <div
-        className={cn(
-          "hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4",
-          "items-center gap-1 rounded-md bg-primary text-primary-foreground px-2 py-1 shadow-sm",
-        )}
-      >
+      <div className="hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4">
         {previewToggle}
       </div>
     )
@@ -278,9 +273,7 @@ export function SaveStatusBar({
   return (
     <div className={cn(positionClasses, "md:items-center md:gap-2")}>
       {pill}
-      <div className="flex items-center rounded-md bg-primary text-primary-foreground px-1 py-1 shadow-sm">
-        {previewToggle}
-      </div>
+      {previewToggle}
     </div>
   )
 }
