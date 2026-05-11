@@ -188,11 +188,6 @@ export function BlockEditor({
           )}
         </SortableContext>
       </DndContext>
-      {/*
-        Trailing "+ Add block" stays as a redundant action so an empty page
-        always has an obvious entry point (no hover target until at least
-        one block exists). InsertSlots cover the "add between" path.
-      */}
       <BlockTypePicker
         onAdd={onAdd}
         defaultIndex={pickerIndex}
@@ -201,26 +196,25 @@ export function BlockEditor({
         tenantId={tenantId}
       />
       {/*
-        Trailing "+ Add block" — desktop and `<md` empty-state only. Phone
-        with blocks present uses the floating FAB (PageForm renders it),
-        so this would be a duplicate affordance. Render only when:
-        - on desktop (md+), OR
-        - on phone with zero blocks (so the empty state has a clear CTA
-          before the FAB has anything to add to). When fields.length > 0,
-          phone hides this in favor of the FAB.
+        Trailing "+ Add block" — desktop-with-blocks only. Hidden on:
+        - empty pages (the centred empty-state CTA covers entry)
+        - phone with blocks (the floating FAB in PageForm covers it)
+        so this Button only appears on md+ when fields.length > 0.
       */}
-      <button
+      <Button
         type="button"
-        className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-sm hover:bg-accent",
-          fields.length > 0 && "hidden md:inline-flex",
-          fields.length === 0 && "hidden",
-        )}
+        variant="default"
+        size="lg"
         onClick={() => openPickerAt(fields.length)}
         aria-label="Add block at end"
+        className={cn(
+          "w-full",
+          fields.length > 0 && "hidden md:flex",
+          fields.length === 0 && "hidden",
+        )}
       >
-        + Add block
-      </button>
+        <Plus className="h-5 w-5" /> Add block
+      </Button>
     </div>
   )
 }
