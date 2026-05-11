@@ -59,6 +59,30 @@ The test setup overrides `DATABASE_URI` to `payload_test` automatically — the 
 
 ---
 
+### OBS-29 — `payload_test` DB has unrun migrations + missing seed data, 16 tests fail on main
+
+**Status:** Active
+**Discovered in:** Session 2026-05-11 (during finishing-a-development-branch verification gate)
+**File:** `tests/setup.ts`, `tests/integration/tenant-isolation.test.ts`, `tests/unit/audit-p1-8-*.test.ts`, `tests/unit/audit-p3-15-*.test.ts`
+
+#### Description
+`pnpm test` reports **16 failures on `main` HEAD**: 1 in `tests/integration/tenant-isolation.test.ts` plus all cases in `tests/unit/audit-p1-8-pages-tenant-slug-unique.test.ts` and `tests/unit/audit-p3-15-media-tenant-filename-unique.test.ts`.
+
+Failure trace points at `validateTenantExists.ts:62` — tests reference tenant IDs that don't exist in the `payload_test` DB. `pnpm payload migrate:status` against `payload_test` shows all 8 migrations as `Ran: No`, yet the schema is partially present (Payload's `push: true` auto-sync creates tables but doesn't record migrations). The DB has only 1 tenant + 1 user seeded, while the tests expect specific multi-tenant fixture state.
+
+CLAUDE.md's CI gate is typecheck + registry:check (tests not run in CI per OBS-19), so this rot has not blocked merges. But the local pre-merge verification gate is dead — `pnpm test` can't be used to validate any PR until this is fixed.
+
+#### Why deferred
+Pre-existing on main. Not introduced by any specific PR — diagnosed during `feat/editor-visual-pass-fe1-fe4-fe8` finishing. That PR's changes don't touch any of the failing test surfaces.
+
+#### Suggested fix shape
+1. Decide: run `migrate` or `migrate:fresh` against `payload_test` as part of `tests/setup.ts` (rather than relying on Payload's `push` mode that bypasses the migration table).
+2. Audit whether the failing tests need explicit DB seed (create tenant rows in `beforeEach` / `beforeAll`) vs whether they assume a globally-seeded fixture. If the latter, add a seed step before the test pool starts.
+3. Either fold this work into OBS-19 (CI: tests don't run) or keep separate. They're related: OBS-19 wants tests in CI; OBS-29 wants tests passing locally first.
+4. Cross-reference: OBS-17 (media filename leak) is related to the audit-p3-15 test surface — if/when OBS-17 is closed, these tests need to be working as the regression gate.
+
+---
+
 ### OBS-28 — `pnpm lint` is non-functional (no ESLint config)
 
 **Status:** Active
