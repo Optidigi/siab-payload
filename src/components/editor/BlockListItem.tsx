@@ -170,7 +170,7 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border bg-muted transition-transform",
+        "rounded-md border border-foreground/15 bg-muted transition-transform",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
