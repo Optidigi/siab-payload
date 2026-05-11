@@ -59,6 +59,44 @@ The test setup overrides `DATABASE_URI` to `payload_test` automatically — the 
 
 ---
 
+### OBS-30 — Unlayered `*` rule in globals.css beats `border-*` Tailwind utilities
+
+**Status:** Active
+**Discovered in:** Session 2026-05-11 (during FE-15 v2 visual smoke)
+**File:** `src/styles/globals.css:151`
+
+#### Description
+`src/styles/globals.css:151` contains an unlayered universal rule:
+
+```css
+* { border-color: var(--border); }
+```
+
+Because this rule is OUTSIDE any `@layer`, it beats every `@layer`-scoped rule in the cascade — including Tailwind's `.border-foreground/50`, `.border-primary/20`, `.border-ring/30`, and any other `border-*-color` utility (all generated inside `@layer utilities`).
+
+Effect: every Tailwind border-color utility silently fails to apply in this project. The visible border always renders at `var(--border)` (subtle light gray / 10% white in dark), regardless of which `border-*` colour class is on the element.
+
+Confirmed via DOM inspection on `feat/editor-polish-fe11-12-15-16`: a block-card outer with class `border-2 border-foreground/50` rendered with `border-color: oklch(0.922 0 0)` (the `--border` token), not `color-mix(in oklab, var(--foreground) 50%, transparent)` (the foreground-at-50% value the utility intends).
+
+Latent consequence: FE-CLOSED-15 (`border-foreground/15`) on `main` is also broken — the visible border there is `--border` at full alpha, not `--foreground` at 15%. Operators didn't notice because 15% alpha is subtle either way; the FE-15 v2 attempt at 50% alpha made the bug visible.
+
+#### Why deferred
+`src/styles/globals.css` is registry-owned (covered by `pnpm registry:check`). Moving the `*` rule into `@layer base` would cause a registry-drift failure. The structural fix must come from the registry upstream OR by removing globals.css from the registry-check scope.
+
+Working around it in feature code: use `ring-*` (box-shadow based, no universal-rule conflict) or `outline-*` instead of `border-*` for theme-aware coloured outlines. Used as the workaround in FE-15 v2 (`ring-2 ring-inset ring-foreground/50`).
+
+#### Suggested fix shape
+1. Open an issue against the `@siab/*` registry source asking to move the `*` rule into `@layer base`. The fix in the registry-shipped globals.css would look like:
+   ```css
+   @layer base {
+     * { border-color: var(--border); }
+   }
+   ```
+2. Once the registry update lands, `pnpm registry:check --overwrite` will pull it in and unblock all `border-*-color` utilities project-wide.
+3. After the fix, consider migrating FE-15's `ring-2 ring-inset ring-foreground/50` back to `border-2 border-foreground/50` if the simpler form is preferred. The ring-based approach is forward-compatible either way.
+
+---
+
 ### OBS-29 — `payload_test` DB has unrun migrations + missing seed data, 16 tests fail on main
 
 **Status:** Active
