@@ -339,6 +339,163 @@ The test setup overrides `DATABASE_URI` to `payload_test` automatically — the 
 
 ---
 
+### OBS-20 — Navigation management buried in settings (needs sidebar page + Pages collection field)
+
+**Status:** Active
+**Discovered in:** GitHub #17 (split part A)
+**File:** `src/app/(frontend)/(admin)/sites/[slug]/settings/`, `src/collections/SiteSettings.ts`
+
+#### Description
+Header/footer navigation is currently edited under Settings → Navigation, which is unintuitive. It should be a first-class page in the sidebar nav. This is part A of the split; part B (auto-add toggle on page create) is OBS-21.
+
+#### Why deferred
+Requires a new sidebar route, a navigation to the page, and possibly restructuring how nav items are stored in `SiteSettings`.
+
+#### Suggested fix shape
+1. Add a `/sites/[slug]/navigation` route that renders nav management UI.
+2. Wire it into `AppSidebar` as a first-class item.
+3. Review whether the nav fields in `SiteSettings` need restructuring to support this view cleanly.
+
+---
+
+### OBS-21 — Page create: toggle to auto-include page in header/footer nav
+
+**Status:** Active
+**Discovered in:** GitHub #17 (split part B)
+**File:** `src/collections/Pages.ts`, `src/components/forms/PageForm.tsx`
+
+#### Description
+When creating or editing a page, there should be separate toggles for "Include in header nav" and "Include in footer nav". Currently the user must go to Settings → Navigation manually after creating a page. This is part B of the split from GitHub #17.
+
+#### Why deferred
+Requires new boolean fields on the `Pages` collection + a migration + frontend toggle UI in the page form. Depends on OBS-20 for the overall nav management model to be settled first.
+
+#### Suggested fix shape
+1. Add `includeInHeader: boolean` and `includeInFooter: boolean` fields to the `Pages` collection.
+2. Run `pnpm payload migrate:create pages-nav-toggles`.
+3. Add toggle switches to `PageForm.tsx` in a nav/visibility section.
+4. The projection (`src/lib/projection/`) and site-template rendering will need to consume these flags.
+
+**Cross-reference:** OBS-20 (navigation management page); the two items should land together or in sequence.
+
+---
+
+### OBS-22 — Dashboard metrics — richer role-scoped data and charts
+
+**Status:** Active
+**Discovered in:** GitHub #4
+**File:** `src/lib/activity.ts`, `src/lib/queries/`, `src/components/dashboard/`
+
+#### Description
+The dashboard currently shows basic stats (page count, media count, form submissions, recent activity). Operators want richer, role-scoped metrics: edits per block type, edit time-of-day heatmap, most edited pages, and potentially performance metrics. Super-admin and tenant roles must only see data scoped to their context.
+
+#### Why deferred
+Requires new query/aggregation logic and agreement on which metrics have the most value before building. Issue explicitly notes suggestions are not conclusive.
+
+#### Suggested fix shape
+1. Audit `src/lib/activity.ts` for what's already tracked; extend activity logging if block-type granularity is missing.
+2. Add aggregation queries to `src/lib/queries/` (edits-by-block-type, edits-by-hour, top-pages).
+3. Add chart components to `src/components/dashboard/` using the existing `@siab/chart` primitive.
+4. All queries must accept a `tenantId` param; super-admin passes `null` for global view.
+5. Discuss and agree on the metric set before implementing — issue flags this explicitly.
+
+---
+
+### OBS-23 — Settings page — full refactor (design + 2FA + plan + GDPR + logo/favicon)
+
+**Status:** Active
+**Discovered in:** GitHub #30
+**File:** `src/app/(frontend)/(admin)/settings/`
+
+#### Description
+The settings page diverges from the rest of the design language and feels incomplete. The issue requests: design alignment, profile/account management, plan visibility, GDPR data-request flow, 2FA toggle, and additional site settings (maintenance banner, logo/favicon upload).
+
+#### Why deferred
+Large scope spanning multiple backend features. Breaking it down: design alignment is FE-only; 2FA requires a Payload auth feature + field lock audit (see doctrine in this file); logo/favicon requires a SiteSettings schema change + projection update; GDPR data request requires a new endpoint.
+
+#### Suggested fix shape
+Tackle as sub-items in sequence:
+1. **Design alignment** — bring settings tabs/layout in line with other pages (FE-only).
+2. **Logo/favicon** — add `logo` (Media relationship) and `favicon` (Media relationship) to `SiteSettings`, migrate, project to `site.json`.
+3. **Maintenance banner** — add `maintenanceMode: boolean` + `maintenanceBanner: text` to `SiteSettings`, project to `site.json` so the template can render a banner.
+4. **2FA** — research Payload v3 TOTP support before committing to an approach. Apply the "Payload auth-fields default-allow" doctrine immediately on enablement.
+5. **GDPR data request** — new endpoint `POST /api/users/request-data` that assembles and emails a data export for the calling user.
+6. **Plan** — deferred until a billing/plan system exists.
+
+---
+
+### OBS-24 — More block types + richer WYSIWYG editing (multi-repo)
+
+**Status:** Active
+**Discovered in:** GitHub #27
+**File:** `src/collections/BlockPresets.ts`, `src/components/editor/BlockTypePicker.tsx`, `src/components/editor/FieldRenderer.tsx` — **also requires changes in `sitegen-template` repo**
+
+#### Description
+The current block type set is limited and block type names feel arbitrary to end users (e.g. "RichText"). More block types are needed with better labelling, and the editing experience needs to be more WYSIWYG — especially for text/rich content. Any new block type added here must also be rendered by the site template (`sitegen-template` repo) before it is usable in production.
+
+#### Why deferred
+Large cross-repo effort. Requires design work to determine which block types to add, then coordinated changes across this repo (schema + editor) and `sitegen-template` (Preact renderers).
+
+#### Suggested fix shape
+1. Agree on the block type set to add (suggested: Pricing, Gallery, Team, Steps, LogoCloud at minimum).
+2. Add block schemas to `src/collections/BlockPresets.ts` and `src/collections/Pages.ts` block union.
+3. Run migration.
+4. Add field renderer UI for each new block type in `src/components/editor/FieldRenderer.tsx`.
+5. Add the corresponding Preact renderer in `sitegen-template/src/components/cms/`.
+6. Update `Blocks.astro` switch in `sitegen-template` to handle new types.
+7. Improve block type names/labels in `BlockTypePicker.tsx` — user-facing names should be plain English (e.g. "Hero Banner" not "hero", "Rich Text" → "Text Block").
+
+**Cross-repo dependency:** `sitegen-template` must ship renderers before new block types are enabled for production tenants.
+
+---
+
+### OBS-25 — Blog posts feature (multi-repo)
+
+**Status:** Active
+**Discovered in:** GitHub #7
+**File:** New collection required — **also requires changes in `sitegen-template` repo**
+
+#### Description
+Higher-tier tenants should have blog post functionality. This requires a new `Posts` collection (or a `post` page type on the existing `Pages` collection), a blog-specific editor experience, and a `sitegen-template` renderer for blog list + detail pages.
+
+#### Why deferred
+Large feature; requires product decision on data model (separate collection vs page type) and tier/access gating design before implementation.
+
+#### Suggested fix shape
+1. Decide: separate `Posts` collection or a `type: "blog"` variant on `Pages`. Separate collection is cleaner for querying and access control.
+2. If separate: add `Posts` collection with `title`, `slug`, `publishedAt`, `author` (relationship to Users), `blocks` (same block union as Pages), `tenant` (multi-tenant scoped).
+3. Add `Posts` to `multiTenantPlugin` collections.
+4. Add list + detail views in the frontend (`/sites/[slug]/posts/`).
+5. Add blog list + post detail renderers in `sitegen-template`.
+6. Projection: add `posts/` output to `projectToDisk`.
+
+**Cross-repo dependency:** `sitegen-template` must ship blog renderers before this is usable in production.
+
+---
+
+### OBS-26 — Web analytics page (Plausible/Matomo integration)
+
+**Status:** Active
+**Discovered in:** GitHub #31
+**File:** `src/collections/SiteSettings.ts`, new route `src/app/(frontend)/(admin)/sites/[slug]/analytics/`
+
+#### Description
+Operators want a dashboard view showing visitor analytics for their site, powered by Plausible or Matomo. The tracking ID/domain needs to be stored per tenant in `SiteSettings`, and the site template needs to inject the analytics snippet. A read-only analytics view in the admin should pull data from the provider's API.
+
+#### Why deferred
+Requires choosing a provider, provisioning API access, and a SiteSettings schema change + projection update. Non-trivial but self-contained.
+
+#### Suggested fix shape
+1. Choose provider (Plausible recommended — simpler API, privacy-friendly, self-hostable).
+2. Add `analyticsProvider: select(plausible | matomo | none)` and `analyticsDomain: text` to `SiteSettings`. Migrate + project to `site.json`.
+3. Update `sitegen-template` to conditionally inject the provider snippet when `analyticsDomain` is set.
+4. Add `/sites/[slug]/analytics` route that calls the provider's stats API (server-side, API key in env) and renders a read-only chart/stats view using `@siab/chart`.
+5. Scope: tenant owners/editors see only their own site's analytics.
+
+**Cross-repo dependency:** `sitegen-template` must inject the analytics snippet for data to be collected.
+
+---
+
 ## Latent observations — not exploitable today; watch for trigger conditions
 
 ### OBS-8 — `_verified` field has `update: defaultAccess` (default-allow)
@@ -543,4 +700,4 @@ Worth promoting to permanent codebase rules. Add to your CONTRIBUTING.md / PR-re
 <the shape of the fix when it's eventually addressed>
 ```
 
-Future `OBS-N` entries continue the numbering — current high water mark is OBS-19. Don't reuse closed IDs.
+Future `OBS-N` entries continue the numbering — current high water mark is OBS-26. Don't reuse closed IDs.

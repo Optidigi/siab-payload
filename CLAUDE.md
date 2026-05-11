@@ -133,8 +133,8 @@ Test setup reads `.env` and overrides `DATABASE_URI` to `payload_test` automatic
 
 `docs/backlog/` is the canonical source of truth for all open, deferred, and closed work items. It must stay in sync with the codebase at all times.
 
-- **`docs/backlog/backend/README.md`** — security findings, data-layer issues, operational observations, CI/infra items. IDs: `OBS-N` (current high water mark: OBS-19).
-- **`docs/backlog/frontend/README.md`** — UI/UX items, client-side bugs, design regressions. IDs: `FE-N`.
+- **`docs/backlog/backend/README.md`** — security findings, data-layer issues, operational observations, CI/infra items. IDs: `OBS-N` (current high water mark: OBS-26).
+- **`docs/backlog/frontend/README.md`** — UI/UX items, client-side bugs, design regressions. IDs: `FE-N` (current high water mark: FE-10).
 
 **Rules:**
 - When a bug, gap, or deferred item is discovered during any work session, append it to the appropriate backlog file before closing the session — even if it's a one-liner latent observation.
