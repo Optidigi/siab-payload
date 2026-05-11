@@ -13,7 +13,8 @@ const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variabl
 // Dynamic routes use `generateMetadata` to inject the tenant / page name (see
 // /sites/[slug]/page.tsx and /sites/[slug]/pages/[id]/page.tsx).
 export const metadata: Metadata = {
-  title: { default: "SiteInABox", template: "%s · SiteInABox" }
+  title: { default: "SiteInABox", template: "%s · SiteInABox" },
+  icons: { icon: "/logos/favicon.svg" },
 }
 
 export default function FrontendLayout({ children }: { children: React.ReactNode }) {
