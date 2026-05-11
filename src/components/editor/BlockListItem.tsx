@@ -50,8 +50,8 @@ export function BlockListItem({
   // The RHF field's stable id (survives reorder) — used as sessionStorage key.
   blockFieldId: string
 }) {
-  // Default open: always true on desktop, true only for first 3 blocks on phone.
-  const defaultOpen = !isPhone || index <= 2
+  // Default open: desktop only (first block only); phone starts fully collapsed.
+  const defaultOpen = !isPhone && index === 0
 
   // SSR-safe: start with defaultOpen, hydrate from sessionStorage in effect.
   const [open, setOpen] = useState(defaultOpen)

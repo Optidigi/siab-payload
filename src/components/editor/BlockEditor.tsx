@@ -67,7 +67,7 @@ export function BlockEditor({
 
   // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
   // mounted BlockListItems can respond without prop-drilling.
-  const [allCollapsed, setAllCollapsed] = useState(false)
+  const [allCollapsed, setAllCollapsed] = useState(true)
   const onToggleAll = () => {
     const nextCollapsed = !allCollapsed
     setAllCollapsed(nextCollapsed)
