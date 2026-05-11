@@ -1,5 +1,4 @@
 import { Suspense } from "react"
-import { Globe } from "lucide-react"
 import { LoginForm } from "@/components/forms/LoginForm"
 import { Login04 } from "@/components/login-04"
 
@@ -20,19 +19,14 @@ export default function LoginPage() {
       <div className="w-full max-w-sm md:max-w-4xl">
         <Login04
           media={
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-primary text-primary-foreground p-8 text-center">
-              <span
-                aria-hidden
-                className="flex size-16 items-center justify-center rounded-2xl bg-primary-foreground/10 ring-1 ring-primary-foreground/20"
-              >
-                <Globe className="size-8" />
-              </span>
-              <div className="space-y-1">
-                <div className="text-2xl font-semibold tracking-tight">SiteInABox</div>
-                <p className="text-sm text-primary-foreground/70 max-w-xs">
-                  Multi-tenant CMS — manage sites, pages, forms, and media in one place.
-                </p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-primary text-primary-foreground p-8 text-center">
+              <div>
+                <img src="/logos/logo-light.svg" alt="SiteInABox" className="w-full max-w-[260px] dark:hidden" />
+                <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="hidden dark:block w-full max-w-[260px]" />
               </div>
+              <p className="text-sm text-primary-foreground/70 max-w-xs">
+                Multi-tenant CMS — manage sites, pages, forms, and media in one place.
+              </p>
             </div>
           }
         >
