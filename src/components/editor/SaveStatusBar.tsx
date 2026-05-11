@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Loader2, AlertCircle, CheckCircle2, Save, Eye, EyeOff, Maximize } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, Save, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -80,41 +80,26 @@ export function SaveStatusBar({
   // Preview-mode toggle is rendered as a sibling so it stays visible even
   // when the save pill is "idle". When the pill is hidden we still render
   // the toggle alone in the same position.
+  // Binary preview toggle: open ↔ close. The hidden ↔ side transition is
+  // the only thing this button does. Fullscreen toggling already lives in
+  // PreviewToolbar (Expand/Shrink buttons) and viewport-size switching is
+  // also in PreviewToolbar (Smartphone/Monitor/Maximize2). This button
+  // stays focused on its one job: show/hide the preview pane.
   const previewToggle =
     setPreviewMode && previewMode !== undefined ? (
       <Button
-        variant="ghost"
-        size="icon"
+        variant="default"
+        size="sm"
         type="button"
-        onClick={() => {
-          const next: Record<PreviewMode, PreviewMode> = {
-            hidden: "side",
-            side: "fullscreen",
-            fullscreen: "hidden",
-          }
-          setPreviewMode(next[previewMode])
-        }}
-        aria-label={
-          previewMode === "hidden"
-            ? "Show preview"
-            : previewMode === "side"
-            ? "Fullscreen preview"
-            : "Hide preview"
-        }
-        title={
-          previewMode === "hidden"
-            ? "Show preview"
-            : previewMode === "side"
-            ? "Fullscreen preview"
-            : "Hide preview"
-        }
-        // Phone-first: 44×44 thumb target on <md, shrink on md+ to match
-        // the desktop pill density.
-        className="h-11 w-11 md:h-7 md:w-7"
+        onClick={() => setPreviewMode(previewMode === "hidden" ? "side" : "hidden")}
+        aria-label={previewMode === "hidden" ? "Show preview" : "Close preview"}
+        title={previewMode === "hidden" ? "Show preview" : "Close preview"}
       >
-        {previewMode === "hidden" && <Eye className="h-5 w-5 md:h-3.5 md:w-3.5" />}
-        {previewMode === "side" && <Maximize className="h-5 w-5 md:h-3.5 md:w-3.5" />}
-        {previewMode === "fullscreen" && <EyeOff className="h-5 w-5 md:h-3.5 md:w-3.5" />}
+        {previewMode === "hidden" ? (
+          <><Eye className="h-4 w-4" /> Preview</>
+        ) : (
+          <><EyeOff className="h-4 w-4" /> Close preview</>
+        )}
       </Button>
     ) : null
 
@@ -129,12 +114,7 @@ export function SaveStatusBar({
   if (status === "idle" || (status === "saved" && !showSaved)) {
     if (!previewToggle) return null
     return (
-      <div
-        className={cn(
-          "hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4",
-          "items-center gap-1 rounded-md border bg-card/80 px-2 py-1 shadow-sm backdrop-blur",
-        )}
-      >
+      <div className="hidden fixed z-40 md:flex md:bottom-auto md:left-auto md:top-16 md:right-4">
         {previewToggle}
       </div>
     )
@@ -278,9 +258,7 @@ export function SaveStatusBar({
   return (
     <div className={cn(positionClasses, "md:items-center md:gap-2")}>
       {pill}
-      <div className="flex items-center rounded-md border bg-card/80 px-1 py-1 shadow-sm backdrop-blur">
-        {previewToggle}
-      </div>
+      {previewToggle}
     </div>
   )
 }

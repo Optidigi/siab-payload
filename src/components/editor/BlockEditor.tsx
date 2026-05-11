@@ -1,5 +1,5 @@
 "use client"
-import { Fragment, useId, useState } from "react"
+import { Fragment, useCallback, useEffect, useId, useMemo, useState } from "react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { toast } from "sonner"
 import {
@@ -25,6 +25,10 @@ import { tinyVibrate } from "@/lib/haptics"
 import { BlockListItem } from "./BlockListItem"
 import { BlockTypePicker } from "./BlockTypePicker"
 import { InsertSlot } from "./InsertSlot"
+
+function getSessionKey(pageId: string | number, blockFieldId: string) {
+  return `block-open:${pageId}:${blockFieldId}`
+}
 
 // `tenantId` is threaded all the way down to SaveAsPresetDialog (POST body)
 // and BlockTypePicker (list-fetch filter). The multi-tenant plugin requires
@@ -65,16 +69,55 @@ export function BlockEditor({
     setPickerOpen(true)
   }
 
-  // Expand all / collapse all toggle. Broadcasts via CustomEvent so all
-  // mounted BlockListItems can respond without prop-drilling.
-  const [allCollapsed, setAllCollapsed] = useState(true)
-  const onToggleAll = () => {
-    const nextCollapsed = !allCollapsed
-    setAllCollapsed(nextCollapsed)
-    document.dispatchEvent(
-      new CustomEvent("editor:set-blocks-open", { detail: { open: !nextCollapsed } })
-    )
-  }
+  // Per-block open state lives here (single source of truth — see FE-11).
+  // sessionStorage hydration runs in the useEffect below; `setBlockOpen`
+  // and `setAllOpen` both write through to storage so refresh persists.
+  type OpenMap = Record<string, boolean>
+  const [openMap, setOpenMap] = useState<OpenMap>(() => {
+    const next: OpenMap = {}
+    for (const f of fields) {
+      next[f.id] = false
+    }
+    return next
+  })
+
+  // Hydrate from sessionStorage when fields change identity (mount, add, delete).
+  useEffect(() => {
+    setOpenMap(() => {
+      const next: OpenMap = {}
+      for (const f of fields) {
+        const stored = sessionStorage.getItem(getSessionKey(pageId, f.id))
+        if (stored !== null) next[f.id] = stored === "1"
+        else next[f.id] = false
+      }
+      return next
+    })
+  }, [pageId, isPhone, fields.length])
+
+  const setBlockOpen = useCallback((blockFieldId: string, open: boolean) => {
+    setOpenMap(prev => ({ ...prev, [blockFieldId]: open }))
+    try {
+      sessionStorage.setItem(getSessionKey(pageId, blockFieldId), open ? "1" : "0")
+    } catch { /* storage quota: silent */ }
+  }, [pageId])
+
+  const setAllOpen = useCallback((open: boolean) => {
+    setOpenMap(prev => {
+      const next = { ...prev }
+      for (const f of fields) {
+        next[f.id] = open
+        try {
+          sessionStorage.setItem(getSessionKey(pageId, f.id), open ? "1" : "0")
+        } catch { /* storage quota: silent */ }
+      }
+      return next
+    })
+  }, [fields, pageId])
+
+  const allOpen = useMemo(
+    () => fields.length > 0 && fields.every(f => openMap[f.id] === true),
+    [fields, openMap],
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -133,8 +176,8 @@ export function BlockEditor({
     <div className="space-y-3">
       {fields.length > 0 && (
         <div className="flex justify-end">
-          <Button variant="ghost" size="sm" type="button" onClick={onToggleAll}>
-            {allCollapsed ? "Expand all" : "Collapse all"}
+          <Button variant="ghost" size="sm" type="button" onClick={() => setAllOpen(!allOpen)}>
+            {allOpen ? "Collapse all" : "Expand all"}
           </Button>
         </div>
       )}
@@ -176,9 +219,8 @@ export function BlockEditor({
                       tenantId={tenantId}
                       onRemove={() => handleRemove(i)}
                       onMove={(from, to) => move(from, to)}
-                      isPhone={isPhone}
-                      pageId={pageId}
-                      blockFieldId={f.id}
+                      open={openMap[f.id] ?? false}
+                      onOpenChange={(next) => setBlockOpen(f.id, next)}
                     />
                   </Fragment>
                 )

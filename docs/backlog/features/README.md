@@ -99,88 +99,6 @@ Mobile-only tabbed or card-nav layout (`Sheet`, `Tabs`, or custom bottom-nav) wr
 
 ---
 
-### FE-11 — Toolbar "Expand all / Collapse all" label drifts from actual block states
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (during FE-1 smoke test)
-**File:** `src/components/editor/BlockEditor.tsx` (toolbar at lines ~136-140), `src/components/editor/BlockListItem.tsx` (per-block `open` state)
-
-#### Description
-The toolbar `allCollapsed` flag is a stateless local toggle — clicking "Expand all" sets it to `false` (button now reads "Collapse all"), but if the user then manually expands/collapses individual blocks via the chevron, the toolbar label does not update. Result: button can read "Expand all" while every block is already open, or vice-versa.
-
-Pre-existing behaviour, exposed more visibly now that FE-1 makes the default state predominantly collapsed.
-
-#### Suggested fix shape
-Compute the toolbar label from the *actual* block states rather than a local toggle. Two approaches:
-1. **Lift the per-block `open` state up** to `BlockEditor` (or a context), drop sessionStorage-per-block in favour of a single map keyed by `blockFieldId`. Then `allCollapsed = useMemo(() => Object.values(openMap).every(v => !v), [openMap])`.
-2. **Listen for a "block state changed" event** from each `BlockListItem` so `BlockEditor` can recompute `allCollapsed` without owning the state. Cheaper migration but adds another CustomEvent dance.
-
-Option 1 is cleaner long-term; option 2 is minimal-disruption. Decide during brainstorm.
-
----
-
-### FE-12 — PreviewToolbar eye button needs higher contrast
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (during FE-1/4/8 smoke test)
-**File:** `src/components/editor/PreviewToolbar.tsx`
-
-#### Description
-The desktop preview eye-icon button is currently low-contrast against both light and dark themes — it blends into the toolbar background. Operators reported difficulty spotting it.
-
-#### Suggested fix shape
-Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap to a higher-contrast registry variant (e.g. `variant="default"` filled, vs the current ghost/outline) or apply explicit token classes that flip with theme (`text-foreground` on `bg-background` will auto-invert via the `.dark` variant). No hex, no inline styles — token-only as per CLAUDE.md Layer 2 discipline.
-
----
-
-### FE-15 — Block-card outline could use brand colour for more pop (revisit FE-CLOSED-15)
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
-**File:** `src/components/editor/BlockListItem.tsx:173`
-
-#### Description
-FE-CLOSED-15 shipped `border-foreground/15` (theme-aware, 15% alpha) for block-card outlines. After smoke, the user reports it still doesn't pop enough — would like a brand-colour version (e.g. `--primary` or `--ring`) to make cards feel more anchored.
-
-Open question: brand-colour outlines on every block could feel busy. Worth sparring on:
-- Always-on brand outline at low alpha (`border-primary/15` or `/20`)
-- Brand outline only on hover/focus, neutral outline at rest
-- Token-only — must use existing `--primary`, `--ring`, `--accent`, or `--foreground` — no new tokens added to globals.css.
-
-#### Suggested fix shape
-Brainstorm options (all token-only):
-1. `border-primary/20` — primary at 20% alpha, theme-aware
-2. `border-ring/30` — `--ring` is shadcn's focus colour, theme-aware
-3. `border-foreground/15` (current) + `hover:border-primary/30` — additive
-4. Lift to `border-2` width with `border-primary/15`
-
-Compare visually before deciding. Constraint: must not break `data-[dragging]:ring-2 data-[dragging]:ring-primary` (line 174) by colliding visually with the dragging state.
-
----
-
-### FE-16 — Collapsed block cards have squared bottom corners (radius bug)
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
-**File:** `src/components/editor/BlockListItem.tsx` outer at line 173, header at line 190
-
-#### Description
-Verified visually: when a block is collapsed, the outer container has `rounded-md` (all 4 corners) and the inner header has `rounded-t-md` (top corners only). Without `overflow-hidden` on the outer, the header's square bottom edges pass through the outer's rounded bottom-corner zone. Both surfaces are `bg-muted`, so the background colour blends — but the border (`border-foreground/15`) is drawn on the outer's rounded path, and the inner header's square bottom corners visibly intersect that curve.
-
-Result: collapsed blocks look "cut off" at the bottom corners — outer border curves while inner content has a square edge.
-
-When the block is expanded, the form pane below the header carries `rounded-b-md`, so the issue is invisible. Bug only manifests collapsed.
-
-#### Suggested fix shape
-Three candidates (any one fixes it, must remain token-only):
-1. **`overflow-hidden` on the outer container** — clips children to the rounded radius. Simplest. Standard shadcn pattern (Card uses `overflow-hidden` for this reason).
-2. **Conditional radius on the header** — `rounded-t-md` when expanded, `rounded-md` when collapsed. Slightly more code, more local.
-3. **Drop the header's `rounded-t-md` entirely** — rely on outer's `rounded-md` border to define the shape. Requires `overflow-hidden` anyway to clip the header's square corners against the rounded border.
-
-Option 1 is the recommended best-practice shadcn pattern. Verify it doesn't break the sticky-on-desktop header (`md:sticky`) which sometimes interacts with `overflow-hidden` on the scroll container (it shouldn't here — the sticky parent is the OUTER, the scroll container is further up).
-
----
-
 ### FE-10 — Multilanguage dashboard (EN + NL at minimum)
 
 **Status:** Active · **Layer:** frontend
@@ -410,3 +328,15 @@ Operators want a dashboard analytics view powered by Plausible or Matomo. The tr
 
 ### FE-CLOSED-16 — Media page empty state lacks an icon
 **Resolved via:** branch `fix/fe-14-media-empty-state-icon` · commit `ab743c6` (FE-14) · `src/components/media/MediaGrid.tsx`
+
+### FE-CLOSED-17 — Toolbar Expand/Collapse-all label tracks actual block states
+**Resolved via:** branch `feat/editor-polish-fe11-12-15-16` · commit `059006b` (FE-11) · `src/components/editor/BlockEditor.tsx`, `src/components/editor/BlockListItem.tsx`
+
+### FE-CLOSED-18 — Preview-toggle Button is a labeled chip with native shadcn hover
+**Resolved via:** branch `feat/editor-polish-fe11-12-15-16` · commit `f3bf776` (FE-12, evolved through smoke iterations to binary "Preview"/"Close preview" Button) · `src/components/editor/SaveStatusBar.tsx`
+
+### FE-CLOSED-19 — Block-card outline upgraded to a subtle theme-aware ring
+**Resolved via:** branch `feat/editor-polish-fe11-12-15-16` · commit `02eb65f` (FE-15, evolved through smoke iterations to `ring-2 ring-muted-foreground/50` because the registry's unlayered `*` rule in globals.css blocks `border-*-color` utilities — see OBS-30) · `src/components/editor/BlockListItem.tsx`
+
+### FE-CLOSED-20 — Collapsed-block bottom-corner radius bug
+**Resolved via:** branch `feat/editor-polish-fe11-12-15-16` · commit `687acc7` (FE-16, folded into FE-15 via `overflow-hidden`) · `src/components/editor/BlockListItem.tsx`

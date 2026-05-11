@@ -18,10 +18,6 @@ import { tinyVibrate } from "@/lib/haptics"
 const PRESS_DELAY_MS = 200
 const PRESS_TOLERANCE_PX = 5
 
-function getSessionKey(pageId: string | number, blockFieldId: string) {
-  return `block-open:${pageId}:${blockFieldId}`
-}
-
 export function BlockListItem({
   id,
   index,
@@ -31,9 +27,8 @@ export function BlockListItem({
   tenantId,
   onRemove,
   onMove,
-  isPhone,
-  pageId,
-  blockFieldId,
+  open,
+  onOpenChange,
 }: {
   id: string
   index: number
@@ -45,48 +40,11 @@ export function BlockListItem({
   tenantId: number | string
   onRemove: () => void
   onMove: (from: number, to: number) => void
-  isPhone: boolean
-  pageId: string | number
-  // The RHF field's stable id (survives reorder) — used as sessionStorage key.
-  blockFieldId: string
+  open: boolean
+  onOpenChange: (next: boolean) => void
 }) {
-  // Default open: desktop only (first block only); phone starts fully collapsed.
-  const defaultOpen = !isPhone && index === 0
-
-  // SSR-safe: start with defaultOpen, hydrate from sessionStorage in effect.
-  const [open, setOpen] = useState(defaultOpen)
   const [saveAsPresetOpen, setSaveAsPresetOpen] = useState(false)
   const namePrefix = `blocks.${index}`
-
-  // Read persisted open state from sessionStorage on mount.
-  useEffect(() => {
-    const key = getSessionKey(pageId, blockFieldId)
-    const stored = sessionStorage.getItem(key)
-    if (stored !== null) {
-      setOpen(stored === "1")
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally only on mount — blockFieldId/pageId are stable
-
-  // Persist open state changes to sessionStorage.
-  const setOpenPersist = (next: boolean) => {
-    setOpen(next)
-    try {
-      const key = getSessionKey(pageId, blockFieldId)
-      sessionStorage.setItem(key, next ? "1" : "0")
-    } catch { /* storage quota exceeded: silent */ }
-  }
-
-  // Listen for "expand all / collapse all" broadcast from BlockEditor.
-  useEffect(() => {
-    const onSet = (e: Event) => {
-      const detail = (e as CustomEvent<{ open: boolean }>).detail
-      if (typeof detail?.open === "boolean") setOpenPersist(detail.open)
-    }
-    document.addEventListener("editor:set-blocks-open", onSet)
-    return () => document.removeEventListener("editor:set-blocks-open", onSet)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageId, blockFieldId])
 
   const { control } = useFormContext()
   const values = useWatch({ control, name: `blocks.${index}` }) as Record<string, unknown> | undefined
@@ -170,7 +128,7 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border border-foreground/15 bg-muted transition-transform",
+        "rounded-md ring-2 ring-muted-foreground/50 overflow-hidden bg-card transition-all duration-150",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
@@ -187,7 +145,7 @@ export function BlockListItem({
       {/* UX-2026-0027 — header strip tightened on mobile (px-2, py-2) so the
           right-cluster (chevron + Actions) sits flush against the card edge,
           mirroring the left-cluster's tightness. */}
-      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] bg-muted rounded-t-md select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
+      <div className="flex items-center justify-between p-2 md:p-2 max-md:px-2 max-md:py-2 md:sticky md:top-0 md:z-[5] select-none [-webkit-user-select:none] [-webkit-touch-callout:none]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             type="button"
@@ -220,7 +178,7 @@ export function BlockListItem({
         <div className="flex items-center gap-0 shrink-0">
           <button
             type="button"
-            onClick={() => setOpenPersist(!open)}
+            onClick={() => onOpenChange(!open)}
             className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label={open ? "Collapse block" : "Expand block"}
           >
@@ -256,7 +214,7 @@ export function BlockListItem({
         </div>
       </div>
       {open && (
-        <div className="border-t bg-card p-3 space-y-3 rounded-b-md">
+        <div className="p-3 space-y-3">
           {(typedConfig?.fields ?? []).map((f, i) => (
             <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}
