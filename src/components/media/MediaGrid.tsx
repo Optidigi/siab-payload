@@ -3,10 +3,11 @@ import { useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Trash2 } from "lucide-react"
+import { Trash2, ImageIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { EmptyState } from "@/components/empty-state"
 import { MediaUsageDialog } from "./MediaUsageDialog"
 import { parsePayloadError } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -180,12 +181,11 @@ export function MediaGrid({
           yet" rather than "broken page". The PageHeader's Upload button
           remains the canonical upload affordance. */}
       {items.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          <div className="font-medium text-foreground">No media yet</div>
-          <p className="mt-1">
-            Upload images, video, or PDFs using the Upload button at the top of the page.
-          </p>
-        </div>
+        <EmptyState
+          icon={<ImageIcon className="h-10 w-10 text-muted-foreground" aria-hidden />}
+          title="No media yet"
+          description="Upload images, video, or PDFs using the Upload button at the top of the page."
+        />
       ) : (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
         {items.map((m) => {
