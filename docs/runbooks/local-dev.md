@@ -6,10 +6,10 @@ Cross-platform setup for running `siab-payload` against a local Docker-based Pos
 
 - **Node 22+** — verify with `node -v`
 - **pnpm** — install via corepack: `corepack enable pnpm`
-- **Docker**
-  - macOS / Windows: Docker Desktop (Windows: use the WSL2 backend)
-  - Linux: Docker Engine (no Desktop needed)
+- **Container runtime** — Docker or Podman (this machine uses Podman; see note below)
 - **Git** — for `git clone`
+
+> **This machine (Shimmy's Linux dev box):** Docker is not installed — use `podman` directly. `docker-compose` / `podman-compose` are also unavailable, so run the container with `podman run` or `podman start` (see Step 2 below).
 
 ## Step 1: Clone and install
 
@@ -21,12 +21,35 @@ pnpm install
 
 ## Step 2: Start local Postgres
 
+**Standard (Docker):**
 ```bash
 docker compose -f docker-compose.local.yml up -d
 docker compose -f docker-compose.local.yml ps   # status should be "healthy"
 ```
 
-The container is `siab-payload-postgres-dev`, data lives in the named volume `siab-payload-postgres-dev`, and the host port defaults to `5432`. If you already have something on `5432`, override with `POSTGRES_HOST_PORT=5433 docker compose -f docker-compose.local.yml up -d` and update `DATABASE_URI` in your `.env` accordingly.
+**This machine (Podman, no compose plugin):**
+
+The named container `siab-payload-postgres-dev` already exists (created 2026-05). Just start it:
+```bash
+podman start siab-payload-postgres-dev
+podman exec siab-payload-postgres-dev pg_isready -U payload -d payload  # should say "accepting connections"
+```
+
+If you ever need to recreate it from scratch (e.g. after `podman rm`):
+```bash
+podman run -d \
+  --name siab-payload-postgres-dev \
+  -e POSTGRES_DB=payload \
+  -e POSTGRES_USER=payload \
+  -e POSTGRES_PASSWORD=change-me \
+  -p 5432:5432 \
+  -v siab-payload-postgres-dev:/var/lib/postgresql/data \
+  postgres:17-alpine
+```
+
+> **Password note:** The `.env` `DATABASE_URI` must use the password the volume was initialised with (`change-me`). If they diverge you'll get `password authentication failed` — fix by updating `DATABASE_URI` in `.env` to match.
+
+The container is `siab-payload-postgres-dev`, data lives in the named volume `siab-payload-postgres-dev`, and the host port defaults to `5432`.
 
 ## Step 3: Local `.env`
 

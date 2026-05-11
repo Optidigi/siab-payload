@@ -20,8 +20,8 @@ export default function LoginPage() {
           media={
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-primary text-primary-foreground p-8 text-center">
               <div>
-                <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="w-full max-w-[260px] dark:hidden" />
-                <img src="/logos/logo-light.svg" alt="SiteInABox" className="hidden dark:block w-full max-w-[260px]" />
+                <img src="/logos/logo-dark.svg"  alt="SiteInABox" className="h-20 w-auto dark:hidden" />
+                <img src="/logos/logo-light.svg" alt="SiteInABox" className="hidden dark:block h-20 w-auto" />
               </div>
               <p className="text-sm text-primary-foreground/70 max-w-xs">
                 Multi-tenant CMS — manage sites, pages, forms, and media in one place.
