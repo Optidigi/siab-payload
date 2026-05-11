@@ -10,7 +10,7 @@ const ROLE: Record<string, BadgeVariant> = {
 const STATUS: Record<string, BadgeVariant> = {
   published: "success",
   active: "success",
-  draft: "warning",
+  draft: "secondary",
   suspended: "warning",
   spam: "destructive",
   new: "secondary",
