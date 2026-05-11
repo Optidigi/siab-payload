@@ -128,7 +128,7 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md border-2 border-foreground/50 overflow-hidden bg-muted transition-all duration-150",
+        "rounded-md ring-2 ring-inset ring-foreground/50 overflow-hidden bg-muted transition-all duration-150",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
