@@ -42,6 +42,7 @@ src/app/(payload)/admin/importMap.js
 coverage/
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # local projection output (DATA_DIR)
 .data-out/
