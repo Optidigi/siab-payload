@@ -269,6 +269,76 @@ Implement option 1: rework the Media upload+serve pipeline to use a per-tenant o
 
 ---
 
+### OBS-18 — CSP `unsafe-inline` / `unsafe-eval` not tightened to nonces
+
+**Status:** Active
+**Discovered in:** audit-p1 batch 4 (documented deviation); surfaced as open item 2026-05-11
+**File:** `src/middleware.ts` — `ADMIN_CSP` and `PREVIEW_CSP` constants
+
+#### Description
+Both CSP strings use `'unsafe-inline'` on `script-src` and `style-src`, and `'unsafe-eval'` on `script-src`. The audit's strawman CSP called for nonces; the shipped version uses the blanket unsafe flags as a documented deviation because Next.js App Router emits inline hydration scripts and runtime-eval'd chunks that can't be controlled without per-request nonce injection. `applySecurityHeaders` was intentionally left as a single call-site so nonce plumbing lands in one place when attempted.
+
+#### Why deferred
+Nonce injection in Next.js App Router requires middleware to generate a nonce, pass it via a header/cookie, and have every `<script>` tag in the RSC tree consume it. Non-trivial wiring; accepted as a deferred hardening step in the original audit.
+
+#### Suggested fix shape
+1. Generate a per-request nonce in `middleware.ts` (`crypto.randomUUID()` or `crypto.randomBytes(16).toString('base64')`).
+2. Replace `'unsafe-inline'` with `'nonce-${nonce}'` in `script-src`.
+3. Pass the nonce to the app via a response header (e.g. `x-csp-nonce`).
+4. Read it in the root layout and inject `<script nonce={nonce}>` on all inline scripts. Next.js 15 supports `headers()` in server components to read this.
+5. `style-src 'unsafe-inline'` is harder — Tailwind v4 runtime CSS requires it unless you switch to a build-time-only approach.
+
+---
+
+### OBS-19 — Integration and unit tests do not run in CI
+
+**Status:** Active
+**Discovered in:** Session 2026-05-11 — review of `.github/workflows/ci.yml`
+**File:** `.github/workflows/ci.yml`
+
+#### Description
+CI runs only `pnpm typecheck` and `pnpm registry:check`. The Vitest unit suite (`tests/unit/`) and integration suite (`tests/integration/`) never run automatically on push or PR. A regression in access control, auth logic, or projection can merge to `main` without any automated signal.
+
+#### Why deferred
+Integration tests require a live Postgres instance. Adding one to GHA needs a `services: postgres` container block and `DATABASE_URI` wiring. Not complex but not done.
+
+#### Suggested fix shape
+Add a second job to `ci.yml` after `typecheck-and-registry-drift`:
+
+```yaml
+test:
+  runs-on: ubuntu-latest
+  services:
+    postgres:
+      image: postgres:17-alpine
+      env:
+        POSTGRES_USER: payload
+        POSTGRES_PASSWORD: ci-password
+        POSTGRES_DB: payload
+      options: >-
+        --health-cmd pg_isready
+        --health-interval 10s
+        --health-timeout 5s
+        --health-retries 5
+      ports:
+        - 5432:5432
+  steps:
+    - uses: actions/checkout@v5
+    - uses: pnpm/action-setup@v4
+      with: { version: 10.28.2 }
+    - uses: actions/setup-node@v4
+      with: { node-version: 22, cache: pnpm }
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm test
+      env:
+        PAYLOAD_SECRET: ci-test-secret
+        DATABASE_URI: postgres://payload:ci-password@localhost:5432/payload
+```
+
+The test setup overrides `DATABASE_URI` to `payload_test` automatically — the Postgres service just needs to exist so the override can connect.
+
+---
+
 ## Latent observations — not exploitable today; watch for trigger conditions
 
 ### OBS-8 — `_verified` field has `update: defaultAccess` (default-allow)
@@ -473,4 +543,4 @@ Worth promoting to permanent codebase rules. Add to your CONTRIBUTING.md / PR-re
 <the shape of the fix when it's eventually addressed>
 ```
 
-Future `OBS-N` entries continue the numbering — current high water mark is OBS-17. Don't reuse closed IDs.
+Future `OBS-N` entries continue the numbering — current high water mark is OBS-19. Don't reuse closed IDs.

@@ -49,10 +49,8 @@ const ADMIN_CSP = [
 
 // Reserved for future CMS-admin preview routes (none today). The CMS admin
 // is the EMBEDDER of preview iframes, not the EMBEDDED — the iframe loads
-// from tenant.com, which is a separate repo (THREAT-MODEL §1) with its own
-// path-branched middleware (see docs/superpowers/plans/2026-05-06-live-
-// preview-plan.md:618-660). If the CMS admin ever adds a /__preview* route
-// that should be frameable by admin, this branch lets it skip XFO DENY
+// from tenant.com (a separate repo). If the CMS admin ever adds a /__preview*
+// route that should be frameable by admin, this branch lets it skip XFO DENY
 // without changing the rest of the hardening set.
 const PREVIEW_CSP = [
   "default-src 'self'",
