@@ -133,28 +133,6 @@ Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap t
 
 ---
 
-### FE-14 — Media page empty state lacks an icon (parity gap with Pages/Forms/Users)
-
-**Status:** Active · **Layer:** frontend
-**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
-**File:** `src/components/media/MediaGrid.tsx` lines 182-188
-
-#### Description
-The media empty state is a bespoke dashed-border `<div>` with no icon. Other list views in the admin use the `EmptyState` registry primitive with a lucide icon:
-- Pages → `FileText`
-- Forms → `Inbox`
-- Users → registry empty state with an icon
-- Media → bespoke `<div>`, no icon ← outlier
-
-UX parity gap. Operators expect the same "icon + headline + body" pattern across surfaces.
-
-#### Suggested fix shape
-Replace the bespoke `<div>` in `MediaGrid.tsx:182-188` with `<EmptyState icon={<ImageIcon className="h-10 w-10 text-muted-foreground" aria-hidden />} ... />`. Match the prop shape used in `src/app/(frontend)/(admin)/pages/page.tsx:26-32`. Icon candidate: `ImageIcon` from `lucide-react` (also imported by MediaGrid already), or `Images` / `FolderImage` if a better semantic fit. Existing copy ("No media yet" + upload-instruction body) is fine — preserve.
-
-Registry primitive `EmptyState` lives at `@/components/empty-state` and is part of the `@siab/*` registry — we compose it; no Layer 1 edits.
-
----
-
 ### FE-15 — Block-card outline could use brand colour for more pop (revisit FE-CLOSED-15)
 
 **Status:** Active · **Layer:** frontend
@@ -429,3 +407,6 @@ Operators want a dashboard analytics view powered by Plausible or Matomo. The tr
 
 ### FE-CLOSED-15 — Block-card theme-aware outline
 **Resolved via:** branch `feat/editor-visual-pass-fe1-fe4-fe8` · commit `63edcb0` (FE-13, bundled mid-flight after smoke) · `src/components/editor/BlockListItem.tsx`
+
+### FE-CLOSED-16 — Media page empty state lacks an icon
+**Resolved via:** branch `fix/fe-14-media-empty-state-icon` · commit `ab743c6` (FE-14) · `src/components/media/MediaGrid.tsx`
