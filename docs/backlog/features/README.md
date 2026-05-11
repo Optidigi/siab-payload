@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `sitegen-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-10). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-26).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-10). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-27).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -208,6 +208,29 @@ Dashboard shows basic stats. Operators want richer role-scoped metrics: edits pe
 2. Add aggregation queries to `src/lib/queries/`.
 3. Add chart components using existing `@siab/chart` primitive.
 4. All queries accept `tenantId` param; super-admin passes `null` for global view.
+
+---
+
+### OBS-27 — Dashboard charts — dynamic and user-configurable
+
+**Status:** Active · **Layer:** full-stack
+**Discovered in:** GitHub #32 (extends GitHub #4)
+**File:** `src/components/dashboard/`, `src/app/(frontend)/(admin)/dashboard/`
+
+#### Description
+The current dashboard chart (EditsChart) is static — fixed time range, fixed metric, no user control. Operators want charts they can interact with: adjustable date ranges, toggleable metrics, possibly chart-type switching. Distinct from OBS-22 which is about adding richer underlying data; this is about making the chart presentation layer configurable by the user.
+
+#### Why deferred
+Depends on OBS-22 to settle the data model and available metrics first — no point building a configurable UI over a thin data layer.
+
+#### Suggested fix shape
+1. Add date-range picker (e.g. last 7 / 30 / 90 days, custom) wired to EditsChart query.
+2. Allow metric toggling if OBS-22 introduces multiple series (e.g. edits by block type).
+3. Persist user preferences (selected range, visible metrics) in `localStorage` initially; escalate to a `Users.dashboardPrefs` JSON field if cross-device sync is needed.
+4. Use existing `@siab/chart` primitive — no new chart library.
+5. Scope: each role sees only its permitted metrics (enforced server-side per OBS-22).
+
+**Cross-reference:** OBS-22 — build or at least design the data layer before this.
 
 ---
 
