@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `sitegen-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-10). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-27).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-16). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-29).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -130,6 +130,76 @@ The desktop preview eye-icon button is currently low-contrast against both light
 
 #### Suggested fix shape
 Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap to a higher-contrast registry variant (e.g. `variant="default"` filled, vs the current ghost/outline) or apply explicit token classes that flip with theme (`text-foreground` on `bg-background` will auto-invert via the `.dark` variant). No hex, no inline styles — token-only as per CLAUDE.md Layer 2 discipline.
+
+---
+
+### FE-14 — Media page empty state lacks an icon (parity gap with Pages/Forms/Users)
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
+**File:** `src/components/media/MediaGrid.tsx` lines 182-188
+
+#### Description
+The media empty state is a bespoke dashed-border `<div>` with no icon. Other list views in the admin use the `EmptyState` registry primitive with a lucide icon:
+- Pages → `FileText`
+- Forms → `Inbox`
+- Users → registry empty state with an icon
+- Media → bespoke `<div>`, no icon ← outlier
+
+UX parity gap. Operators expect the same "icon + headline + body" pattern across surfaces.
+
+#### Suggested fix shape
+Replace the bespoke `<div>` in `MediaGrid.tsx:182-188` with `<EmptyState icon={<ImageIcon className="h-10 w-10 text-muted-foreground" aria-hidden />} ... />`. Match the prop shape used in `src/app/(frontend)/(admin)/pages/page.tsx:26-32`. Icon candidate: `ImageIcon` from `lucide-react` (also imported by MediaGrid already), or `Images` / `FolderImage` if a better semantic fit. Existing copy ("No media yet" + upload-instruction body) is fine — preserve.
+
+Registry primitive `EmptyState` lives at `@/components/empty-state` and is part of the `@siab/*` registry — we compose it; no Layer 1 edits.
+
+---
+
+### FE-15 — Block-card outline could use brand colour for more pop (revisit FE-CLOSED-15)
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
+**File:** `src/components/editor/BlockListItem.tsx:173`
+
+#### Description
+FE-CLOSED-15 shipped `border-foreground/15` (theme-aware, 15% alpha) for block-card outlines. After smoke, the user reports it still doesn't pop enough — would like a brand-colour version (e.g. `--primary` or `--ring`) to make cards feel more anchored.
+
+Open question: brand-colour outlines on every block could feel busy. Worth sparring on:
+- Always-on brand outline at low alpha (`border-primary/15` or `/20`)
+- Brand outline only on hover/focus, neutral outline at rest
+- Token-only — must use existing `--primary`, `--ring`, `--accent`, or `--foreground` — no new tokens added to globals.css.
+
+#### Suggested fix shape
+Brainstorm options (all token-only):
+1. `border-primary/20` — primary at 20% alpha, theme-aware
+2. `border-ring/30` — `--ring` is shadcn's focus colour, theme-aware
+3. `border-foreground/15` (current) + `hover:border-primary/30` — additive
+4. Lift to `border-2` width with `border-primary/15`
+
+Compare visually before deciding. Constraint: must not break `data-[dragging]:ring-2 data-[dragging]:ring-primary` (line 174) by colliding visually with the dragging state.
+
+---
+
+### FE-16 — Collapsed block cards have squared bottom corners (radius bug)
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (after editor visual pass merged)
+**File:** `src/components/editor/BlockListItem.tsx` outer at line 173, header at line 190
+
+#### Description
+Verified visually: when a block is collapsed, the outer container has `rounded-md` (all 4 corners) and the inner header has `rounded-t-md` (top corners only). Without `overflow-hidden` on the outer, the header's square bottom edges pass through the outer's rounded bottom-corner zone. Both surfaces are `bg-muted`, so the background colour blends — but the border (`border-foreground/15`) is drawn on the outer's rounded path, and the inner header's square bottom corners visibly intersect that curve.
+
+Result: collapsed blocks look "cut off" at the bottom corners — outer border curves while inner content has a square edge.
+
+When the block is expanded, the form pane below the header carries `rounded-b-md`, so the issue is invisible. Bug only manifests collapsed.
+
+#### Suggested fix shape
+Three candidates (any one fixes it, must remain token-only):
+1. **`overflow-hidden` on the outer container** — clips children to the rounded radius. Simplest. Standard shadcn pattern (Card uses `overflow-hidden` for this reason).
+2. **Conditional radius on the header** — `rounded-t-md` when expanded, `rounded-md` when collapsed. Slightly more code, more local.
+3. **Drop the header's `rounded-t-md` entirely** — rely on outer's `rounded-md` border to define the shape. Requires `overflow-hidden` anyway to clip the header's square corners against the rounded border.
+
+Option 1 is the recommended best-practice shadcn pattern. Verify it doesn't break the sticky-on-desktop header (`md:sticky`) which sometimes interacts with `overflow-hidden` on the scroll container (it shouldn't here — the sticky parent is the OUTER, the scroll container is further up).
 
 ---
 
