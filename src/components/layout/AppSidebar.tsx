@@ -58,7 +58,7 @@ export function AppSidebar({ mode, role }: { mode: Mode; role: Role }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <Link href="/" className="flex items-center px-2 py-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+        <Link href="/" aria-label="SiteInABox home" className="flex items-center px-2 py-1.5 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
           {/* Expanded: full wordmark logo */}
           <span className="group-data-[collapsible=icon]:hidden">
             <img src="/logos/logo-light.svg" alt="SiteInABox" className="h-7 w-auto dark:hidden" />
