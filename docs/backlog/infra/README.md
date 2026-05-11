@@ -59,6 +59,26 @@ The test setup overrides `DATABASE_URI` to `payload_test` automatically — the 
 
 ---
 
+### OBS-28 — `pnpm lint` is non-functional (no ESLint config)
+
+**Status:** Active
+**Discovered in:** Session 2026-05-11 (during FE-1+FE-4+FE-8 verification gate)
+**File:** `package.json` `scripts.lint`, no `.eslintrc*` / `eslint.config.*` at repo root
+
+#### Description
+`pnpm lint` invokes `next lint`, which prompts interactively to scaffold an ESLint config (the project has none). The command hangs waiting for input and exits 1 in non-TTY contexts. CLAUDE.md lists `pnpm lint` as a gate to run before completion claims, but the script currently cannot be run — the gate is dead.
+
+#### Why deferred
+Pre-existing. The CI workflow already skips lint (only `typecheck` + `registry:check` run), so production hasn't surfaced an actionable lint signal anywhere. Fixing requires choosing an ESLint config strategy (Next.js Strict vs Base vs custom) and aligning with the registry components.
+
+#### Suggested fix shape
+1. Decide: adopt Next.js Strict (recommended starting point) or roll a minimal `eslint.config.js`.
+2. Run `pnpm dlx next-lint` once interactively to scaffold, then commit the generated config.
+3. Add `--max-warnings 0` once the codebase passes clean.
+4. Either remove the `lint` reference from CLAUDE.md's verification list or wire lint into CI alongside typecheck.
+
+---
+
 ## Closed
 
 *(none yet)*
