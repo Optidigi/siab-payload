@@ -7,7 +7,7 @@ Product feature work — UI improvements, new functionality, and full-stack addi
 - `full-stack` — meaningful work on both frontend and backend within this repo
 - `multi-repo` — spans this repo AND `sitegen-template` or orchestrator
 
-**IDs:** Frontend items use `FE-N` (current high water mark: FE-16). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-29).
+**IDs:** Frontend items use `FE-N` (current high water mark: FE-19). Full-stack/multi-repo items use `OBS-N` continuing the shared sequence (current high water mark across all backlogs: OBS-30).
 
 Cross-reference: security findings at `../security/README.md`, infra items at `../infra/README.md`.
 
@@ -109,6 +109,63 @@ The admin dashboard is English-only. Dutch is required at minimum; German, Frenc
 
 #### Suggested fix shape
 Introduce `next-intl` with locale files under `src/locales/`. Store user preference in `localStorage` (escalate to `Users.language` field if cross-device sync is required later). Wire language switcher in settings. Start EN + NL; further locales are translation-file-only additions.
+
+---
+
+### FE-17 — InsertSlot "+ Add" affordance too prominent on mobile page editor
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (post editor-polish-round-2 smoke)
+**File:** `src/components/editor/InsertSlot.tsx`
+
+#### Description
+The "+ Add" affordance that appears between blocks renders fully-visible on phone (`max-md:opacity-100` plus a dark `bg-foreground text-background` pill at `text-sm` size) rather than hover-revealed like desktop. Combined with the new collapsed-by-default block tabs, the row of dark "+ Add" chips between blocks reads louder than the blocks themselves on mobile.
+
+#### Suggested fix shape
+Tone the mobile variant down without breaking accessibility:
+1. Drop the dark fill (`bg-foreground text-background border-foreground`) and use a lighter surface — e.g. `bg-card border-border` matching the regular outline language.
+2. Or shrink it: smaller text (`text-xs`), tighter padding (`px-2 py-0.5`), shorter "+" only label on phone.
+3. Keep the 44×44 hit-target via outer `<button>` padding (already in place) so accessibility isn't sacrificed for visual subtlety.
+
+Constraint: must remain registry-pure (no edits to `src/components/ui/`), token-only.
+
+---
+
+### FE-18 — Block cards should expand on full-card click, not only the chevron
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (post editor-polish-round-2 smoke)
+**File:** `src/components/editor/BlockListItem.tsx`
+
+#### Description
+Today the chevron button is the only target that toggles a block's open/closed state. Operators expect to click anywhere on the collapsed header (block name, type icon, summary text, or whitespace) to expand the block. The chevron should remain a valid target but not the only one.
+
+#### Suggested fix shape
+Make the entire header row clickable for expand/collapse:
+1. Wrap the header strip in a `<button type="button">` element OR attach an `onClick` to the existing header `<div>` (with `role="button"` and keyboard handlers for accessibility).
+2. Carefully exclude the grip handle, MoreVertical menu trigger, and chevron itself from triggering the toggle (those have their own click semantics). Probably easiest via `event.stopPropagation()` on those nested controls.
+3. When open, clicking the header should COLLAPSE (toggle semantics) — same as the current chevron behaviour.
+4. Drag-and-drop semantics must not break: clicking the grip handle to start a drag must NOT trigger the toggle. Verify with the existing `data-[dragging]` and `data-[pressed]` state machinery.
+
+Constraint: registry-pure, token-only.
+
+---
+
+### FE-19 — Expand-all / Collapse-all button should align with the "Blocks" section header
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (post editor-polish-round-2 smoke)
+**File:** `src/components/editor/BlockEditor.tsx` (toolbar at top of block list), `src/components/forms/PageForm.tsx` or wherever the "Blocks" section title is rendered
+
+#### Description
+The toolbar Expand-all/Collapse-all `Button` sits on its own row above the block list, right-aligned via `flex justify-end`. Operators expect it to sit on the SAME horizontal row as the "Blocks" section header (the `<h2>Blocks</h2>` or equivalent in PageForm), matching the typical "section header + section action" pattern.
+
+#### Suggested fix shape
+1. Locate where the "Blocks" heading is rendered — likely in `PageForm.tsx` or a wrapping component around `BlockEditor`.
+2. Either: (a) move the Expand-all button from `BlockEditor.tsx` into the parent's section-header row (parent passes a render slot OR the button moves to the parent and the parent reads `openMap` via a context); or (b) keep the button in `BlockEditor.tsx` but restructure so it renders inline with the heading (might require lifting the heading INTO BlockEditor).
+3. Visual target: `<div className="flex items-center justify-between"><h2>Blocks</h2><Button>Expand all</Button></div>`.
+
+Constraint: the lifted-state machinery from FE-CLOSED-17 already exposes `allOpen` and `setAllOpen` — those just need to be where the heading lives, or the heading needs to be where they live.
 
 ---
 
