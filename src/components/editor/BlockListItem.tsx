@@ -128,7 +128,7 @@ export function BlockListItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "rounded-md ring-1 ring-muted-foreground overflow-hidden bg-card transition-all duration-150",
+        "rounded-md ring-1 ring-muted-foreground/50 overflow-hidden bg-card transition-all duration-150",
         "data-[dragging]:ring-2 data-[dragging]:ring-primary data-[dragging]:shadow-lg data-[dragging]:bg-card/60",
         "data-[pressed]:ring-2 data-[pressed]:ring-primary/50 data-[pressed]:scale-[0.99]",
       )}
@@ -214,7 +214,7 @@ export function BlockListItem({
         </div>
       </div>
       {open && (
-        <div className="border-t bg-card p-3 space-y-3 rounded-b-md">
+        <div className="p-3 space-y-3">
           {(typedConfig?.fields ?? []).map((f, i) => (
             <FieldRenderer key={i} field={f as any} namePrefix={namePrefix} />
           ))}
