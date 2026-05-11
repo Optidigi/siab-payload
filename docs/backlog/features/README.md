@@ -141,6 +141,61 @@ Mobile-only tabbed or card-nav layout (`Sheet`, `Tabs`, or custom bottom-nav) wr
 
 ---
 
+### FE-11 — Toolbar "Expand all / Collapse all" label drifts from actual block states
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (during FE-1 smoke test)
+**File:** `src/components/editor/BlockEditor.tsx` (toolbar at lines ~136-140), `src/components/editor/BlockListItem.tsx` (per-block `open` state)
+
+#### Description
+The toolbar `allCollapsed` flag is a stateless local toggle — clicking "Expand all" sets it to `false` (button now reads "Collapse all"), but if the user then manually expands/collapses individual blocks via the chevron, the toolbar label does not update. Result: button can read "Expand all" while every block is already open, or vice-versa.
+
+Pre-existing behaviour, exposed more visibly now that FE-1 makes the default state predominantly collapsed.
+
+#### Suggested fix shape
+Compute the toolbar label from the *actual* block states rather than a local toggle. Two approaches:
+1. **Lift the per-block `open` state up** to `BlockEditor` (or a context), drop sessionStorage-per-block in favour of a single map keyed by `blockFieldId`. Then `allCollapsed = useMemo(() => Object.values(openMap).every(v => !v), [openMap])`.
+2. **Listen for a "block state changed" event** from each `BlockListItem` so `BlockEditor` can recompute `allCollapsed` without owning the state. Cheaper migration but adds another CustomEvent dance.
+
+Option 1 is cleaner long-term; option 2 is minimal-disruption. Decide during brainstorm.
+
+---
+
+### FE-12 — PreviewToolbar eye button needs higher contrast
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (during FE-1/4/8 smoke test)
+**File:** `src/components/editor/PreviewToolbar.tsx`
+
+#### Description
+The desktop preview eye-icon button is currently low-contrast against both light and dark themes — it blends into the toolbar background. Operators reported difficulty spotting it.
+
+#### Suggested fix shape
+Audit the current `Button`/`Toggle` variant used for the eye icon. Either swap to a higher-contrast registry variant (e.g. `variant="default"` filled, vs the current ghost/outline) or apply explicit token classes that flip with theme (`text-foreground` on `bg-background` will auto-invert via the `.dark` variant). No hex, no inline styles — token-only as per CLAUDE.md Layer 2 discipline.
+
+---
+
+### FE-13 — Block-card outline tweak for additional visual definition
+
+**Status:** Active · **Layer:** frontend
+**Discovered in:** Session 2026-05-11 (after FE-8 ship)
+**File:** `src/components/editor/BlockListItem.tsx` (outer container at line ~172)
+
+#### Description
+After FE-8 ships, block cards sit on `bg-muted` with a `border` (which uses `--border` token, a light gray that's quite subtle). User wants to spar on adding a stronger outline — light outline on dark theme, dark outline on light — to further define block boundaries.
+
+Open question whether this can be done purely with shadcn tokens and registry primitives without diverging from the registry's intended visual language.
+
+#### Suggested fix shape
+Brainstorm options:
+1. **Keep current `border` but bump to `border-2`** — heavier weight using the same token. Cheapest.
+2. **Token swap to a more-contrast border colour** — explore whether shadcn ships a `--border-strong` or similar (likely not; would need to add to globals.css OR reuse `--ring`, `--input`, etc. but those have other semantics).
+3. **Add `outline` with theme-aware tokens** (`outline outline-1 outline-foreground/10` — `/10` is the alpha modifier, valid Tailwind, theme-aware via `.dark`'s `--foreground` override).
+
+Constraint: must remain registry-pure (no edits to `src/components/ui/`), no hex, no arbitrary Tailwind values. Brainstorm should also weigh whether this is *additive* to FE-8's contrast (good) or *redundant* (drop it).
+
+---
+
 ### FE-10 — Multilanguage dashboard (EN + NL at minimum)
 
 **Status:** Active · **Layer:** frontend
