@@ -18,10 +18,6 @@ import { tinyVibrate } from "@/lib/haptics"
 const PRESS_DELAY_MS = 200
 const PRESS_TOLERANCE_PX = 5
 
-function getSessionKey(pageId: string | number, blockFieldId: string) {
-  return `block-open:${pageId}:${blockFieldId}`
-}
-
 export function BlockListItem({
   id,
   index,
@@ -31,9 +27,8 @@ export function BlockListItem({
   tenantId,
   onRemove,
   onMove,
-  isPhone,
-  pageId,
-  blockFieldId,
+  open,
+  onOpenChange,
 }: {
   id: string
   index: number
@@ -45,48 +40,11 @@ export function BlockListItem({
   tenantId: number | string
   onRemove: () => void
   onMove: (from: number, to: number) => void
-  isPhone: boolean
-  pageId: string | number
-  // The RHF field's stable id (survives reorder) — used as sessionStorage key.
-  blockFieldId: string
+  open: boolean
+  onOpenChange: (next: boolean) => void
 }) {
-  // Default open: desktop only (first block only); phone starts fully collapsed.
-  const defaultOpen = !isPhone && index === 0
-
-  // SSR-safe: start with defaultOpen, hydrate from sessionStorage in effect.
-  const [open, setOpen] = useState(defaultOpen)
   const [saveAsPresetOpen, setSaveAsPresetOpen] = useState(false)
   const namePrefix = `blocks.${index}`
-
-  // Read persisted open state from sessionStorage on mount.
-  useEffect(() => {
-    const key = getSessionKey(pageId, blockFieldId)
-    const stored = sessionStorage.getItem(key)
-    if (stored !== null) {
-      setOpen(stored === "1")
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // intentionally only on mount — blockFieldId/pageId are stable
-
-  // Persist open state changes to sessionStorage.
-  const setOpenPersist = (next: boolean) => {
-    setOpen(next)
-    try {
-      const key = getSessionKey(pageId, blockFieldId)
-      sessionStorage.setItem(key, next ? "1" : "0")
-    } catch { /* storage quota exceeded: silent */ }
-  }
-
-  // Listen for "expand all / collapse all" broadcast from BlockEditor.
-  useEffect(() => {
-    const onSet = (e: Event) => {
-      const detail = (e as CustomEvent<{ open: boolean }>).detail
-      if (typeof detail?.open === "boolean") setOpenPersist(detail.open)
-    }
-    document.addEventListener("editor:set-blocks-open", onSet)
-    return () => document.removeEventListener("editor:set-blocks-open", onSet)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageId, blockFieldId])
 
   const { control } = useFormContext()
   const values = useWatch({ control, name: `blocks.${index}` }) as Record<string, unknown> | undefined
@@ -220,7 +178,7 @@ export function BlockListItem({
         <div className="flex items-center gap-0 shrink-0">
           <button
             type="button"
-            onClick={() => setOpenPersist(!open)}
+            onClick={() => onOpenChange(!open)}
             className="text-muted-foreground h-11 w-11 md:h-7 md:w-7 flex items-center justify-center shrink-0"
             aria-label={open ? "Collapse block" : "Expand block"}
           >
