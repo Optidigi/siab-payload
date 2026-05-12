@@ -133,8 +133,8 @@ Test setup reads `.env` and overrides `DATABASE_URI` to `payload_test` automatic
 
 `docs/backlog/` is the canonical source of truth for all open, deferred, and closed work items. It must stay in sync with the codebase at all times.
 
-- **`docs/backlog/security/README.md`** — security audit findings, access control gaps, auth hardening. IDs: `OBS-N` (next: OBS-27).
-- **`docs/backlog/features/README.md`** — product features, UI improvements, full-stack additions. Layered by `frontend` / `full-stack` / `multi-repo`. IDs: `FE-N` (next: FE-11) for frontend-only; `OBS-N` (next: OBS-27) for full-stack/multi-repo.
+- **`docs/backlog/security/README.md`** — security audit findings, access control gaps, auth hardening. IDs: `OBS-N` (next: OBS-32).
+- **`docs/backlog/features/README.md`** — product features, UI improvements, full-stack additions. Layered by `frontend` / `full-stack` / `multi-repo`. IDs: `FE-N` (next: FE-22) for frontend-only; `OBS-N` (next: OBS-32) for full-stack/multi-repo.
 - **`docs/backlog/infra/README.md`** — CI, deployment, operational, and scaling concerns. IDs: `OBS-N` continuing shared sequence.
 
 **Rules:**

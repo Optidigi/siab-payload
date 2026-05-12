@@ -10,6 +10,28 @@ Cross-reference: security findings at `../security/README.md`, product features 
 
 ## Active
 
+### OBS-31 — CI fails on every `@siab` registry 5xx (no retry on `registry:check`)
+
+**Status:** Active
+**Discovered in:** Session 2026-05-12 — three consecutive `ci` runs failed on push to `main` (runs 25696927155, 25697012967, 25697104718)
+**File:** `.github/workflows/ci.yml` `typecheck-and-registry-drift` job, `package.json` `scripts.registry:check`
+
+#### Description
+`pnpm registry:check` is a single-shot fetch against `https://registries.optidigi.nl/r/v1/siab/*.json` (one request per `@siab/*` component). Any transient upstream blip — Cloudflare 522 (origin timeout), 5xx, or network flake — fails the whole `ci` workflow and blocks merge. Observed three failed runs in a row on 2026-05-11 with 522 on different components (`skeleton.json`, `tooltip.json`, `button.json`); each cleared on rerun with no code change. The registry was reachable from outside CI immediately afterward (HTTP 200 in <300ms), confirming the cause is transient origin/edge fragility, not a real drift.
+
+Effect: false-positive CI failures, manual reruns required, lost trust in the gate. Compounds with OBS-19 (no tests in CI) — `registry:check` is currently the *only* substantive signal CI emits, so a flaky probe is the whole gate.
+
+#### Why deferred
+Single occurrence cluster so far. Workaround is `gh run rerun <id>`. No data loss, no production impact. Worth fixing but not urgent.
+
+#### Suggested fix shape
+1. Wrap the fetches in `pnpm registry:check` with retry-on-5xx (3 attempts, exponential backoff). The script lives in `scripts/` (or wherever `package.json` points it) — patch there, not in CI YAML.
+2. Alternative: cache the fetched manifests by SHA-of-component-list under `actions/cache@v4`, invalidating only when the component set changes. Keeps the drift check meaningful while surviving registry outages.
+3. Distinguish "registry unreachable" from "registry returned different content" in the script's exit code — only the latter is real drift; the former should be a soft warn (or retry exhaustion → hard fail with a clear message).
+4. Cross-reference: OBS-19 (tests not in CI). When tests run, `registry:check` will no longer be the sole CI signal, but flakes still block merges, so the fix is independent.
+
+---
+
 ### OBS-19 — Integration and unit tests do not run in CI
 
 **Status:** Active
